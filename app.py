@@ -144,6 +144,27 @@ st.markdown(
         font-size: 11px;
     }
     .excel-table th { font-weight: 700; font-size: 10px; text-transform: uppercase; }
+    /* Frozen / sticky header for tables */
+    .table-scroll {
+        max-height: 70vh;
+        overflow: auto;
+        border: 1px solid #cbd5e1;
+    }
+    .table-scroll .excel-table {
+        margin-top: 0;
+    }
+    .table-scroll .excel-table thead th {
+        position: sticky;
+        top: 0;
+        z-index: 5;
+        box-shadow: 0 2px 2px -1px rgba(0,0,0,0.15);
+    }
+    .table-scroll .excel-table thead tr:first-child th {
+        top: 0;
+    }
+    .table-scroll .excel-table thead tr:nth-child(2) th {
+        top: 28px; /* approximate height of first header row */
+    }
     .header-tot { background-color: #6b21a8; color: white; }
     .header-fpd { background-color: #15803d; color: white; }
     .header-mhl { background-color: #1d4ed8; color: white; }
@@ -171,7 +192,8 @@ st.markdown(
     unsafe_allow_html=True,
 )
 # ========== PATH ==========
-PARQUET_FILE = "ser_wise.parquet"
+PARQUET_FILE = r"D:\dashboard\ser_wise.parquet"
+
 @st.cache_data(ttl=300)
 def load_data():
     path = Path(PARQUET_FILE)
@@ -182,8 +204,8 @@ def load_data():
     if not pd.api.types.is_datetime64_any_dtype(df["Date"]):
         df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
     return df
-df = load_data()
 
+df = load_data()
 
 # ========== CASCADING FILTERS ==========
 # HEADING ABOVE FILTERS
@@ -209,7 +231,7 @@ st.markdown(
 
 st.markdown("<div style='font-size:13px;font-weight:600;color:#334155;margin-bottom:2px;'>Filters</div>", unsafe_allow_html=True)
 temp = df.copy()
-c1, c2, c3, c4, c5, c6, c7, c8, c9, c10 = st.columns(10)
+c1, c2, c3, c4, c5, c6, c7, c8, c9 = st.columns(9)
 with c1:
     depot_opts = ["ALL"] + sorted([x for x in temp["DEPOT"].dropna().unique() if str(x).strip()])
     depot = st.selectbox("DEPOT", depot_opts, index=0)
@@ -226,7 +248,7 @@ with c3:
 if rtc != "ALL":
     temp = temp[temp["RTC_HIRE"] == rtc]
 with c4:
-    pax_opts = [ "TOT", "FPD", "MHL"]
+    pax_opts = ["TOT", "FPD", "MHL"]
     passengers = st.selectbox("PASSENGERS", pax_opts, index=0)
 with c5:
     product_opts = ["ALL"] + sorted([x for x in temp["PRODUCT"].dropna().unique() if str(x).strip()])
@@ -239,15 +261,6 @@ with c6:
 if route != "ALL":
     temp = temp[temp["ROUTEE"] == route]
 with c7:
-    service_col = next((col for col in ["SERVICE_NO", "SERVICE", "SER_NO", "SERVICE_NUMBER"] if col in temp.columns), None)
-    if service_col:
-        service_opts = ["ALL"] + sorted([x for x in temp[service_col].dropna().unique() if str(x).strip()])
-    else:
-        service_opts = ["ALL"]
-    service_no = st.selectbox("SERVICE NO", service_opts, index=0)
-if service_col and service_no != "ALL":
-    temp = temp[temp[service_col] == service_no]
-with c8:
     raw_months = [x for x in temp["Month_Name"].dropna().unique() if str(x).strip()]
     if not raw_months:
         raw_months = [x for x in df["Month_Name"].dropna().unique() if str(x).strip()]
@@ -261,11 +274,12 @@ with c8:
                 return pd.to_datetime(m_str, errors="coerce")
     month_opts = sorted(raw_months, key=parse_month_key, reverse=True)
     month = st.selectbox("MONTH", month_opts, index=0)
-with c9:
+with c8:
     for_upto = st.selectbox("For / Upto", ["UPTO", "FOR"], index=0)
-with c10:
+with c9:
     net_gross = st.selectbox("NET / GROSS", ["Gross", "Net"], index=0)
 st.markdown("<div style='margin-top:2px;margin-bottom:2px;'></div>", unsafe_allow_html=True)
+
 # ========== GLOBAL FILTERING LOGIC ==========
 base_mask = pd.Series(True, index=df.index)
 if depot != "ALL":
@@ -278,8 +292,6 @@ if product != "ALL":
     base_mask &= df["PRODUCT"] == product
 if "rtc" in dir() and rtc != "ALL":
     base_mask &= df["RTC_HIRE"] == rtc
-if service_col and service_no != "ALL":
-    base_mask &= df[service_col] == service_no
 selected_max_date = df[df["Month_Name"] == month]["Date"].max()
 if pd.isna(selected_max_date):
     cy_mask = base_mask & (df["Month_Name"] == month)
@@ -320,9 +332,14 @@ elif passengers == "MHL":
     pax_col = "PSNGR_MHL"
 else:
     pax_col = "PSNGR_TOT"  # BOTH or TOT
+
+# Service column name for Service Performance tab only
+service_col = next((col for col in ["SERVICE_NO", "SERVICE", "SER_NO", "SERVICE_NUMBER"] if col in df.columns), None)
+
 # ========== HELPER FUNCTIONS ==========
 day_order = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 day_short = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"]
+
 def weighted_epk(data, earn_col, group_cols=["DEPOT", "ROUTEE", "PRODUCT"]):
     if len(data) == 0:
         return pd.DataFrame()
@@ -343,6 +360,7 @@ def weighted_epk(data, earn_col, group_cols=["DEPOT", "ROUTEE", "PRODUCT"]):
     )
     pivot["UPTO"] = np.where(overall["kms"] > 0, overall["earnings"] / overall["kms"], np.nan)
     return pivot.round(2)
+
 def fmt(v):
     if pd.isna(v) or v is None:
         return ""
@@ -352,6 +370,7 @@ def fmt(v):
     except Exception:
         pass
     return f"{v:,.2f}"
+
 def fmt_pax(v):
     """Passengers whole number, no decimals; blank if 0"""
     if pd.isna(v) or v is None:
@@ -363,6 +382,7 @@ def fmt_pax(v):
         return f"{iv:,}"
     except Exception:
         return ""
+
 def fmt_growth(v):
     """% Growth number only; blank if 0"""
     if pd.isna(v) or v is None:
@@ -373,6 +393,7 @@ def fmt_growth(v):
     except Exception:
         pass
     return f"{v:.2f}"
+
 def var_class(v):
     if pd.isna(v) or v is None:
         return ""
@@ -381,6 +402,7 @@ def var_class(v):
     if v < 0:
         return "neg"
     return ""
+
 def build_act_vs_act_table(group_col, data_cy=None, data_ly=None, cy_label="CY", ly_label="LY"):
     if data_cy is None:
         data_cy = cy_data
@@ -479,7 +501,7 @@ def build_act_vs_act_table(group_col, data_cy=None, data_ly=None, cy_label="CY",
     if total["pax_LY"]:
         total["pax_PCT"] = total["pax_VAR"] * 100 / total["pax_LY"]
     merged = pd.concat([merged, pd.DataFrame([total])], ignore_index=True)
-    html = ['<div style="overflow-x:auto;"><table class="excel-table">']
+    html = ['<div class="table-scroll"><table class="excel-table"><thead>']
     html.append("<tr>")
     html.append(f'<th class="header-left" rowspan="2">{group_col}</th>')
     html.append('<th class="header-km" colspan="4">KILOMETERS (in lks.)</th>')
@@ -522,6 +544,7 @@ def build_act_vs_act_table(group_col, data_cy=None, data_ly=None, cy_label="CY",
     return "".join(html), merged
 
 tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs(["Route Day-wise", "ACT VS ACT", "Product wise", "Day wise","trends","cy trends", "Service performance", "Period Comparison"])
+
 # ==================== TAB 1 ====================
 with tab1:
     title = f"Route WISE, Day Wise {prefix} EPK ({for_upto}) - {month}"
@@ -549,7 +572,7 @@ with tab1:
         result = pd.concat(all_parts, axis=1).reset_index()
         result = result.rename(columns={"ROUTEE": "ROUTE"})
         result = result.sort_values(["DEPOT", "ROUTE", "PRODUCT"]).reset_index(drop=True)
-        html = ['<div style="overflow-x:auto;"><table class="excel-table">']
+        html = ['<div class="table-scroll"><table class="excel-table">']
         html.append("<tr>")
         html.append('<th class="header-left" rowspan="2">DEPOT</th>')
         html.append('<th class="header-left" rowspan="2">ROUTE</th>')
@@ -565,6 +588,7 @@ with tab1:
             html.append(f'<th class="header-sub">{for_upto} LY</th>')
             html.append('<th class="header-sub">Var</th>')
         html.append("</tr>")
+        html.append("</thead><tbody>")
         for _, row in result.iterrows():
             html.append("<tr>")
             html.append(f'<td>{row["DEPOT"]}</td>')
@@ -596,7 +620,7 @@ with tab1:
                 var_val = row.get(f"{label}_Var")
                 html.append(f'<td class="{var_class(var_val)}">{fmt(var_val)}</td>')
             html.append("</tr>")
-        html.append("</table></div>")
+        html.append("</tbody></table></div>")
         st.markdown("".join(html), unsafe_allow_html=True)
         st.markdown("""
 <span style="background:#c6efce; padding:2px 8px;">Peak day</span> = Highest EPK among Mon–Sun &nbsp;
@@ -604,6 +628,7 @@ with tab1:
 &nbsp;(per row, for each of TOT / FPD / MHL)
 """, unsafe_allow_html=True)
         st.download_button("Download CSV", result.to_csv(index=False).encode("utf-8"), f"Route_Daywise_{month}_{depot}.csv", "text/csv", key="dl1")
+
 # ==================== TAB 2 ====================
 with tab2:
     title2 = f"Actual vs Actual Performance ({net_gross}) {for_upto} the - Month of : {month}"
@@ -614,6 +639,122 @@ with tab2:
     else:
         st.markdown(html_str, unsafe_allow_html=True)
         st.download_button("Download CSV", merged_df.to_csv(index=False).encode("utf-8"), f"ACT_VS_ACT_{month}.csv", "text/csv", key="dl2")
+
+    # ===== Daily Depot table for selected month =====
+    st.markdown("---")
+    st.markdown(f'<div class="title-bar">Daily Depot Performance – {month}</div>', unsafe_allow_html=True)
+
+    # Build calendar month date range from month filter (e.g. Apr-2026 → 2026-04-01 to 2026-04-30)
+    mon_map = {
+        "Jan": 1, "Feb": 2, "Mar": 3, "Apr": 4, "May": 5, "Jun": 6,
+        "Jul": 7, "Aug": 8, "Sep": 9, "Oct": 10, "Nov": 11, "Dec": 12
+    }
+    try:
+        parts = month.replace(" ", "").split("-")
+        m_num = mon_map.get(parts[0][:3], 1)
+        y_num = int(parts[1]) if len(parts[1]) == 4 else int("20" + parts[1])
+        month_start = pd.Timestamp(year=y_num, month=m_num, day=1)
+        # last day of month
+        if m_num == 12:
+            month_end = pd.Timestamp(year=y_num, month=12, day=31)
+        else:
+            month_end = pd.Timestamp(year=y_num, month=m_num + 1, day=1) - pd.Timedelta(days=1)
+    except Exception:
+        month_start = selected_max_date.replace(day=1) if not pd.isna(selected_max_date) else None
+        month_end = selected_max_date if not pd.isna(selected_max_date) else None
+
+    if month_start is not None:
+        daily_mask = base_mask & (df["Date"] >= month_start) & (df["Date"] <= month_end)
+        daily_df = df[daily_mask].copy()
+        if len(daily_df) == 0:
+            st.warning("No daily data for selected month and filters.")
+        else:
+            g = daily_df.groupby(["DEPOT", "Date"]).agg(
+                Kilometers=("Optd_KMs", "sum"),
+                Earnings=(earn_tot, "sum"),
+                Earn_FPD=(earn_fpd, "sum"),
+                Earn_MHL=(earn_mhl, "sum"),
+                Passengers=(pax_col, "sum"),
+            ).reset_index()
+            g["EPK_TOT"] = np.where(g["Kilometers"] > 0, g["Earnings"] / g["Kilometers"], np.nan)
+            g["EPK_FPD"] = np.where(g["Kilometers"] > 0, g["Earn_FPD"] / g["Kilometers"], np.nan)
+            g["EPK_MHL"] = np.where(g["Kilometers"] > 0, g["Earn_MHL"] / g["Kilometers"], np.nan)
+            g = g.sort_values(["DEPOT", "Date"]).reset_index(drop=True)
+            g["_dt"] = pd.to_datetime(g["Date"])
+            g["Weekday"] = g["_dt"].dt.strftime("%a")  # Mon, Tue, ...
+            g["Date"] = g["_dt"].dt.strftime("%d-%m-%Y")
+            g["Kilometers"] = (g["Kilometers"] / 100000).round(2)
+            g["Earnings"] = (g["Earnings"] / 100000).round(2)
+            g["EPK_TOT"] = g["EPK_TOT"].round(2)
+            g["EPK_FPD"] = g["EPK_FPD"].round(2)
+            g["EPK_MHL"] = g["EPK_MHL"].round(2)
+            g["Passengers"] = g["Passengers"].round(0)
+
+            pax_heading = {"FPD": "FPD PASSENGERS", "MHL": "MHL PASSENGERS"}.get(passengers, "TOTAL PASSENGERS")
+
+            # Compact table: ~header + 31 rows visible per viewport
+            html_d = ['<div class="table-scroll" style="max-height: 75vh;"><table class="excel-table" style="font-size:1px;">']
+            html_d.append("<tr>")
+            html_d.append('<th class="header-left" style="padding:2px 3px; font-size:9px;">DEPOT</th>')
+            html_d.append('<th class="header-left" style="padding:2px 3px; font-size:9px;">DATE</th>')
+            html_d.append('<th class="header-left" style="padding:2px 3px; font-size:9px;">WEEKDAY</th>')
+            html_d.append('<th class="header-km" style="padding:2px 3px; font-size:9px;">KMs (lks.)</th>')
+            html_d.append(f'<th class="header-earn" style="padding:2px 3px; font-size:9px;">{prefix} EARN (lks.)</th>')
+            html_d.append(f'<th class="header-tot" style="padding:2px 3px; font-size:9px;">{prefix} TOT EPK</th>')
+            html_d.append(f'<th class="header-fpd" style="padding:2px 3px; font-size:9px;">{prefix} FPD EPK</th>')
+            html_d.append(f'<th class="header-mhl" style="padding:2px 3px; font-size:9px;">{prefix} MHL EPK</th>')
+            html_d.append(f'<th class="header-left" style="padding:2px 3px; font-size:9px;">{pax_heading}</th>')
+            html_d.append("</tr>")
+            # Peak / Slack by TOT EPK within each depot
+            peak_dates = set()
+            slack_dates = set()
+            for dep, grp in g.groupby("DEPOT"):
+                vals = grp[["Date", "EPK_TOT"]].dropna()
+                vals = vals[vals["EPK_TOT"] != 0]
+                if len(vals) == 0:
+                    continue
+                # top 2 peak, bottom 2 slack
+                sorted_v = vals.sort_values("EPK_TOT", ascending=False)
+                for d in sorted_v.head(2)["Date"]:
+                    peak_dates.add((dep, d))
+                for d in sorted_v.tail(2)["Date"]:
+                    slack_dates.add((dep, d))
+            # avoid same day marked both if few days
+            slack_dates = slack_dates - peak_dates
+
+            for _, r in g.iterrows():
+                key = (r["DEPOT"], r["Date"])
+                row_style = ""
+                date_style = "font-weight:700;"
+                if key in peak_dates:
+                    row_style = "background-color:#c6efce;"
+                    date_style = "font-weight:700; color:#006100;"
+                elif key in slack_dates:
+                    row_style = "background-color:#ffc7ce;"
+                    date_style = "font-weight:700; color:#9c0006;"
+                html_d.append(f'<tr style="{row_style}">')
+                html_d.append(f'<td style="font-weight:700; padding:1px 3px;">{r["DEPOT"]}</td>')
+                html_d.append(f'<td style="{date_style} padding:1px 3px;">{r["Date"]}</td>')
+                html_d.append(f'<td style="padding:1px 3px;">{r["Weekday"]}</td>')
+                html_d.append(f'<td style="padding:1px 3px;">{fmt(r["Kilometers"])}</td>')
+                html_d.append(f'<td style="padding:1px 3px;">{fmt(r["Earnings"])}</td>')
+                html_d.append(f'<td style="font-weight:700; padding:1px 3px;">{fmt(r["EPK_TOT"])}</td>')
+                html_d.append(f'<td style="padding:1px 3px;">{fmt(r["EPK_FPD"])}</td>')
+                html_d.append(f'<td style="padding:1px 3px;">{fmt(r["EPK_MHL"])}</td>')
+                html_d.append(f'<td style="padding:1px 3px;">{fmt_pax(r["Passengers"])}</td>')
+                html_d.append("</tr>")
+            html_d.append("</table></div>")
+            st.markdown("".join(html_d), unsafe_allow_html=True)
+            st.caption(f"Date range: {month_start.strftime('%d-%m-%Y')} to {month_end.strftime('%d-%m-%Y')} | Rows: {len(g):,}")
+            st.download_button(
+                "Download Daily CSV",
+                g.to_csv(index=False).encode("utf-8"),
+                f"Daily_Depot_{month}.csv",
+                "text/csv",
+                key="dl2_daily"
+            )
+
+
 # ==================== TAB 3 ====================
 with tab3:
     title3 = f"Product Wise Performance ({net_gross}) ({for_upto}) - Month: {month}"
@@ -624,6 +765,7 @@ with tab3:
     else:
         st.markdown(html_str, unsafe_allow_html=True)
         st.download_button("Download CSV", merged_df.to_csv(index=False).encode("utf-8"), f"Product_Summary_ACT_VS_ACT_{month}.csv", "text/csv", key="dl3")
+
 # ==================== TAB 4 ====================
 with tab4:
     prep = "upto" if for_upto == "UPTO" else "for"
@@ -832,7 +974,7 @@ with tab4:
                     pass
             st.plotly_chart(fig, use_container_width=True)
             # Table - only CY, LY, VAR (no % Growth)
-            html = ['<div style="overflow-x:auto;"><table class="excel-table">']
+            html = ['<div class="table-scroll"><table class="excel-table">']
             html.append('<tr>')
             html.append('<th rowspan="2" style="background:#c000c0; color:white;">DAY</th>')
             html.append('<th colspan="3" style="background:#c000c0; color:white;">KILOMETERS (in lks.)</th>')
@@ -1038,7 +1180,7 @@ with tab5:
                 st.plotly_chart(create_card_chart(m_chart, "Pax_Raw", f"{pax_title}<br>(IN NUMBERS)", "#db2777", is_pax=True), use_container_width=True, key=f"ch_t5_5_{selected_fy}")
 
             # Table Output
-            html = ['<div style="overflow-x:auto;"><table class="excel-table">']
+            html = ['<div class="table-scroll"><table class="excel-table">']
             html.append("<tr>")
             html.append('<th rowspan="2" class="header-left">DAY / MONTH</th>')
             html.append('<th colspan="4" class="header-sub">KILOMETERS (IN LKS.)</th>')
@@ -1346,7 +1488,7 @@ with tab6:
             ]
 
             # 4. Render HTML Matrix Table
-            html = ['<div style="overflow-x:auto;"><table class="excel-table">']
+            html = ['<div class="table-scroll"><table class="excel-table">']
             html.append("<tr>")
             html.append('<th class="header-left">PERFORMANCE PARAMETER</th>')
             for m_name in months_order:
@@ -1409,86 +1551,102 @@ with tab7:
     if depot != "ALL":
         title7 += f" of {depot} Depot"
     st.markdown(f'<div class="title-bar">{title7}</div>', unsafe_allow_html=True)
-    st.caption(f"CY rows: {len(cy_data):,} | LY rows: {len(ly_data):,}")
-    if len(cy_data) == 0:
-        st.warning("No data for selected filters.")
-    elif not service_col:
+
+    if not service_col:
         st.warning("Service column not found in dataset.")
     else:
-        all_parts = []
-        for label, earn_col in [("TOT", earn_tot), ("FPD", earn_fpd), ("MHL", earn_mhl)]:
-            cy = weighted_epk(cy_data, earn_col, group_cols=["DEPOT", service_col, "ROUTEE", "PRODUCT"])
-            ly = weighted_epk(ly_data, earn_col, group_cols=["DEPOT", service_col, "ROUTEE", "PRODUCT"])
-            all_idx = cy.index.union(ly.index) if len(ly) > 0 else cy.index
-            cy = cy.reindex(all_idx)
-            ly = ly.reindex(all_idx) if len(ly) > 0 else pd.DataFrame(np.nan, index=all_idx, columns=day_order + ["UPTO"], dtype=float)
-            block = pd.DataFrame(index=all_idx)
-            for d in day_order:
-                block[f"{label}_{d}"] = pd.to_numeric(cy[d] if d in cy.columns else np.nan, errors="coerce")
-            block[f"{label}_CY"] = pd.to_numeric(cy["UPTO"] if "UPTO" in cy.columns else np.nan, errors="coerce")
-            block[f"{label}_LY"] = pd.to_numeric(ly["UPTO"] if "UPTO" in ly.columns else np.nan, errors="coerce")
-            block[f"{label}_Var"] = (block[f"{label}_CY"] - block[f"{label}_LY"]).astype(float).round(2)
-            all_parts.append(block)
-        result7 = pd.concat(all_parts, axis=1).reset_index()
-        result7 = result7.rename(columns={"ROUTEE": "ROUTE", service_col: "SERVICE NO"})
-        result7 = result7.sort_values(["DEPOT", "SERVICE NO", "ROUTE", "PRODUCT"]).reset_index(drop=True)
-        html = ['<div style="overflow-x:auto;"><table class="excel-table">']
-        html.append("<tr>")
-        html.append('<th class="header-left" rowspan="2">DEPOT</th>')
-        html.append('<th class="header-left" rowspan="2">SERVICE NO</th>')
-        html.append('<th class="header-left" rowspan="2">ROUTE</th>')
-        html.append('<th class="header-left" rowspan="2">PRODUCT</th>')
-        html.append(f'<th class="header-tot" colspan="10">{prefix} TOT. E.P.K (in Ps/kms.)</th>')
-        html.append(f'<th class="header-fpd" colspan="10">{prefix} FPD. E.P.K (in Ps/kms.)</th>')
-        html.append(f'<th class="header-mhl" colspan="10">{prefix} MHL. E.P.K (in Ps/kms.)</th>')
-        html.append("</tr><tr>")
-        for _ in range(3):
-            for d in day_short:
-                html.append(f'<th class="header-sub">{d}</th>')
-            html.append(f'<th class="header-sub">{for_upto} CY</th>')
-            html.append(f'<th class="header-sub">{for_upto} LY</th>')
-            html.append('<th class="header-sub">Var</th>')
-        html.append("</tr>")
-        for _, row in result7.iterrows():
+        # Service filter ONLY for this tab (cascading from current filtered data)
+        svc_opts = ["ALL"] + sorted([x for x in cy_data[service_col].dropna().unique() if str(x).strip()]) if len(cy_data) else ["ALL"]
+        # also include LY services
+        if len(ly_data):
+            for x in ly_data[service_col].dropna().unique():
+                if str(x).strip() and x not in svc_opts:
+                    svc_opts.append(x)
+            svc_opts = ["ALL"] + sorted([x for x in svc_opts if x != "ALL"], key=lambda z: str(z))
+        service_no = st.selectbox("SERVICE NO (this tab only)", svc_opts, index=0, key="tab7_service")
+
+        # Apply service filter to local copies
+        cy_svc = cy_data[cy_data[service_col] == service_no].copy() if service_no != "ALL" else cy_data.copy()
+        ly_svc = ly_data[ly_data[service_col] == service_no].copy() if service_no != "ALL" else ly_data.copy()
+
+        st.caption(f"CY rows: {len(cy_svc):,} | LY rows: {len(ly_svc):,}")
+        if len(cy_svc) == 0:
+            st.warning("No data for selected filters.")
+        else:
+            all_parts = []
+            for label, earn_col in [("TOT", earn_tot), ("FPD", earn_fpd), ("MHL", earn_mhl)]:
+                cy = weighted_epk(cy_svc, earn_col, group_cols=["DEPOT", service_col, "ROUTEE", "PRODUCT"])
+                ly = weighted_epk(ly_svc, earn_col, group_cols=["DEPOT", service_col, "ROUTEE", "PRODUCT"])
+                all_idx = cy.index.union(ly.index) if len(ly) > 0 else cy.index
+                cy = cy.reindex(all_idx)
+                ly = ly.reindex(all_idx) if len(ly) > 0 else pd.DataFrame(np.nan, index=all_idx, columns=day_order + ["UPTO"], dtype=float)
+                block = pd.DataFrame(index=all_idx)
+                for d in day_order:
+                    block[f"{label}_{d}"] = pd.to_numeric(cy[d] if d in cy.columns else np.nan, errors="coerce")
+                block[f"{label}_CY"] = pd.to_numeric(cy["UPTO"] if "UPTO" in cy.columns else np.nan, errors="coerce")
+                block[f"{label}_LY"] = pd.to_numeric(ly["UPTO"] if "UPTO" in ly.columns else np.nan, errors="coerce")
+                block[f"{label}_Var"] = (block[f"{label}_CY"] - block[f"{label}_LY"]).astype(float).round(2)
+                all_parts.append(block)
+            result7 = pd.concat(all_parts, axis=1).reset_index()
+            result7 = result7.rename(columns={"ROUTEE": "ROUTE", service_col: "SERVICE NO"})
+            result7 = result7.sort_values(["DEPOT", "SERVICE NO", "ROUTE", "PRODUCT"]).reset_index(drop=True)
+            html = ['<div class="table-scroll"><table class="excel-table">']
             html.append("<tr>")
-            html.append(f'<td>{row["DEPOT"]}</td>')
-            html.append(f'<td>{row["SERVICE NO"]}</td>')
-            html.append(f'<td>{row["ROUTE"]}</td>')
-            html.append(f'<td>{row["PRODUCT"]}</td>')
-            for label in ["TOT", "FPD", "MHL"]:
-                # Peak / Slack among Mon-Sun for this metric on this row
-                day_vals = {}
-                for d in day_order:
-                    v = row.get(f"{label}_{d}")
-                    try:
-                        fv = float(v) if pd.notna(v) else None
-                    except Exception:
-                        fv = None
-                    if fv is not None and fv != 0:
-                        day_vals[d] = fv
-                peak_d = max(day_vals, key=day_vals.get) if day_vals else None
-                slack_d = min(day_vals, key=day_vals.get) if day_vals else None
-                for d in day_order:
-                    val = row.get(f"{label}_{d}")
-                    style = ""
-                    if peak_d and d == peak_d:
-                        style = 'background-color:#c6efce; color:#006100; font-weight:600;'
-                    elif slack_d and d == slack_d:
-                        style = 'background-color:#ffc7ce; color:#9c0006; font-weight:600;'
-                    html.append(f'<td style="{style}">{fmt(val)}</td>')
-                html.append(f'<td>{fmt(row.get(f"{label}_CY"))}</td>')
-                html.append(f'<td>{fmt(row.get(f"{label}_LY"))}</td>')
-                var_val = row.get(f"{label}_Var")
-                html.append(f'<td class="{var_class(var_val)}">{fmt(var_val)}</td>')
+            html.append('<th class="header-left" rowspan="2">DEPOT</th>')
+            html.append('<th class="header-left" rowspan="2">SERVICE NO</th>')
+            html.append('<th class="header-left" rowspan="2">ROUTE</th>')
+            html.append('<th class="header-left" rowspan="2">PRODUCT</th>')
+            html.append(f'<th class="header-tot" colspan="10">{prefix} TOT. E.P.K (in Ps/kms.)</th>')
+            html.append(f'<th class="header-fpd" colspan="10">{prefix} FPD. E.P.K (in Ps/kms.)</th>')
+            html.append(f'<th class="header-mhl" colspan="10">{prefix} MHL. E.P.K (in Ps/kms.)</th>')
+            html.append("</tr><tr>")
+            for _ in range(3):
+                for d in day_short:
+                    html.append(f'<th class="header-sub">{d}</th>')
+                html.append(f'<th class="header-sub">{for_upto} CY</th>')
+                html.append(f'<th class="header-sub">{for_upto} LY</th>')
+                html.append('<th class="header-sub">Var</th>')
             html.append("</tr>")
-        html.append("</table></div>")
-        st.markdown("".join(html), unsafe_allow_html=True)
-        st.markdown("""
-<span style="background:#c6efce; padding:2px 8px;">Peak day</span> = Highest EPK among Mon–Sun &nbsp;
-<span style="background:#ffc7ce; padding:2px 8px;">Slack day</span> = Lowest EPK among Mon–Sun
-&nbsp;(per row, for each of TOT / FPD / MHL)
-""", unsafe_allow_html=True)
-        st.download_button("Download CSV", result7.to_csv(index=False).encode("utf-8"), f"Service_Performance_{month}_{depot}.csv", "text/csv", key="dl7")
+            for _, row in result7.iterrows():
+                html.append("<tr>")
+                html.append(f'<td>{row["DEPOT"]}</td>')
+                html.append(f'<td>{row["SERVICE NO"]}</td>')
+                html.append(f'<td>{row["ROUTE"]}</td>')
+                html.append(f'<td>{row["PRODUCT"]}</td>')
+                for label in ["TOT", "FPD", "MHL"]:
+                    # Peak / Slack among Mon-Sun for this metric on this row
+                    day_vals = {}
+                    for d in day_order:
+                        v = row.get(f"{label}_{d}")
+                        try:
+                            fv = float(v) if pd.notna(v) else None
+                        except Exception:
+                            fv = None
+                        if fv is not None and fv != 0:
+                            day_vals[d] = fv
+                    peak_d = max(day_vals, key=day_vals.get) if day_vals else None
+                    slack_d = min(day_vals, key=day_vals.get) if day_vals else None
+                    for d in day_order:
+                        val = row.get(f"{label}_{d}")
+                        style = ""
+                        if peak_d and d == peak_d:
+                            style = 'background-color:#c6efce; color:#006100; font-weight:600;'
+                        elif slack_d and d == slack_d:
+                            style = 'background-color:#ffc7ce; color:#9c0006; font-weight:600;'
+                        html.append(f'<td style="{style}">{fmt(val)}</td>')
+                    html.append(f'<td>{fmt(row.get(f"{label}_CY"))}</td>')
+                    html.append(f'<td>{fmt(row.get(f"{label}_LY"))}</td>')
+                    var_val = row.get(f"{label}_Var")
+                    html.append(f'<td class="{var_class(var_val)}">{fmt(var_val)}</td>')
+                html.append("</tr>")
+            html.append("</table></div>")
+            st.markdown("".join(html), unsafe_allow_html=True)
+            st.markdown("""
+    <span style="background:#c6efce; padding:2px 8px;">Peak day</span> = Highest EPK among Mon–Sun &nbsp;
+    <span style="background:#ffc7ce; padding:2px 8px;">Slack day</span> = Lowest EPK among Mon–Sun
+    &nbsp;(per row, for each of TOT / FPD / MHL)
+    """, unsafe_allow_html=True)
+            st.download_button("Download CSV", result7.to_csv(index=False).encode("utf-8"), f"Service_Performance_{month}_{depot}.csv", "text/csv", key="dl7")
 
 # ==================== TAB 8 ====================
 with tab8:
