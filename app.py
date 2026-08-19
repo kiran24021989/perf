@@ -178,7 +178,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 # ========== PATH ==========
-PARQUET_FILE = r"ser_wise.parquet"
+PARQUET_FILE = r"D:\dashboard\ser_wise.parquet"
 
 @st.cache_data(ttl=300)
 def load_data():
@@ -1731,7 +1731,7 @@ with tab8:
 with tab9:
     st.markdown('<div class="title-bar">Schedules – SCHs / SERVICES / SCH KMS</div>', unsafe_allow_html=True)
 
-    SCHEDULE_EXCEL = r"SROS.xlsx"
+    SCHEDULE_EXCEL = r"D:\MONTHLY\SROS.xlsx"
     SCHEDULE_SHEET = "SMASTER"
 
     @st.cache_data(ttl=300)
@@ -1834,7 +1834,7 @@ with tab9:
             # ---- Shared filters (Table A uses only these) ----
             fc1, fc2, fc3 = st.columns(3)
             with fc1:
-                d_opts = ["ALL", "REGION"] + sorted([x for x in sdf["_DEPOT"].unique() if x and x.lower() != "nan"])
+                d_opts = ["ALL", "REGION"] + sorted([str(x).strip() for x in sdf["_DEPOT"].dropna().unique() if str(x).strip() and str(x).strip().lower() != "nan"])
                 f_depot = st.selectbox("DEPOT", d_opts, key="sch_depot")
             with fc2:
                 mon_opts = sorted(
@@ -2240,7 +2240,7 @@ with tab9:
                     sdf["_ROUTE"] = sdf[col_route].astype(str).str.strip()
                     # month-scoped route list
                     route_base = sdf[sdf["_MonthKey"] == f_month] if f_month != "ALL" else sdf
-                    b_route_opts = ["ALL"] + sorted([x for x in route_base["_ROUTE"].dropna().unique() if x and x.lower() != "nan"])
+                    b_route_opts = ["ALL"] + sorted([x for x in route_base["_ROUTE"].dropna().unique() if str(x).strip() and str(x).strip().lower() != "nan"])
                 else:
                     b_route_opts = ["ALL"]
                 b_route = st.selectbox("ROUTE", b_route_opts, key="sch_b_route")
@@ -2415,7 +2415,7 @@ with tab9:
                     return f"{fv:,.0f}" if abs(fv - round(fv)) < 1e-6 else f"{fv:,.1f}"
 
                 rows_out = []
-                depots = sorted([d for d in dep_src["_DEPOT"].unique() if d and d.lower() != "nan"])
+                depots = sorted([str(d).strip() for d in dep_src["_DEPOT"].dropna().unique() if str(d).strip() and str(d).strip().lower() != "nan"])
                 for dep in depots:
                     dgrp = dep_src[dep_src["_DEPOT"] == dep]
                     for side in ["RTC", "HIRE", "TOTAL"]:
