@@ -178,7 +178,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 # ========== PATH ==========
-PARQUET_FILE = r"D:\dashboard\ser_wise.parquet"
+PARQUET_FILE = r"ser_wise.parquet"
 
 @st.cache_data(ttl=300)
 def load_data():
@@ -1731,7 +1731,7 @@ with tab8:
 with tab9:
     st.markdown('<div class="title-bar">Schedules – SCHs / SERVICES / SCH KMS</div>', unsafe_allow_html=True)
 
-    SCHEDULE_EXCEL = r"D:\MONTHLY\SROS.xlsx"
+    SCHEDULE_EXCEL = r"SROS.xlsx"
     SCHEDULE_SHEET = "SMASTER"
 
     @st.cache_data(ttl=300)
