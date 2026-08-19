@@ -15,156 +15,117 @@ st.set_page_config(
 st.markdown(
     """
 <style>
-    .block-container { padding-top: 0.5rem; padding-bottom: 0.5rem; max-width: 100%; }
+    .block-container { padding-top: 2rem !important; padding-bottom: 1rem !important; max-width: 100% !important; overflow: visible !important; }
 
-    /* 1. Eliminate internal vertical gaps between stacked Streamlit blocks */
     div[data-testid="stVerticalBlock"] {
-        gap: 0rem !important;
+        gap: 0.4rem !important;
     }
 
-    div[data-testid="stVerticalBlock"] > div {
-        padding-top: 2px !important;
-        padding-bottom: 2px !important;
-        margin-top: 5px !important;
-        margin-bottom: 2px !important;
-    }
-
-    /* 2. Filter Panel Styling - Zero bottom margin */
+    /* Filter Panel */
     div[data-testid="stHorizontalBlock"]:has(div[data-testid="stSelectbox"]) {
         background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-        padding: 8px 12px !important;
+        padding: 10px 14px !important;
         border-radius: 8px;
-        box-shadow: 0 4px 18px rgba(0, 0, 0, 0.2);
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
         border: 1px solid #334155;
-        margin-bottom: -16px !important; /* Pulls tabs directly against the bottom edge */
-        gap: 6px !important;
+        margin-top: 8px !important;
+        margin-bottom: 12px !important;
+        gap: 8px !important;
     }
 
-    /* 3. Filter Labels - Compact & Single-line */
     div[data-testid="stSelectbox"] label p {
         color: #FDFBF7 !important;
         font-family: 'Segoe UI', Roboto, sans-serif !important;
         font-weight: 700 !important;
-        font-size: 11px !important;
-        letter-spacing: 0.5px;
+        font-size: 12px !important;
+        letter-spacing: 0.4px;
         text-transform: uppercase;
-        margin-bottom: 2px !important;
-        line-height: 1.1 !important;
+        margin-bottom: 4px !important;
+        line-height: 1.2 !important;
         white-space: nowrap !important;
     }
 
-    /* 4. Filter Selectbox Input Box - Minimum Height */
     div[data-testid="stSelectbox"] div[data-baseweb="select"] > div {
         background-color: #ffffff !important;
         border: 1px solid #cbd5e1 !important;
         border-radius: 6px !important;
         color: #0f172a !important;
         font-weight: 700 !important;
-        font-size: 11px !important;
+        font-size: 12px !important;
         font-family: 'Segoe UI', Roboto, sans-serif !important;
-        min-height: 28px !important;
-        height: 28px !important;
+        min-height: 32px !important;
+        height: 32px !important;
         padding-top: 0px !important;
         padding-bottom: 0px !important;
         padding-left: 8px !important;
-        line-height: 28px !important;
+        line-height: 32px !important;
         box-shadow: 0 1px 2px rgba(0,0,0,0.05);
     }
 
-    /* Dropdown Arrow Icon Size Fix */
     div[data-testid="stSelectbox"] div[data-baseweb="select"] svg {
         width: 14px !important;
         height: 14px !important;
     }
 
-    /* 5. Tab Container Layout - Collapsed Spacing */
     div[data-testid="stTabs"] {
-        margin-top: 0px !important;
+        margin-top: 4px !important;
         padding-top: 0px !important;
     }
 
     div[data-testid="stTabs"] div[role="tablist"] {
-        gap: 8px;
+        gap: 6px;
         border-bottom: none !important;
-        padding-top: 0px !important;
-        margin-top: 0px !important;
+        flex-wrap: wrap !important;
     }
 
-    /* Inactive Tab Block Styling */
     div[data-testid="stTabs"] button {
         font-family: 'Segoe UI', Roboto, sans-serif !important;
         font-weight: 700 !important;
-        font-size: 13px !important;
-        padding: 6px 16px !important;
-        color: #1e293b !important;
-        background-color: #e2e8f0 !important;
-        border-radius: 6px !important;
-        border: 1px solid #cbd5e1 !important;
-        transition: all 0.2s ease-in-out !important;
+        font-size: 12px !important;
+        padding: 6px 14px !important;
+        color: #ffffff !important;
+        background-color: #e67e22 !important;
+        border-radius: 4px !important;
+        border: 1px solid #d35400 !important;
+        margin-right: 2px !important;
     }
-
-    /* Hover State */
+    div[data-testid="stTabs"] button p { color: #ffffff !important; }
     div[data-testid="stTabs"] button:hover {
-        background-color: #cbd5e1 !important;
-        color: #0f172a !important;
+        background-color: #f39c12 !important;
+        color: #ffffff !important;
     }
-
-    /* Active Selected Tab Block */
     div[data-testid="stTabs"] button[aria-selected="true"] {
         color: #ffffff !important;
-        background-color: #1d4ed8 !important;
-        border-color: #1e40af !important;
-        box-shadow: 0 3px 8px rgba(29, 78, 216, 0.3) !important;
+        background-color: #27ae60 !important;
+        border-color: #1e8449 !important;
+    }
+    div[data-testid="stTabs"] button[aria-selected="true"] p { color: #ffffff !important; }
+    div[data-testid="stTabs"] [data-baseweb="tab-highlight"] { display: none !important; }
+
+    div[data-testid="stDownloadButton"] button {
+        padding: 4px 12px !important;
+        font-size: 12px !important;
+        min-height: 32px !important;
     }
 
-    /* Force text color on inner elements */
-    div[data-testid="stTabs"] button[aria-selected="true"] p {
-        color: #ffffff !important;
-    }
+    hr { margin: 8px 0 !important; }
+    h4 { margin: 8px 0 6px 0 !important; font-size: 16px !important; }
 
-    /* Hide the default Streamlit red underline */
-    div[data-testid="stTabs"] [data-baseweb="tab-highlight"] {
-        display: none !important;
-    }
-    /* Excel Table Styling */
     .excel-table {
         border-collapse: collapse;
         width: 100%;
-        table-layout: auto !important;
         font-family: 'Segoe UI', Arial, sans-serif;
         font-size: 12px;
         margin-top: 6px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
     }
     .excel-table th, .excel-table td {
-        border: 1px solid #cbd5e1;
-        padding: 3px 4px;
+        border: 1px solid #e2e8f0;
+        padding: 4px 6px;
         text-align: center;
         white-space: nowrap;
-        font-size: 11px;
+        font-size: 12px;
     }
-    .excel-table th { font-weight: 700; font-size: 10px; text-transform: uppercase; }
-    /* Frozen / sticky header for tables */
-    .table-scroll {
-        max-height: 70vh;
-        overflow: auto;
-        border: 1px solid #cbd5e1;
-    }
-    .table-scroll .excel-table {
-        margin-top: 0;
-    }
-    .table-scroll .excel-table thead th {
-        position: sticky;
-        top: 0;
-        z-index: 5;
-        box-shadow: 0 2px 2px -1px rgba(0,0,0,0.15);
-    }
-    .table-scroll .excel-table thead tr:first-child th {
-        top: 0;
-    }
-    .table-scroll .excel-table thead tr:nth-child(2) th {
-        top: 28px; /* approximate height of first header row */
-    }
+    .excel-table th { font-weight: 700; font-size: 11px; text-transform: uppercase; }
     .header-tot { background-color: #6b21a8; color: white; }
     .header-fpd { background-color: #15803d; color: white; }
     .header-mhl { background-color: #1d4ed8; color: white; }
@@ -174,25 +135,50 @@ st.markdown(
     .header-earn { background-color: #047857; color: white; }
     .pos { background-color: #dcfce7; color: #15803d; font-weight: 600; }
     .neg { background-color: #fee2e2; color: #b91c1c; font-weight: 600; }
-   
+
     .title-bar {
         background: linear-gradient(90deg, #fef08a 0%, #fef9c3 100%);
         color: #854d0e;
         text-align: center;
         font-weight: 700;
         font-size: 14px;
-        padding: 2px;
-        border-radius: 2px;
+        padding: 6px;
+        border-radius: 4px;
         border: 1px solid #fef08a;
-        margin-bottom: 2px;
+        margin-bottom: 8px;
         font-family: 'Segoe UI', Roboto, sans-serif !important;
     }
+
+    .freeze-wrap, .op-wrap {
+        max-height: 65vh;
+        overflow: auto;
+        border: 1px solid #e2e8f0;
+        margin-bottom: 10px;
+        position: relative;
+        z-index: 0;
+    }
+    .freeze-table, .op-table {
+        border-collapse: separate;
+        border-spacing: 0;
+        font-size: 12px;
+        width: max-content;
+    }
+    .freeze-table th, .freeze-table td,
+    .op-table th, .op-table td {
+        border: 1px solid #e2e8f0;
+        white-space: nowrap;
+    }
+    .freeze-table thead tr:nth-child(1) th { position: sticky; top: 0; z-index: 4; }
+    .freeze-table thead tr:nth-child(2) th { position: sticky; top: 30px; z-index: 4; }
+    .freeze-table thead tr:nth-child(3) th { position: sticky; top: 58px; z-index: 4; }
+    .op-table thead tr:first-child th { position: sticky; top: 0; z-index: 4; }
+    .op-table thead tr:nth-child(2) th { position: sticky; top: 34px; z-index: 4; }
 </style>
 """,
     unsafe_allow_html=True,
 )
 # ========== PATH ==========
-PARQUET_FILE = "ser_wise.parquet"
+PARQUET_FILE = r"D:\dashboard\ser_wise.parquet"
 
 @st.cache_data(ttl=300)
 def load_data():
@@ -208,24 +194,11 @@ def load_data():
 df = load_data()
 
 # ========== CASCADING FILTERS ==========
+st.markdown("<!-- spacer for streamlit header -->", unsafe_allow_html=True)
 # HEADING ABOVE FILTERS
+st.title("HISTORICAL ANALYSIS OF RANGAREDDY REGION")
 st.markdown(
-    """
-    <div style="
-        background-color: #0f172a; 
-        color: #ffffff; 
-        text-align: center; 
-        padding: 8px 12px; 
-        border-radius: 6px; 
-        font-weight: 700; 
-        font-size: 20px; 
-        letter-spacing: 0.5px;
-        margin-bottom: -6px;
-        margin-top: 28px;
-        text-transform: uppercase;">
-        HISTORICAL ANALYSIS OF RANGAREDDY REGION
-    </div>
-    """,
+    '<div style="height:4px;background:#e67e22;margin:-8px 0 12px 0;border-radius:2px;"></div>',
     unsafe_allow_html=True,
 )
 
@@ -334,7 +307,7 @@ else:
     pax_col = "PSNGR_TOT"  # BOTH or TOT
 
 # Service column name for Service Performance tab only
-service_col = next((col for col in ["SERVICE_NO", "SERVICE", "SER_NO", "SERVICE_NUMBER"] if col in df.columns), None)
+service_col = next((col for col in ["SER_NO", "SERVICE_NO", "SERVICE", "SERVICE_NUMBER", "ServiceNo"] if col in df.columns), None)
 
 # ========== HELPER FUNCTIONS ==========
 day_order = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
@@ -543,7 +516,7 @@ def build_act_vs_act_table(group_col, data_cy=None, data_ly=None, cy_label="CY",
     html.append("</table></div>")
     return "".join(html), merged
 
-tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs(["Route Day-wise", "ACT VS ACT", "Product wise", "Day wise","trends","cy trends", "Service performance", "Period Comparison"])
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs(["Route Day-wise", "ACT VS ACT", "Product wise", "Day wise", "trends", "cy trends", "Service performance", "Period Comparison", "Schedules"])
 
 # ==================== TAB 1 ====================
 with tab1:
@@ -693,7 +666,7 @@ with tab2:
             pax_heading = {"FPD": "FPD PASSENGERS", "MHL": "MHL PASSENGERS"}.get(passengers, "TOTAL PASSENGERS")
 
             # Compact table: ~header + 31 rows visible per viewport
-            html_d = ['<div class="table-scroll" style="max-height: 75vh;"><table class="excel-table" style="font-size:1px;">']
+            html_d = ['<div class="table-scroll" style="max-height: 75vh;"><table class="excel-table" style="font-size:10px;">']
             html_d.append("<tr>")
             html_d.append('<th class="header-left" style="padding:2px 3px; font-size:9px;">DEPOT</th>')
             html_d.append('<th class="header-left" style="padding:2px 3px; font-size:9px;">DATE</th>')
@@ -744,6 +717,10 @@ with tab2:
                 html_d.append(f'<td style="padding:1px 3px;">{fmt_pax(r["Passengers"])}</td>')
                 html_d.append("</tr>")
             html_d.append("</table></div>")
+            st.markdown("""
+<span style="background:#c6efce; padding:2px 8px; font-weight:700;">Peak</span> = Top 2 TOT EPK days per depot &nbsp;
+<span style="background:#ffc7ce; padding:2px 8px; font-weight:700;">Slack</span> = Bottom 2 TOT EPK days per depot
+""", unsafe_allow_html=True)
             st.markdown("".join(html_d), unsafe_allow_html=True)
             st.caption(f"Date range: {month_start.strftime('%d-%m-%Y')} to {month_end.strftime('%d-%m-%Y')} | Rows: {len(g):,}")
             st.download_button(
@@ -1555,22 +1532,53 @@ with tab7:
     if not service_col:
         st.warning("Service column not found in dataset.")
     else:
-        # Service filter ONLY for this tab (cascading from current filtered data)
-        svc_opts = ["ALL"] + sorted([x for x in cy_data[service_col].dropna().unique() if str(x).strip()]) if len(cy_data) else ["ALL"]
-        # also include LY services
-        if len(ly_data):
-            for x in ly_data[service_col].dropna().unique():
-                if str(x).strip() and x not in svc_opts:
-                    svc_opts.append(x)
-            svc_opts = ["ALL"] + sorted([x for x in svc_opts if x != "ALL"], key=lambda z: str(z))
-        service_no = st.selectbox("SERVICE NO (this tab only)", svc_opts, index=0, key="tab7_service")
+        # Simple service filter from performance data (SER_NO) only
+        svc_vals = set()
+        if len(cy_data) and service_col in cy_data.columns:
+            svc_vals.update(cy_data[service_col].dropna().unique().tolist())
+        if len(ly_data) and service_col in ly_data.columns:
+            svc_vals.update(ly_data[service_col].dropna().unique().tolist())
 
-        # Apply service filter to local copies
-        cy_svc = cy_data[cy_data[service_col] == service_no].copy() if service_no != "ALL" else cy_data.copy()
-        ly_svc = ly_data[ly_data[service_col] == service_no].copy() if service_no != "ALL" else ly_data.copy()
+        def _svc_key(v):
+            s = str(v).strip()
+            if s.endswith(".0"):
+                s = s[:-2]
+            try:
+                return (0, int(float(s)))
+            except Exception:
+                return (1, s)
 
-        st.caption(f"CY rows: {len(cy_svc):,} | LY rows: {len(ly_svc):,}")
-        if len(cy_svc) == 0:
+        svc_opts = ["ALL"] + sorted(
+            [x for x in svc_vals if str(x).strip() and str(x).lower() != "nan"],
+            key=_svc_key,
+        )
+        service_no = st.selectbox("SERVICE NO", svc_opts, index=0, key="tab7_service")
+
+        if service_no == "ALL":
+            cy_svc = cy_data.copy()
+            ly_svc = ly_data.copy()
+        else:
+            # match as string and numeric
+            def _match(data, svc):
+                if len(data) == 0:
+                    return data.copy()
+                s = data[service_col].astype(str).str.strip().str.replace(r"\.0$", "", regex=True)
+                target = str(svc).strip()
+                if target.endswith(".0"):
+                    target = target[:-2]
+                m = data[s == target]
+                if len(m) == 0:
+                    try:
+                        tnum = float(target)
+                        m = data[pd.to_numeric(data[service_col], errors="coerce") == tnum]
+                    except Exception:
+                        pass
+                return m.copy()
+            cy_svc = _match(cy_data, service_no)
+            ly_svc = _match(ly_data, service_no)
+
+        st.caption(f"CY rows: {len(cy_svc):,} | LY rows: {len(ly_svc):,} | service={service_no} | col={service_col}")
+        if len(cy_svc) == 0 and len(ly_svc) == 0:
             st.warning("No data for selected filters.")
         else:
             all_parts = []
@@ -1714,5 +1722,1012 @@ with tab8:
                 )
         else:
             st.info("Please select valid start and end dates for both Period Set 1 and Period Set 2.")
+
+
+
+
+
+# ==================== TAB 9: Schedules (SMASTER) ====================
+with tab9:
+    st.markdown('<div class="title-bar">Schedules – SCHs / SERVICES / SCH KMS</div>', unsafe_allow_html=True)
+
+    SCHEDULE_EXCEL = r"D:\MONTHLY\SROS.xlsx"
+    SCHEDULE_SHEET = "SMASTER"
+
+    @st.cache_data(ttl=300)
+    def load_smaster(path, sheet):
+        p = Path(path)
+        if not p.exists():
+            return None, f"File not found: {path}"
+        try:
+            raw = pd.read_excel(path, sheet_name=sheet, header=None, engine="openpyxl")
+            header_row = 0
+            for i in range(min(20, len(raw))):
+                vals = [str(v).strip().upper().replace(" ", "") for v in raw.iloc[i].tolist()]
+                joined = "|".join(vals)
+                if "SERVICENO" in joined and ("DEPOT" in joined or "PRODUCT" in joined):
+                    header_row = i
+                    break
+            sdf = pd.read_excel(path, sheet_name=sheet, header=header_row, engine="openpyxl")
+            sdf.columns = [str(c).strip() for c in sdf.columns]
+            return sdf.dropna(axis=1, how="all"), None
+        except Exception as e:
+            return None, str(e)
+
+    sched_raw, sched_err = load_smaster(SCHEDULE_EXCEL, SCHEDULE_SHEET)
+    if sched_err:
+        st.warning(sched_err)
+    elif sched_raw is None or len(sched_raw) == 0:
+        st.warning("SMASTER empty")
+    else:
+        def find_col(cands):
+            def normkey(s):
+                return str(s).strip().lower().replace(" ", "").replace("_", "").replace("/", "").replace(".", "")
+            norm = {normkey(c): c for c in sched_raw.columns}
+            for cand in cands:
+                k = normkey(cand)
+                if k in norm:
+                    return norm[k]
+            for c in sched_raw.columns:
+                cl = normkey(c)
+                for cand in cands:
+                    if normkey(cand) in cl or cl in normkey(cand):
+                        return c
+            # last resort: strip-only match on display name
+            strip_map = {str(c).strip().upper(): c for c in sched_raw.columns}
+            for cand in cands:
+                if cand.strip().upper() in strip_map:
+                    return strip_map[cand.strip().upper()]
+            return None
+
+        col_depot = find_col(["DEPOT"])
+        col_product = find_col(["PRODUCT"])
+        col_mhl = find_col(["MHL/NMHL", "MHL_NMHL", "MHLNMHL"])
+        col_month = find_col(["MONTH", "Month"])
+        col_year = find_col(["YEAR", "Year"])
+        col_rtc = find_col(["RTC/HIRE", "RTC_HIRE"])
+        col_sch = find_col(["NoOfSchedules", "NoOfSchedule"])
+        col_svc = find_col(["ServiceNo", "SERVICENO"])
+        col_kms = find_col(["RevenueKms", "Revenue Kms"])
+        col_dtype = find_col(["D.TYPE", "DTYPE", "DutyType", "OtService", "ServiceType"])
+
+        required = [col_depot, col_product, col_rtc, col_sch, col_svc, col_kms]
+        if any(x is None for x in required):
+            st.error("Missing required columns")
+            st.write(list(sched_raw.columns))
+        else:
+            sdf = sched_raw.copy()
+            if col_month and col_year:
+                def make_mon(row):
+                    try:
+                        m = str(row[col_month]).strip()[:3].title()
+                        y = int(float(row[col_year]))
+                        return f"{m}-{y}"
+                    except Exception:
+                        return str(row[col_month])
+                sdf["_MonthKey"] = sdf.apply(make_mon, axis=1)
+            elif col_month:
+                sdf["_MonthKey"] = sdf[col_month].astype(str).str.strip()
+            else:
+                sdf["_MonthKey"] = "ALL"
+
+            def norm_rtc(v):
+                s = str(v).strip().upper()
+                if s in ("R", "RTC"):
+                    return "RTC"
+                if s in ("H", "HIRE"):
+                    return "HIRE"
+                return s
+
+            sdf["_RTC"] = sdf[col_rtc].map(norm_rtc)
+            sdf["_SCH"] = pd.to_numeric(sdf[col_sch], errors="coerce").fillna(0)
+            sdf["_KMS"] = pd.to_numeric(sdf[col_kms], errors="coerce").fillna(0)
+            sdf["_DEPOT"] = sdf[col_depot].astype(str).str.strip()
+            sdf["_PRODUCT"] = sdf[col_product].astype(str).str.strip()
+            sdf["_MHL"] = sdf[col_mhl].astype(str).str.strip() if col_mhl else "ALL"
+            if col_dtype:
+                sdf["_DTYPE"] = sdf[col_dtype].astype(str).str.strip().str.upper()
+            else:
+                sdf["_DTYPE"] = ""
+
+
+            # ---- Shared filters (Table A uses only these) ----
+            fc1, fc2, fc3 = st.columns(3)
+            with fc1:
+                d_opts = ["ALL", "REGION"] + sorted([x for x in sdf["_DEPOT"].unique() if x and x.lower() != "nan"])
+                f_depot = st.selectbox("DEPOT", d_opts, key="sch_depot")
+            with fc2:
+                mon_opts = sorted(
+                    [x for x in sdf["_MonthKey"].dropna().unique() if x and x != "ALL"],
+                    key=lambda m: pd.to_datetime(str(m), format="%b-%Y", errors="coerce"),
+                    reverse=True,
+                ) or ["ALL"]
+                f_month = st.selectbox("MONTH", mon_opts, key="sch_month")
+            with fc3:
+                f_compare = st.selectbox("COMPARE WITH", ["LAST YEAR", "PREVIOUS MONTH"], key="sch_compare")
+
+            # Base for Table A: only depot + month (no product/mhl/route filter)
+            base_a = sdf.copy()
+            if f_depot not in ("ALL", "REGION"):
+                base_a = base_a[base_a["_DEPOT"] == f_depot]
+
+            cy_sdf = base_a[base_a["_MonthKey"] == f_month].copy() if f_month != "ALL" else base_a.copy()
+            ly_sdf = base_a.iloc[0:0].copy()
+            ly_key = ""
+            try:
+                parts = str(f_month).split("-")
+                mon_abbr, yr = parts[0], int(parts[1])
+                mon_map = {"Jan":1,"Feb":2,"Mar":3,"Apr":4,"May":5,"Jun":6,"Jul":7,"Aug":8,"Sep":9,"Oct":10,"Nov":11,"Dec":12}
+                inv_map = {v: k for k, v in mon_map.items()}
+                if f_compare == "LAST YEAR":
+                    ly_key = f"{mon_abbr}-{yr-1}"
+                else:
+                    mnum = mon_map.get(mon_abbr[:3], 1)
+                    if mnum == 1:
+                        pm, py = 12, yr - 1
+                    else:
+                        pm, py = mnum - 1, yr
+                    ly_key = f"{inv_map[pm]}-{py}"
+                ly_sdf = base_a[base_a["_MonthKey"] == ly_key].copy()
+            except Exception:
+                pass
+
+            st.caption(f"Table A filters: Depot={f_depot} | Month={f_month} | Compare={f_compare} ({ly_key or 'N/A'})")
+
+
+            st.markdown("#### Product-wise Summary")
+
+            # Labels for comparison columns
+            if f_compare == "PREVIOUS MONTH":
+                h_cy, h_ly, h_var = "CM", "PM", "VAR"
+            else:
+                h_cy, h_ly, h_var = "CY", "LY", "VAR"
+
+            # Ensure OT / muster cols exist on cy_sdf / ly_sdf
+            def ensure_ot_cols(data):
+                data = data.copy()
+                def parse_time_to_minutes(v):
+                    if v is None or (isinstance(v, float) and pd.isna(v)):
+                        return 0.0
+                    if isinstance(v, (int, float)):
+                        return float(v)
+                    try:
+                        import datetime as _dt
+                        if isinstance(v, _dt.time):
+                            return v.hour * 60 + v.minute + v.second / 60.0
+                        if isinstance(v, _dt.timedelta):
+                            return v.total_seconds() / 60.0
+                        if isinstance(v, _dt.datetime):
+                            return v.hour * 60 + v.minute
+                    except Exception:
+                        pass
+                    s = str(v).strip()
+                    if not s or s.lower() in ("nan", "nat", "none", "null"):
+                        return 0.0
+                    if ":" in s:
+                        parts = s.split(":")
+                        try:
+                            h = int(parts[0]); m = int(parts[1]) if len(parts) > 1 else 0
+                            return h * 60 + m
+                        except Exception:
+                            return 0.0
+                    try:
+                        return float(s)
+                    except Exception:
+                        return 0.0
+
+                c_cond = find_col(["COND MUSTERS", "CONDMUSTERS", "COND MUSTER"])
+                c_dri = find_col(["DRI MUS", "DRIMUS", "DRI MUSTER", "DRI MUSTERS"])
+                c_cnd_ot = find_col(["CND OT", "CNDOT"])
+                c_drv_ot = find_col(["DRV OT", "DRVOT"])
+                if c_cnd_ot is None:
+                    for c in data.columns:
+                        if str(c).strip().upper().replace(" ", "") == "CNDOT":
+                            c_cnd_ot = c; break
+                if c_drv_ot is None:
+                    for c in data.columns:
+                        if str(c).strip().upper().replace(" ", "") == "DRVOT":
+                            c_drv_ot = c; break
+                data["_COND_MUS"] = pd.to_numeric(data[c_cond], errors="coerce").fillna(0) if c_cond else 0
+                data["_DRI_MUS"] = pd.to_numeric(data[c_dri], errors="coerce").fillna(0) if c_dri else 0
+                data["_CND_OT"] = data[c_cnd_ot].map(parse_time_to_minutes) if c_cnd_ot else 0
+                data["_DRV_OT"] = data[c_drv_ot].map(parse_time_to_minutes) if c_drv_ot else 0
+                return data
+
+            cy_p = ensure_ot_cols(cy_sdf)
+            ly_p = ensure_ot_cols(ly_sdf) if len(ly_sdf) else ly_sdf
+
+
+            PRODUCT_ORDER = [
+                "AC-SLP", "AC-HBD", "e-GRD", "RJD", "N-HBD R", "SLX", "DLX",
+                "EXP-H", "ME", "PVG-R", "PVG-H", "EXP-R", "GRD+", "N-HBD", "PVG",
+            ]
+
+            def agg_product(data):
+                metric_keys = []
+                for side in ["RTC", "HIRE"]:
+                    metric_keys += [f"SCH_{side}", f"SVC_{side}", f"KMS_{side}",
+                                   f"CREW_COND_{side}", f"CREW_DRI_{side}",
+                                   f"OT_COND_{side}", f"OT_DRI_{side}"]
+                metric_keys += ["SCH_TOTAL", "SVC_TOTAL", "KMS_TOTAL"]
+                base_cols = ["DEPOT", "PRODUCT", "MHL_NMHL"]
+                if data is None or len(data) == 0:
+                    return pd.DataFrame(columns=base_cols + metric_keys)
+                rows = []
+                if f_depot == "REGION":
+                    group_keys = ["_PRODUCT", "_MHL"]
+                else:
+                    group_keys = ["_DEPOT", "_PRODUCT", "_MHL"]
+                for keys, grp in data.groupby(group_keys):
+                    if f_depot == "REGION":
+                        if isinstance(keys, tuple):
+                            prod, mhl = keys[0], keys[1]
+                        else:
+                            prod, mhl = keys, ""
+                        dep = "REGION"
+                    else:
+                        dep, prod, mhl = keys
+                    rec = {"DEPOT": dep, "PRODUCT": prod, "MHL_NMHL": mhl}
+                    for side in ["RTC", "HIRE"]:
+                        sub = grp[grp["_RTC"] == side]
+                        rec[f"SCH_{side}"] = sub["_SCH"].sum()
+                        rec[f"SVC_{side}"] = sub[col_svc].nunique()
+                        rec[f"KMS_{side}"] = sub["_KMS"].sum()
+                        rec[f"CREW_COND_{side}"] = sub["_COND_MUS"].sum() * 1.3
+                        rec[f"CREW_DRI_{side}"] = sub["_DRI_MUS"].sum() * 1.3
+                        rec[f"OT_COND_{side}"] = sub["_CND_OT"].sum()
+                        rec[f"OT_DRI_{side}"] = sub["_DRV_OT"].sum()
+                    rec["SCH_TOTAL"] = rec["SCH_RTC"] + rec["SCH_HIRE"]
+                    rec["SVC_TOTAL"] = rec["SVC_RTC"] + rec["SVC_HIRE"]
+                    rec["KMS_TOTAL"] = rec["KMS_RTC"] + rec["KMS_HIRE"]
+                    rows.append(rec)
+                return pd.DataFrame(rows)
+
+            def sort_products(df):
+                if len(df) == 0:
+                    return df
+                order_map = {p: i for i, p in enumerate(PRODUCT_ORDER)}
+                df = df.copy()
+                df["_ord"] = df["PRODUCT"].map(lambda x: order_map.get(str(x).strip(), 500))
+                df = df.sort_values(["DEPOT", "_ord", "PRODUCT"]).drop(columns=["_ord"])
+                return df.reset_index(drop=True)
+
+
+            cy_agg = agg_product(cy_p)
+            ly_agg = agg_product(ly_p)
+            metrics = [
+                "SCH_RTC", "SCH_HIRE", "SCH_TOTAL",
+                "SVC_RTC", "SVC_HIRE", "SVC_TOTAL",
+                "KMS_RTC", "KMS_HIRE", "KMS_TOTAL",
+                "CREW_COND_RTC", "CREW_DRI_RTC", "CREW_COND_HIRE",
+                "OT_COND_RTC", "OT_DRI_RTC", "OT_COND_HIRE",
+            ]
+
+            def minutes_to_hhmm(mins):
+                if mins is None:
+                    return ""
+                try:
+                    mins = float(mins)
+                except Exception:
+                    return ""
+                if mins == 0:
+                    return ""
+                mins = int(round(mins))
+                h, m = divmod(abs(mins), 60)
+                sign = "-" if mins < 0 else ""
+                return f"{sign}{h}:{m:02d}"
+
+            if len(cy_agg) == 0 and len(ly_agg) == 0:
+                st.warning("No product-wise data for selection.")
+            else:
+                cy_agg = sort_products(cy_agg)
+                ly_agg = sort_products(ly_agg)
+                merged = cy_agg.merge(ly_agg, on=["DEPOT", "PRODUCT", "MHL_NMHL"], how="outer", suffixes=("_CY", "_LY"))
+                if "MHL_NMHL" not in merged.columns:
+                    merged["MHL_NMHL"] = ""
+                merged["MHL_NMHL"] = merged["MHL_NMHL"].fillna("")
+                for m in metrics:
+                    for s in ("_CY", "_LY"):
+                        c = f"{m}{s}"
+                        if c not in merged.columns:
+                            merged[c] = 0
+                        merged[c] = pd.to_numeric(merged[c], errors="coerce").fillna(0)
+                    merged[f"{m}_VAR"] = merged[f"{m}_CY"] - merged[f"{m}_LY"]
+                merged = sort_products(merged)
+
+                extra_rows = []
+                dep_label = str(merged["DEPOT"].iloc[0]) if len(merged) else (f_depot if f_depot != "REGION" else "REGION")
+                # Only detail product rows (exclude any prior totals)
+                detail = merged[~merged["PRODUCT"].astype(str).str.upper().isin(["TOTAL", "MHL", "NMHL"])].copy()
+                # TOTAL = all products
+                tot = {"DEPOT": dep_label, "PRODUCT": "TOTAL", "MHL_NMHL": ""}
+                for m in metrics:
+                    tot[f"{m}_CY"] = detail[f"{m}_CY"].sum()
+                    tot[f"{m}_LY"] = detail[f"{m}_LY"].sum()
+                    tot[f"{m}_VAR"] = tot[f"{m}_CY"] - tot[f"{m}_LY"]
+                extra_rows.append(tot)
+                # MHL = sum where MHL_NMHL is exactly MHL (not NMHL)
+                # NMHL = sum where MHL_NMHL is exactly NMHL
+                for label in ["MHL", "NMHL"]:
+                    mask = detail["MHL_NMHL"].astype(str).str.strip().str.upper() == label
+                    sub = detail[mask]
+                    row = {"DEPOT": dep_label, "PRODUCT": label, "MHL_NMHL": label}
+                    for m in metrics:
+                        row[f"{m}_CY"] = sub[f"{m}_CY"].sum() if len(sub) else 0
+                        row[f"{m}_LY"] = sub[f"{m}_LY"].sum() if len(sub) else 0
+                        row[f"{m}_VAR"] = row[f"{m}_CY"] - row[f"{m}_LY"]
+                    extra_rows.append(row)
+                merged = pd.concat([detail, pd.DataFrame(extra_rows)], ignore_index=True)
+
+                def cell_num(v, is_var=False, is_ot=False):
+                    try:
+                        fv = float(v)
+                    except Exception:
+                        return "<td style='padding:4px 5px;font-size:12px;'></td>"
+                    if fv == 0:
+                        return "<td style='padding:4px 5px;font-size:12px;'></td>"
+                    if is_ot:
+                        s = minutes_to_hhmm(fv)
+                    else:
+                        s = f"{fv:,.0f}" if abs(fv - round(fv)) < 1e-6 else f"{fv:,.1f}"
+                    if is_var:
+                        cls = "pos" if fv > 0 else "neg"
+                        return f"<td class='{cls}' style='padding:4px 5px;font-size:12px;'>{s}</td>"
+                    return f"<td style='padding:4px 5px;font-size:12px;'>{s}</td>"
+
+                # No freeze - normal scroll, larger font & row height
+                
+                # ---- Build clean 3-row header + body ----
+                # Column plan (after DEPOT, PRODUCT):
+                # SCH: RTC×3, HIRE×3, TOTAL×3 = 9
+                # SVC: 9
+                # KMS: 9
+                # CREW: RTC COND×3, RTC DRI×3, HIRE COND×3, HIRE DRI×3 = 12
+                # OT: same 12
+                # Total data cols = 9+9+9+12+12 = 51
+
+                def th(text, colspan=1, rowspan=1, bg="#334155", extra=""):
+                    return (
+                        f'<th colspan="{colspan}" rowspan="{rowspan}" '
+                        f'style="background:{bg};color:#fff;padding:6px 4px;font-size:11px;'
+                        f'text-align:center;border:1px solid #94a3b8;{extra}">{text}</th>'
+                    )
+
+                def th_sub(text):
+                    return (
+                        f'<th style="background:#e2e8f0;color:#0f172a;padding:5px 4px;font-size:10px;'
+                        f'text-align:center;border:1px solid #94a3b8;">{text}</th>'
+                    )
+
+                html = ['<div class="freeze-wrap"><table class="freeze-table"><thead>']
+
+                # Row 1 – group titles
+                html.append("<tr>")
+                html.append(th("DEPOT", rowspan=3, bg="#0369a1", extra="position:sticky;left:0;z-index:6;min-width:70px;"))
+                html.append(th("PRODUCT", rowspan=3, bg="#0369a1", extra="position:sticky;left:70px;z-index:6;min-width:80px;"))
+                html.append(th("MHL/NMHL", rowspan=3, bg="#0369a1", extra="position:sticky;left:150px;z-index:6;min-width:60px;"))
+                html.append(th("SCHs", colspan=9, bg="#b91c1c"))
+                html.append(th("SERVICES", colspan=9, bg="#a21caf"))
+                html.append(th("SCH KMS", colspan=9, bg="#15803d"))
+                html.append(th("CREW REQUIREMENT", colspan=9, bg="#1d4ed8"))
+                html.append(th("SCH OVER TIME", colspan=9, bg="#c2410c"))
+                html.append("</tr>")
+
+                # Row 2 – RTC / HIRE / TOTAL (and COND/DRI under crew & OT)
+                html.append("<tr>")
+                for _ in range(3):  # SCH, SVC, KMS
+                    html.append(th("RTC", colspan=3, bg="#475569"))
+                    html.append(th("HIRE", colspan=3, bg="#475569"))
+                    html.append(th("TOTAL", colspan=3, bg="#475569"))
+                # CREW: RTC-COND, RTC-DRI, HIRE-COND (no HIRE DRI)
+                html.append(th("RTC COND", colspan=3, bg="#1e40af"))
+                html.append(th("RTC DRI", colspan=3, bg="#1e40af"))
+                html.append(th("HIRE COND", colspan=3, bg="#1e40af"))
+                # OT: RTC-COND, RTC-DRI, HIRE-COND (no HIRE DRI)
+                html.append(th("RTC COND", colspan=3, bg="#9a3412"))
+                html.append(th("RTC DRI", colspan=3, bg="#9a3412"))
+                html.append(th("HIRE COND", colspan=3, bg="#9a3412"))
+                html.append("</tr>")
+
+                # Row 3 – CM/PM/VAR or CY/LY/VAR
+                html.append("<tr>")
+                for _ in range(15):  # 9 (sch/svc/kms) + 3 crew + 3 ot
+                    for h in (h_cy, h_ly, h_var):
+                        html.append(th_sub(h))
+                html.append("</tr>")
+                html.append("</thead><tbody>")
+
+                ot_metrics = {"OT_COND_RTC", "OT_DRI_RTC", "OT_COND_HIRE"}
+                for _, row in merged.iterrows():
+                    prod = str(row.get("PRODUCT", ""))
+                    is_tot = prod in ("TOTAL", "MHL", "NMHL")
+                    style = "font-weight:bold;background:#e2efda;" if is_tot else ""
+                    html.append(f'<tr style="{style}">')
+                    html.append(
+                        f'<td style="position:sticky;left:0;z-index:2;background:#e0f2fe;'
+                        f'padding:5px 6px;font-size:12px;font-weight:600;min-width:70px;">{row["DEPOT"]}</td>'
+                    )
+                    html.append(
+                        f'<td style="position:sticky;left:70px;z-index:2;background:#f0f9ff;'
+                        f'padding:5px 6px;font-size:12px;min-width:80px;">{row["PRODUCT"]}</td>'
+                    )
+                    html.append(
+                        f'<td style="position:sticky;left:150px;z-index:2;background:#f8fafc;'
+                        f'padding:5px 6px;font-size:11px;min-width:60px;">{row.get("MHL_NMHL", "")}</td>'
+                    )
+                    for m in metrics:
+                        is_ot = m in ot_metrics
+                        if m.startswith("SCH"):
+                            bg = "#fef2f2"
+                        elif m.startswith("SVC"):
+                            bg = "#f5f3ff"
+                        elif m.startswith("KMS"):
+                            bg = "#f0fdf4"
+                        elif m.startswith("CREW"):
+                            bg = "#eff6ff"
+                        elif m.startswith("OT"):
+                            bg = "#fff7ed"
+                        else:
+                            bg = "#fff"
+                        def cell_bg(v, is_var=False, is_ot=False, bg="#fff"):
+                            try:
+                                fv = float(v)
+                            except Exception:
+                                return f"<td style='padding:4px 5px;font-size:12px;background:{bg};'></td>"
+                            if fv == 0:
+                                return f"<td style='padding:4px 5px;font-size:12px;background:{bg};'></td>"
+                            if is_ot:
+                                s = minutes_to_hhmm(fv)
+                            else:
+                                s = f"{fv:,.0f}" if abs(fv - round(fv)) < 1e-6 else f"{fv:,.1f}"
+                            if is_var:
+                                cls = "pos" if fv > 0 else "neg"
+                                return f"<td class='{cls}' style='padding:4px 5px;font-size:12px;background:{bg};'>{s}</td>"
+                            return f"<td style='padding:4px 5px;font-size:12px;background:{bg};'>{s}</td>"
+                        html.append(cell_bg(row[f"{m}_CY"], is_ot=is_ot, bg=bg))
+                        html.append(cell_bg(row[f"{m}_LY"], is_ot=is_ot, bg=bg))
+                        html.append(cell_bg(row[f"{m}_VAR"], is_var=True, is_ot=is_ot, bg=bg))
+                    html.append("</tr>")
+                html.append("</tbody></table></div>")
+
+                st.markdown("".join(html), unsafe_allow_html=True)
+                st.caption(
+                    f"Headings: {h_cy}/{h_ly}/{h_var} | Crew REQ = MUSTERS×1.3 | OT = sum of CND OT / DRV OT (HH:MM)"
+                )
+                st.download_button(
+                    "Download Product-wise CSV",
+                    merged.to_csv(index=False).encode("utf-8"),
+                    f"Schedules_Product_{f_month}.csv",
+                    "text/csv",
+                    key="dl9a",
+                )
+
+
+            # ========== TABLE 2: Depot-wise RTC/HIRE Summary (like your image TOTAL section) ==========
+            
+            # ========== TABLE 2: Depot-wise full summary (DO/SC/SO/NO) ==========
+            st.markdown('<hr style="margin:4px 0;border:none;border-top:1px solid #e2e8f0;">', unsafe_allow_html=True)
+            st.markdown(f"#### Depot Wise Summary of SCHs and Services — {f_month}")
+
+            col_route = find_col(["ROUTEE", "ROUTE", "RouteName", "Route"])
+            col_dtype = find_col(["D.TYPE", "DTYPE", "D.Type", "DutyType"])
+            col_cond_mus = find_col(["COND MUSTERS", "CONDMUSTERS", "COND_MUSTERS", "ConductorMuster", "CND MUSTER", "COND MUSTER"])
+            col_dri_mus = find_col(["DRI MUS", "DRIMUS", "DRI_MUS", "DriverMuster", "DRV MUSTER", "DRI MUSTERS", "DRI MUSTER"])
+            # CND OT / DRV OT often have leading spaces in Excel headers e.g. " CND OT"
+            col_cnd_ot = find_col(["CND OT", "CNDOT", "CND_OT", "ConductorOT", "CNDOT"])
+            col_drv_ot = find_col(["DRV OT", "DRVOT", "DRV_OT", "DriverOT", "DRVOT"])
+            if col_cnd_ot is None:
+                for c in sched_raw.columns:
+                    if str(c).strip().upper().replace(" ", "") in ("CNDOT", "CNDOUT"):
+                        col_cnd_ot = c
+                        break
+            if col_drv_ot is None:
+                for c in sched_raw.columns:
+                    if str(c).strip().upper().replace(" ", "") in ("DRVOT", "DRVOUT"):
+                        col_drv_ot = c
+                        break
+            col_muster3 = find_col(["3 DAYS MUSTER", "3DAYSMUSTER", "Muster3"])
+
+            # ---- Table B extra filters: MHL/NMHL, ROUTE, PRODUCT ----
+            st.markdown("##### Table B filters")
+            bf1, bf2, bf3 = st.columns(3)
+            with bf1:
+                b_mhl_opts = ["ALL"] + sorted([x for x in sdf["_MHL"].dropna().unique() if x and str(x).lower() != "nan"])
+                b_mhl = st.selectbox("MHL / NMHL", b_mhl_opts, key="sch_b_mhl")
+            with bf2:
+                col_route = find_col(["ROUTEE", "ROUTE", "RouteName", "Route"])
+                if col_route:
+                    sdf["_ROUTE"] = sdf[col_route].astype(str).str.strip()
+                    # month-scoped route list
+                    route_base = sdf[sdf["_MonthKey"] == f_month] if f_month != "ALL" else sdf
+                    b_route_opts = ["ALL"] + sorted([x for x in route_base["_ROUTE"].dropna().unique() if x and x.lower() != "nan"])
+                else:
+                    b_route_opts = ["ALL"]
+                b_route = st.selectbox("ROUTE", b_route_opts, key="sch_b_route")
+            with bf3:
+                prod_base = sdf[sdf["_MonthKey"] == f_month] if f_month != "ALL" else sdf
+                if b_mhl != "ALL":
+                    prod_base = prod_base[prod_base["_MHL"] == b_mhl]
+                if col_route and b_route != "ALL":
+                    prod_base = prod_base[prod_base.get("_ROUTE", prod_base.columns[0]) == b_route] if "_ROUTE" in prod_base.columns else prod_base
+                b_prod_opts = ["ALL"] + sorted([x for x in prod_base["_PRODUCT"].dropna().unique() if x and str(x).lower() != "nan"])
+                b_product = st.selectbox("PRODUCT", b_prod_opts, key="sch_b_product")
+
+            # Source data for depot summary: month + shared depot + table B filters
+            dep_src = sdf[sdf["_MonthKey"] == f_month].copy() if f_month != "ALL" else sdf.copy()
+            if f_depot not in ("ALL", "REGION"):
+                dep_src = dep_src[dep_src["_DEPOT"] == f_depot]
+            if b_mhl != "ALL":
+                dep_src = dep_src[dep_src["_MHL"] == b_mhl]
+            if col_route and b_route != "ALL" and "_ROUTE" in dep_src.columns:
+                dep_src = dep_src[dep_src["_ROUTE"] == b_route]
+            if b_product != "ALL":
+                dep_src = dep_src[dep_src["_PRODUCT"] == b_product]
+
+            if len(dep_src) == 0:
+                st.warning("No depot-wise data.")
+            else:
+                # Normalize D.TYPE to DO/SC/SO/NO
+                if col_dtype:
+                    dep_src = dep_src.copy()
+                    dep_src["_DTYPE"] = dep_src[col_dtype].astype(str).str.strip().str.upper()
+                    # map common variants
+                    dep_src["_DTYPE"] = dep_src["_DTYPE"].replace({
+                        "D.O": "DO", "D/O": "DO", "DO.": "DO",
+                        "S.C": "SC", "S/C": "SC",
+                        "S.O": "SO", "S/O": "SO",
+                        "N.O": "NO", "N/O": "NO",
+                    })
+                else:
+                    dep_src["_DTYPE"] = "OTHER"
+
+                def parse_time_to_minutes(v):
+                    """Convert HH:MM / H:MM / datetime.time / timedelta to total minutes."""
+                    if v is None or (isinstance(v, float) and pd.isna(v)):
+                        return 0.0
+                    if isinstance(v, (int, float)):
+                        # already numeric - treat as hours if small, or minutes if large
+                        return float(v)
+                    # datetime.time
+                    try:
+                        import datetime as _dt
+                        if isinstance(v, _dt.time):
+                            return v.hour * 60 + v.minute + v.second / 60.0
+                        if isinstance(v, _dt.timedelta):
+                            return v.total_seconds() / 60.0
+                        if isinstance(v, _dt.datetime):
+                            return v.hour * 60 + v.minute
+                    except Exception:
+                        pass
+                    s = str(v).strip()
+                    if not s or s.lower() in ("nan", "nat", "none", "null"):
+                        return 0.0
+                    # formats: 38:42, 38:42:00, 1:05
+                    if ":" in s:
+                        parts = s.split(":")
+                        try:
+                            h = int(parts[0])
+                            m = int(parts[1]) if len(parts) > 1 else 0
+                            sec = int(parts[2]) if len(parts) > 2 else 0
+                            return h * 60 + m + sec / 60.0
+                        except Exception:
+                            return 0.0
+                    try:
+                        return float(s)
+                    except Exception:
+                        return 0.0
+
+                def minutes_to_hhmm(mins):
+                    if mins is None or mins == 0:
+                        return ""
+                    mins = int(round(float(mins)))
+                    h, m = divmod(abs(mins), 60)
+                    sign = "-" if mins < 0 else ""
+                    return f"{sign}{h}:{m:02d}"
+
+                for c, alias in [
+                    (col_cond_mus, "_COND_MUS"),
+                    (col_dri_mus, "_DRI_MUS"),
+                ]:
+                    if c:
+                        dep_src[alias] = pd.to_numeric(dep_src[c], errors="coerce").fillna(0)
+                    else:
+                        dep_src[alias] = 0
+                # OT columns are time (HH:MM) → minutes
+                if col_cnd_ot:
+                    dep_src["_CND_OT"] = dep_src[col_cnd_ot].map(parse_time_to_minutes)
+                else:
+                    dep_src["_CND_OT"] = 0
+                if col_drv_ot:
+                    dep_src["_DRV_OT"] = dep_src[col_drv_ot].map(parse_time_to_minutes)
+                else:
+                    dep_src["_DRV_OT"] = 0
+
+                DTYPES = ["DO", "SC", "SO", "NO"]
+
+                def side_metrics(sub):
+                    schs = sub["_SCH"].sum()
+                    ser = sub[col_svc].nunique()
+                    kms = sub["_KMS"].sum()
+                    cnd_req = sub["_COND_MUS"].sum() * 1.3
+                    drv_req = sub["_DRI_MUS"].sum() * 1.3
+                    cnd_ot = sub["_CND_OT"].sum()
+                    drv_ot = sub["_DRV_OT"].sum()
+                    return {
+                        "SCHS": schs, "SER": ser, "SCH_KMS": kms,
+                        "CND_REQ": cnd_req, "DRV_REQ": drv_req,
+                        "CND_OT": cnd_ot, "DRV_OT": drv_ot,
+                    }
+
+                def build_side_row(dep, side, base):
+                    """Build one REGION/RTC_HIRE row. TOTAL SER/SCHS/KMS = RTC+HIRE (Excel style)."""
+                    rec = {"REGION": dep, "RTC_HIRE": side}
+                    if side == "TOTAL":
+                        m_rtc = side_metrics(base[base["_RTC"] == "RTC"])
+                        m_hire = side_metrics(base[base["_RTC"] == "HIRE"])
+                        # Additive totals matching Excel
+                        rec["T_SCHS"] = m_rtc["SCHS"] + m_hire["SCHS"]
+                        rec["T_SER"] = m_rtc["SER"] + m_hire["SER"]
+                        rec["T_KMS"] = m_rtc["SCH_KMS"] + m_hire["SCH_KMS"]
+                        rec["T_CND_REQ"] = m_rtc["CND_REQ"] + m_hire["CND_REQ"]
+                        rec["T_DRV_REQ"] = m_rtc["DRV_REQ"] + m_hire["DRV_REQ"]
+                        for dt in DTYPES:
+                            sub_r = base[(base["_RTC"] == "RTC") & (base["_DTYPE"] == dt)]
+                            sub_h = base[(base["_RTC"] == "HIRE") & (base["_DTYPE"] == dt)]
+                            mr, mh = side_metrics(sub_r), side_metrics(sub_h)
+                            rec[f"{dt}_SCHS"] = mr["SCHS"] + mh["SCHS"]
+                            rec[f"{dt}_SER"] = mr["SER"] + mh["SER"]
+                            rec[f"{dt}_KMS"] = mr["SCH_KMS"] + mh["SCH_KMS"]
+                            rec[f"{dt}_CND_REQ"] = mr["CND_REQ"] + mh["CND_REQ"]
+                            rec[f"{dt}_DRV_REQ"] = mr["DRV_REQ"] + mh["DRV_REQ"]
+                            rec[f"{dt}_CND_OT"] = mr["CND_OT"] + mh["CND_OT"]
+                            rec[f"{dt}_DRV_OT"] = mr["DRV_OT"] + mh["DRV_OT"]
+                    else:
+                        sub = base[base["_RTC"] == side]
+                        tot_m = side_metrics(sub)
+                        rec["T_SCHS"] = tot_m["SCHS"]
+                        rec["T_SER"] = tot_m["SER"]
+                        rec["T_KMS"] = tot_m["SCH_KMS"]
+                        rec["T_CND_REQ"] = tot_m["CND_REQ"]
+                        rec["T_DRV_REQ"] = tot_m["DRV_REQ"]
+                        for dt in DTYPES:
+                            dsub = sub[sub["_DTYPE"] == dt]
+                            m = side_metrics(dsub)
+                            rec[f"{dt}_SCHS"] = m["SCHS"]
+                            rec[f"{dt}_SER"] = m["SER"]
+                            rec[f"{dt}_KMS"] = m["SCH_KMS"]
+                            rec[f"{dt}_CND_REQ"] = m["CND_REQ"]
+                            rec[f"{dt}_DRV_REQ"] = m["DRV_REQ"]
+                            rec[f"{dt}_CND_OT"] = m["CND_OT"]
+                            rec[f"{dt}_DRV_OT"] = m["DRV_OT"]
+                    return rec
+
+                def fmt_num(v, is_time=False):
+                    try:
+                        fv = float(v)
+                    except Exception:
+                        return ""
+                    if fv == 0:
+                        return ""
+                    if is_time:
+                        # if stored as hours decimal or minutes - show as number for now
+                        return f"{fv:,.0f}" if abs(fv - round(fv)) < 1e-6 else f"{fv:,.2f}"
+                    return f"{fv:,.0f}" if abs(fv - round(fv)) < 1e-6 else f"{fv:,.1f}"
+
+                rows_out = []
+                depots = sorted([d for d in dep_src["_DEPOT"].unique() if d and d.lower() != "nan"])
+                for dep in depots:
+                    dgrp = dep_src[dep_src["_DEPOT"] == dep]
+                    for side in ["RTC", "HIRE", "TOTAL"]:
+                        rows_out.append(build_side_row(dep, side, dgrp))
+
+                # REGION totals = SUM of depot rows (Excel: REGION SER = sum of depot SERs)
+                import copy
+                depot_rows = [r for r in rows_out if r["REGION"] != "REGION"]
+                for side in ["RTC", "HIRE", "TOTAL"]:
+                    side_rows = [r for r in depot_rows if r["RTC_HIRE"] == side]
+                    rec = {"REGION": "REGION", "RTC_HIRE": side}
+                    if not side_rows:
+                        rows_out.append(build_side_row("REGION", side, dep_src))
+                        continue
+                    # sum all numeric fields
+                    keys = [k for k in side_rows[0].keys() if k not in ("REGION", "RTC_HIRE")]
+                    for k in keys:
+                        rec[k] = sum(float(r.get(k, 0) or 0) for r in side_rows)
+                    rows_out.append(rec)
+
+                dsum = pd.DataFrame(rows_out)
+
+                # HTML - compact
+                html2 = ['<div class="table-scroll"><table class="excel-table" style="table-layout:auto;font-size:9px;">']
+                # header row 1
+                html2.append("<tr>")
+                html2.append('<th rowspan="2" style="background:#0f172a;color:white;padding:6px;">REGION</th>')
+                html2.append('<th rowspan="2" style="background:#0f172a;color:white;padding:6px;">RTC/HIRE</th>')
+                html2.append('<th colspan="3" style="background:#b91c1c;color:white;padding:6px;">DO</th>')
+                html2.append('<th colspan="7" style="background:#7c3aed;color:white;padding:6px;">SC</th>')
+                html2.append('<th colspan="5" style="background:#15803d;color:white;padding:6px;">SO</th>')
+                html2.append('<th colspan="5" style="background:#0369a1;color:white;padding:6px;">NO</th>')
+                html2.append('<th colspan="3" style="background:#c2410c;color:white;padding:6px;">TOTAL</th>')
+                html2.append('<th colspan="2" style="background:#166534;color:white;padding:6px;">REQMT CREW</th>')
+                html2.append("</tr>")
+                # header row 2
+                html2.append("<tr>")
+                # DO: SCHS SER SCH KMS
+                for h in ["SCHS", "SER", "SCH KMS"]:
+                    html2.append(f'<th class="header-sub">{h}</th>')
+                # SC: SCHS SER SCH KMS CND REQ DRV REQ CNDOT DRVOT
+                for h in ["SCHS", "SER", "SCH KMS", "CND REQ", "DRV REQ", "CNDOT", "DRVOT"]:
+                    html2.append(f'<th class="header-sub">{h}</th>')
+                # SO
+                for h in ["SCHS", "SER", "SCH KMS", "CND REQ", "DRV REQ"]:
+                    html2.append(f'<th class="header-sub">{h}</th>')
+                # NO
+                for h in ["SCHS", "SER", "SCH KMS", "CND REQ", "DRV REQ"]:
+                    html2.append(f'<th class="header-sub">{h}</th>')
+                # TOTAL
+                for h in ["SCHS", "SER", "SCH KMS"]:
+                    html2.append(f'<th class="header-sub">{h}</th>')
+                # REQMT
+                for h in ["COND", "DRI"]:
+                    html2.append(f'<th class="header-sub">{h}</th>')
+                html2.append("</tr>")
+
+                for _, r in dsum.iterrows():
+                    is_tot = str(r["RTC_HIRE"]) == "TOTAL" or str(r["REGION"]) == "REGION"
+                    style = "font-weight:bold;background:#e2efda;" if is_tot else ""
+                    html2.append(f'<tr style="{style}">')
+                    html2.append(f'<td>{r["REGION"]}</td>')
+                    html2.append(f'<td>{r["RTC_HIRE"]}</td>')
+                    def td(v, bg, is_ot=False):
+                        val = minutes_to_hhmm(v) if is_ot else fmt_num(v)
+                        return f'<td style="background:{bg};padding:4px;font-size:11px;">{val}</td>'
+                    # DO
+                    for k in ["DO_SCHS", "DO_SER", "DO_KMS"]:
+                        html2.append(td(r.get(k, 0), "#fef2f2"))
+                    # SC
+                    for k in ["SC_SCHS", "SC_SER", "SC_KMS"]:
+                        html2.append(td(r.get(k, 0), "#f5f3ff"))
+                    for k in ["SC_CND_REQ", "SC_DRV_REQ"]:
+                        html2.append(td(r.get(k, 0), "#eff6ff"))
+                    html2.append(td(r.get("SC_CND_OT", 0), "#fff7ed", is_ot=True))
+                    html2.append(td(r.get("SC_DRV_OT", 0), "#fff7ed", is_ot=True))
+                    # SO
+                    for k in ["SO_SCHS", "SO_SER", "SO_KMS"]:
+                        html2.append(td(r.get(k, 0), "#f0fdf4"))
+                    for k in ["SO_CND_REQ", "SO_DRV_REQ"]:
+                        html2.append(td(r.get(k, 0), "#eff6ff"))
+                    # NO
+                    for k in ["NO_SCHS", "NO_SER", "NO_KMS"]:
+                        html2.append(td(r.get(k, 0), "#fefce8"))
+                    for k in ["NO_CND_REQ", "NO_DRV_REQ"]:
+                        html2.append(td(r.get(k, 0), "#eff6ff"))
+                    # TOTAL
+                    for k in ["T_SCHS", "T_SER", "T_KMS"]:
+                        html2.append(td(r.get(k, 0), "#e2e8f0"))
+                    # REQMT crew
+                    html2.append(td(r.get("T_CND_REQ", 0), "#dbeafe"))
+                    html2.append(td(r.get("T_DRV_REQ", 0), "#dbeafe"))
+                    html2.append("</tr>")
+                html2.append("</table></div>")
+                st.markdown("".join(html2), unsafe_allow_html=True)
+                st.download_button(
+                    "Download Depot-wise CSV",
+                    dsum.to_csv(index=False).encode("utf-8"),
+                    f"Schedules_DepotDetail_{f_month}.csv",
+                    "text/csv",
+                    key="dl9b",
+                )
+
+
+            # ========== TABLE 3: Summary of Operation ==========
+            st.markdown('<hr style="margin:4px 0;border:none;border-top:1px solid #e2e8f0;">', unsafe_allow_html=True)
+            st.markdown(f"#### Summary of Operation — {f_month}")
+
+            # Reuse Table B filtered source (dep_src) if available, else rebuild
+            try:
+                op_src = dep_src.copy()
+            except NameError:
+                op_src = sdf[sdf["_MonthKey"] == f_month].copy() if f_month != "ALL" else sdf.copy()
+                if f_depot not in ("ALL", "REGION"):
+                    op_src = op_src[op_src["_DEPOT"] == f_depot]
+
+            col_route = find_col(["ROUTEE", "ROUTE", "RouteName", "Route"])
+            if col_route and "_ROUTE" not in op_src.columns:
+                op_src["_ROUTE"] = op_src[col_route].astype(str).str.strip()
+            elif "_ROUTE" not in op_src.columns:
+                op_src["_ROUTE"] = ""
+
+            _dtype_col = find_col(["D.TYPE", "DTYPE", "D.Type", "DutyType"])
+            if _dtype_col:
+                op_src["_DTYPE"] = op_src[_dtype_col].astype(str).str.strip().str.upper()
+                op_src["_DTYPE"] = op_src["_DTYPE"].replace({
+                    "D.O": "DO", "D/O": "DO", "DO.": "DO",
+                    "S.C": "SC", "S/C": "SC",
+                    "S.O": "SO", "S/O": "SO",
+                    "N.O": "NO", "N/O": "NO",
+                })
+            else:
+                op_src["_DTYPE"] = ""
+
+            DTYPES3 = ["DO", "NO", "SC", "SO"]
+
+            # Crew + OT columns for Table C
+            def _parse_ot_min(v):
+                if v is None or (isinstance(v, float) and pd.isna(v)):
+                    return 0.0
+                if isinstance(v, (int, float)):
+                    return float(v)
+                try:
+                    import datetime as _dt
+                    if isinstance(v, _dt.time):
+                        return v.hour * 60 + v.minute
+                    if isinstance(v, _dt.timedelta):
+                        return v.total_seconds() / 60.0
+                    if isinstance(v, _dt.datetime):
+                        return v.hour * 60 + v.minute
+                except Exception:
+                    pass
+                s = str(v).strip()
+                if not s or s.lower() in ("nan", "nat", "none", "null"):
+                    return 0.0
+                if ":" in s:
+                    parts = s.split(":")
+                    try:
+                        return int(parts[0]) * 60 + int(parts[1])
+                    except Exception:
+                        return 0.0
+                try:
+                    return float(s)
+                except Exception:
+                    return 0.0
+
+            def _min_to_hhmm(mins):
+                try:
+                    mins = int(round(float(mins)))
+                except Exception:
+                    return ""
+                if mins == 0:
+                    return ""
+                h, m = divmod(abs(mins), 60)
+                return f"{'-' if mins < 0 else ''}{h}:{m:02d}"
+
+            c_cond = find_col(["COND MUSTERS", "CONDMUSTERS", "COND MUSTER"])
+            c_dri = find_col(["DRI MUS", "DRIMUS", "DRI MUSTER", "DRI MUSTERS"])
+            c_cnd_ot = find_col(["CND OT", "CNDOT"])
+            c_drv_ot = find_col(["DRV OT", "DRVOT"])
+            if c_cnd_ot is None:
+                for c in op_src.columns:
+                    if str(c).strip().upper().replace(" ", "") == "CNDOT":
+                        c_cnd_ot = c
+                        break
+            if c_drv_ot is None:
+                for c in op_src.columns:
+                    if str(c).strip().upper().replace(" ", "") == "DRVOT":
+                        c_drv_ot = c
+                        break
+            op_src = op_src.copy()
+            op_src["_COND_MUS"] = pd.to_numeric(op_src[c_cond], errors="coerce").fillna(0) if c_cond else 0
+            op_src["_DRI_MUS"] = pd.to_numeric(op_src[c_dri], errors="coerce").fillna(0) if c_dri else 0
+            op_src["_CND_OT"] = op_src[c_cnd_ot].map(_parse_ot_min) if c_cnd_ot else 0
+            op_src["_DRV_OT"] = op_src[c_drv_ot].map(_parse_ot_min) if c_drv_ot else 0
+
+            if len(op_src) == 0:
+                st.warning("No data for Summary of Operation.")
+            else:
+                rows3 = []
+                sno = 1
+                group_cols = ["_DEPOT", "_ROUTE", "_PRODUCT"]
+                for keys, grp in op_src.groupby(group_cols, dropna=False):
+                    dep, route, prod = keys
+                    svcs = sorted({str(x).strip() for x in grp[col_svc].dropna().unique() if str(x).strip() and str(x).lower() != "nan"})
+                    svc_str = ",".join(svcs) + ("," if svcs else "")
+                    rec = {
+                        "SNo": sno,
+                        "DEPOT": dep,
+                        "ROUTE": route,
+                        "PRODUCT": prod,
+                        "SERVICE_NUMBERS": svc_str,
+                    }
+                    for dt in DTYPES3:
+                        sub = grp[grp["_DTYPE"] == dt]
+                        rec[f"SCH_{dt}"] = sub["_SCH"].sum()
+                        rec[f"SER_{dt}"] = sub[col_svc].nunique()
+                        rec[f"KMS_{dt}"] = sub["_KMS"].sum()
+                    rec["SCH_TOTAL"] = sum(rec[f"SCH_{dt}"] for dt in DTYPES3)
+                    rec["SER_TOTAL"] = sum(rec[f"SER_{dt}"] for dt in DTYPES3)
+                    rec["KMS_TOTAL"] = sum(rec[f"KMS_{dt}"] for dt in DTYPES3)
+                    # Crew requirement (musters x 1.3) and Schedule OT
+                    rec["CREW_COND"] = grp["_COND_MUS"].sum() * 1.3
+                    rec["CREW_DRI"] = grp["_DRI_MUS"].sum() * 1.3
+                    rec["OT_COND"] = grp["_CND_OT"].sum()
+                    rec["OT_DRI"] = grp["_DRV_OT"].sum()
+                    rows3.append(rec)
+                    sno += 1
+
+                df3 = pd.DataFrame(rows3)
+
+                # TOTAL row
+                if len(df3) > 0:
+                    tot = {"SNo": "", "DEPOT": "TOTAL", "ROUTE": "", "PRODUCT": "", "SERVICE_NUMBERS": ""}
+                    for dt in DTYPES3:
+                        tot[f"SCH_{dt}"] = df3[f"SCH_{dt}"].sum()
+                        tot[f"SER_{dt}"] = df3[f"SER_{dt}"].sum()
+                        tot[f"KMS_{dt}"] = df3[f"KMS_{dt}"].sum()
+                    tot["SCH_TOTAL"] = df3["SCH_TOTAL"].sum()
+                    tot["SER_TOTAL"] = df3["SER_TOTAL"].sum()
+                    tot["KMS_TOTAL"] = df3["KMS_TOTAL"].sum()
+                    tot["CREW_COND"] = df3["CREW_COND"].sum()
+                    tot["CREW_DRI"] = df3["CREW_DRI"].sum()
+                    tot["OT_COND"] = df3["OT_COND"].sum()
+                    tot["OT_DRI"] = df3["OT_DRI"].sum()
+                    df3 = pd.concat([df3, pd.DataFrame([tot])], ignore_index=True)
+
+                def n3(v):
+                    try:
+                        fv = float(v)
+                        return "" if fv == 0 else (f"{fv:,.0f}" if abs(fv - round(fv)) < 1e-6 else f"{fv:,.1f}")
+                    except Exception:
+                        return ""
+
+                html3 = ['<div class="op-wrap"><table class="op-table"><thead>']
+                html3.append("<tr>")
+                html3.append('<th rowspan="2" style="position:sticky;left:0;top:0;z-index:3;background:#0f172a;color:white;padding:8px 6px;font-size:13px;min-width:40px;">S.No</th>')
+                html3.append('<th rowspan="2" style="position:sticky;left:40px;top:0;z-index:3;background:#0f172a;color:white;padding:8px 6px;font-size:13px;min-width:60px;">DEPOT</th>')
+                html3.append('<th rowspan="2" style="position:sticky;left:100px;top:0;z-index:3;background:#0f172a;color:white;padding:8px 6px;font-size:13px;min-width:80px;">ROUTE NO.</th>')
+                html3.append('<th rowspan="2" style="position:sticky;left:180px;top:0;z-index:3;background:#0f172a;color:white;padding:8px 6px;font-size:13px;min-width:70px;">PRODUCT</th>')
+                html3.append('<th rowspan="2" style="position:sticky;left:250px;top:0;z-index:3;background:#0f172a;color:white;padding:8px 6px;font-size:13px;min-width:190px;width:190px;">SERVICE NUMBERS</th>')
+                html3.append('<th colspan="5" style="position:sticky;top:0;z-index:4;background:#b91c1c;color:white;padding:8px;font-size:13px;">NO OF SCHEDULES</th>')
+                html3.append('<th colspan="5" style="position:sticky;top:0;z-index:4;background:#7c3aed;color:white;padding:8px;font-size:13px;">SERVICES</th>')
+                html3.append('<th colspan="5" style="position:sticky;top:0;z-index:4;background:#15803d;color:white;padding:8px;font-size:13px;">SCHEDULE KILOMETERS</th>')
+                html3.append('<th colspan="2" style="position:sticky;top:0;z-index:4;background:#1d4ed8;color:white;padding:8px;font-size:13px;">CREW REQUIREMENT</th>')
+                html3.append('<th colspan="2" style="position:sticky;top:0;z-index:4;background:#c2410c;color:white;padding:8px;font-size:13px;">SCH OVER TIME</th>')
+                html3.append("</tr><tr>")
+                for bg in ("#fecaca", "#ddd6fe", "#bbf7d0"):
+                    for h in ["DO", "NO", "SC", "SO", "TOTAL"]:
+                        html3.append(f'<th style="position:sticky;top:36px;z-index:4;background:{bg};color:#0f172a;padding:6px;font-size:12px;">{h}</th>')
+                for h in ["COND", "DRI"]:
+                    html3.append(f'<th style="position:sticky;top:36px;z-index:4;background:#dbeafe;color:#0f172a;padding:6px;font-size:12px;">{h}</th>')
+                for h in ["COND", "DRI"]:
+                    html3.append(f'<th style="position:sticky;top:36px;z-index:4;background:#ffedd5;color:#0f172a;padding:6px;font-size:12px;">{h}</th>')
+                html3.append("</tr></thead><tbody>")
+
+                sticky_base = 'position:sticky;z-index:2;padding:6px;font-size:13px;'
+                lefts = [0, 45, 110, 200, 280]  # approx sticky offsets for 5 cols
+                for _, r in df3.iterrows():
+                    is_tot = str(r["DEPOT"]) == "TOTAL"
+                    style = "font-weight:bold;background:#e2efda;" if is_tot else ""
+                    html3.append(f'<tr style="{style}">')
+                    bg0 = "#e2efda" if is_tot else "#e0f2fe"
+                    html3.append(f'<td style="{sticky_base}left:0;background:{bg0};min-width:40px;">{r["SNo"]}</td>')
+                    html3.append(f'<td style="{sticky_base}left:40px;background:{bg0};min-width:60px;">{r["DEPOT"]}</td>')
+                    html3.append(f'<td style="{sticky_base}left:100px;background:{bg0};min-width:80px;">{r["ROUTE"]}</td>')
+                    html3.append(f'<td style="{sticky_base}left:180px;background:{bg0};min-width:70px;">{r["PRODUCT"]}</td>')
+                    html3.append(f'<td style="{sticky_base}left:250px;background:{bg0};min-width:70px;max-width:90px;text-align:left;white-space:normal;font-size:12px;">{r["SERVICE_NUMBERS"]}</td>')
+                    for dt in DTYPES3:
+                        html3.append(f'<td style="padding:6px;font-size:13px;background:#fef2f2;">{n3(r[f"SCH_{dt}"])}</td>')
+                    html3.append(f'<td style="padding:6px;font-size:13px;background:#fee2e2;font-weight:600;">{n3(r["SCH_TOTAL"])}</td>')
+                    for dt in DTYPES3:
+                        html3.append(f'<td style="padding:6px;font-size:13px;background:#f5f3ff;">{n3(r[f"SER_{dt}"])}</td>')
+                    html3.append(f'<td style="padding:6px;font-size:13px;background:#ede9fe;font-weight:600;">{n3(r["SER_TOTAL"])}</td>')
+                    for dt in DTYPES3:
+                        html3.append(f'<td style="padding:6px;font-size:13px;background:#f0fdf4;">{n3(r[f"KMS_{dt}"])}</td>')
+                    html3.append(f'<td style="padding:6px;font-size:13px;background:#dcfce7;font-weight:600;">{n3(r["KMS_TOTAL"])}</td>')
+                    html3.append(f'<td style="padding:6px;font-size:13px;background:#eff6ff;">{n3(r.get("CREW_COND", 0))}</td>')
+                    html3.append(f'<td style="padding:6px;font-size:13px;background:#eff6ff;">{n3(r.get("CREW_DRI", 0))}</td>')
+                    html3.append(f'<td style="padding:6px;font-size:13px;background:#fff7ed;">{_min_to_hhmm(r.get("OT_COND", 0))}</td>')
+                    html3.append(f'<td style="padding:6px;font-size:13px;background:#fff7ed;">{_min_to_hhmm(r.get("OT_DRI", 0))}</td>')
+                    html3.append("</tr>")
+                html3.append("</tbody></table></div>")
+                st.markdown("".join(html3), unsafe_allow_html=True)
+                st.download_button(
+                    "Download Summary of Operation CSV",
+                    df3.to_csv(index=False).encode("utf-8"),
+                    f"Summary_Operation_{f_month}.csv",
+                    "text/csv",
+                    key="dl9c",
+                )
+
+
 
 st.caption("Cascading filters • Weighted EPK • Self-hosted on your PC")
