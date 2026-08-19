@@ -178,7 +178,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 # ========== PATH ==========
-PARQUET_FILE = r"D:\dashboard\ser_wise.parquet"
+PARQUET_FILE = r"ser_wise.parquet"
 
 @st.cache_data(ttl=300)
 def load_data():
