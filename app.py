@@ -590,7 +590,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 # ========== PATH ==========
-PARQUET_FILE = r"D:\dashboard\ser_wise.parquet"
+PARQUET_FILE = r"ser_wise.parquet"
 
 @st.cache_data(ttl=300)
 def load_data():
@@ -772,7 +772,7 @@ except Exception:
 
 
 @st.cache_data(ttl=300)
-def load_orf_map(path: str = r"D:\dashboard\ORF.xlsx"):
+def load_orf_map(path: str = r"ORF.xlsx"):
     """
     ORF.xlsx: DEPOT, PRODUCT, CY ORF, LY ORF
     Depot ORF = row where PRODUCT == TOTAL (e.g. BHEL + TOTAL = 7374.33)
@@ -780,7 +780,7 @@ def load_orf_map(path: str = r"D:\dashboard\ORF.xlsx"):
     """
     p = Path(path)
     if not p.exists():
-        for alt in [Path(r"D:\Dashboard\ORF.xlsx"), Path(r"D:\MONTHLY\ORF.xlsx"), Path("ORF.xlsx")]:
+        for alt in [Path(r"ORF.xlsx"), Path(r"ORF.xlsx"), Path("ORF.xlsx")]:
             if alt.exists():
                 p = alt
                 break
@@ -2108,7 +2108,7 @@ elif section == "Product wise":
     # Schedules from SROS (shared for both tables)
     sch_map = {}
     try:
-        sros_path = Path(r"D:\MONTHLY\SROS.xlsx")
+        sros_path = Path(r"SROS.xlsx")
         if sros_path.exists():
             @st.cache_data(ttl=300)
             def _load_sros_sch_map_pw(month_key: str, depot_key: str = "ALL"):
@@ -3008,9 +3008,9 @@ elif section == "Trends from 2024":
             schkms_by_m = {m: 0.0 for m in months_order}
             _sros_dbg = ""
             try:
-                sros_path = Path(r"D:\MONTHLY\SROS.xlsx")
+                sros_path = Path(r"SROS.xlsx")
                 if not sros_path.exists():
-                    for alt in [Path(r"D:\dashboard\SROS.xlsx"), Path(r"D:\Dashboard\SROS.xlsx"), Path("SROS.xlsx")]:
+                    for alt in [Path(r"SROS.xlsx"), Path(r"SROS.xlsx"), Path("SROS.xlsx")]:
                         if alt.exists():
                             sros_path = alt
                             break
@@ -3560,7 +3560,7 @@ elif section == "Service-wise (SROS)":
     fpd_filter = st.selectbox("FPD EPK Filter", fpd_opts, index=0, key="sw_fpd_filter")
 
     # --- Load SROS services ---
-    sros_path = Path(r"D:\MONTHLY\SROS.xlsx")
+    sros_path = Path(r"SROS.xlsx")
     if not sros_path.exists():
         st.error(f"SROS not found: {sros_path}")
     else:
@@ -3961,7 +3961,7 @@ elif section == "Task":
 elif section == "Schedules":
     st.markdown('<div class="title-bar">Schedules – SCHs / SERVICES / SCH KMS</div>', unsafe_allow_html=True)
 
-    SCHEDULE_EXCEL = r"D:\MONTHLY\SROS.xlsx"
+    SCHEDULE_EXCEL = r"SROS.xlsx"
     SCHEDULE_SHEET = "SMASTER"
 
     @st.cache_data(ttl=300)
