@@ -598,10 +598,10 @@ def load_data():
     path = Path(PARQUET_FILE)
     if not path.exists():
         for alt in [
-            Path(r"D:\Dashboard\ser_wise.parquet"),
-            Path(r"D:\MONTHLY\ser_wise.parquet"),
+            Path(r"ser_wise.parquet"),
+            Path(r"ser_wise.parquet"),
             Path("ser_wise.parquet"),
-            Path(r"/home/workdir/attachments/ser_wise.parquet"),
+            Path(r"ser_wise.parquet"),
         ]:
             if alt.exists():
                 path = alt
