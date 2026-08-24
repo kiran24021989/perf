@@ -590,7 +590,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 # ========== PATH ==========
-PARQUET_FILE = r"D:\dashboard\ser_wise.parquet"
+PARQUET_FILE = r"ser_wise.parquet"
 
 @st.cache_data(ttl=300)
 def load_data():
@@ -598,10 +598,10 @@ def load_data():
     path = Path(PARQUET_FILE)
     if not path.exists():
         for alt in [
-            Path(r"D:\Dashboard\ser_wise.parquet"),
-            Path(r"D:\MONTHLY\ser_wise.parquet"),
+            Path(r"ser_wise.parquet"),
+            Path(r"ser_wise.parquet"),
             Path("ser_wise.parquet"),
-            Path(r"/home/workdir/attachments/ser_wise.parquet"),
+            Path(r"ser_wise.parquet"),
         ]:
             if alt.exists():
                 path = alt
@@ -764,11 +764,11 @@ df = load_data()
 
 
 @st.cache_data(ttl=300)
-def load_fleet_map(path: str = r"D:\Dashboard\FLEET.parquet"):
+def load_fleet_map(path: str = r"FLEET.parquet"):
     """FLEET counts by (DEPOT, PRODUCT, MONTH) and aggregates."""
     p = Path(path)
     if not p.exists():
-        for alt in [Path(r"D:\dashboard\FLEET.parquet"), Path(r"D:\MONTHLY\FLEET.parquet"), Path("FLEET.parquet")]:
+        for alt in [Path(r"FLEET.parquet"), Path(r"D:\MONTHLY\FLEET.parquet"), Path("FLEET.parquet")]:
             if alt.exists():
                 p = alt
                 break
@@ -837,7 +837,7 @@ except Exception:
 
 
 @st.cache_data(ttl=300)
-def load_orf_map(path: str = r"D:\dashboard\ORF.xlsx"):
+def load_orf_map(path: str = r"ORF.xlsx"):
     """
     ORF.xlsx: DEPOT, PRODUCT, CY ORF, LY ORF
     Depot ORF = row where PRODUCT == TOTAL (e.g. BHEL + TOTAL = 7374.33)
@@ -845,7 +845,7 @@ def load_orf_map(path: str = r"D:\dashboard\ORF.xlsx"):
     """
     p = Path(path)
     if not p.exists():
-        for alt in [Path(r"D:\Dashboard\ORF.xlsx"), Path(r"D:\MONTHLY\ORF.xlsx"), Path("ORF.xlsx")]:
+        for alt in [Path(r"ORF.xlsx"), Path(r"D:\MONTHLY\ORF.xlsx"), Path("ORF.xlsx")]:
             if alt.exists():
                 p = alt
                 break
@@ -2167,7 +2167,7 @@ elif section == "ACT VS ACT":
     except Exception as _act_e:
         st.caption(f"ACT VS ACT data rebuild: {_act_e}")
 
-    orf_map, orf_by_prod, orf_err = load_orf_map(r"D:\dashboard\ORF.xlsx")
+    orf_map, orf_by_prod, orf_err = load_orf_map(r"ORF.xlsx")
     if orf_map:
         _bhel = orf_map.get("BHEL", {})
         st.caption(
@@ -2322,7 +2322,7 @@ elif section == "ACT VS ACT":
 
         # ORF / OR (TOT) per depot from PRODUCT=TOTAL
         try:
-            _orf_map, _, _ = load_orf_map(r"D:\dashboard\ORF.xlsx")
+            _orf_map, _, _ = load_orf_map(r"ORF.xlsx")
         except Exception:
             _orf_map = {}
         def _orf_val(dep, which="cy"):
@@ -2507,16 +2507,16 @@ elif section == "ACT VS ACT":
 
 elif section == "Product wise":
     pax_heading = {"FPD": "FPD PASSENGERS", "MHL": "MHL PASSENGERS"}.get(passengers, "TOTAL PASSENGERS")
-    orf_map, orf_by_prod, orf_err = load_orf_map(r"D:\dashboard\ORF.xlsx")
+    orf_map, orf_by_prod, orf_err = load_orf_map(r"ORF.xlsx")
     if orf_err:
         st.warning(f"ORF: {orf_err}")
 
     # Schedules from SMASTER.parquet (shared for both tables)
     sch_map = {}
     try:
-        sros_path = Path(r"D:\Dashboard\SMASTER.parquet")
+        sros_path = Path(r"SMASTER.parquet")
         if not sros_path.exists():
-            for alt in [Path(r"D:\dashboard\SMASTER.parquet"), Path(r"D:\MONTHLY\SMASTER.parquet"), Path("SMASTER.parquet"), Path(r"/home/workdir/attachments/SMASTER.parquet")]:
+            for alt in [Path(r"SMASTER.parquet"), Path(r"D:\MONTHLY\SMASTER.parquet"), Path("SMASTER.parquet"), Path(r"/home/workdir/attachments/SMASTER.parquet")]:
                 if alt.exists():
                     sros_path = alt
                     break
@@ -3255,7 +3255,7 @@ elif section == "ACT vs ACT TRENDS":
                 """Apply same ORF as ACT (depot/product filters) to every month row."""
                 if df_m is None or len(df_m) == 0:
                     return df_m
-                orf_map, orf_by_prod, _err = load_orf_map(r"D:\dashboard\ORF.xlsx")
+                orf_map, orf_by_prod, _err = load_orf_map(r"ORF.xlsx")
                 # Fake a one-row depot frame to reuse add_or_columns_depot logic per EPK
                 # Simpler: get single ORF rates for current depot/product selection
                 depot_orf = orf_map if isinstance(orf_map, dict) else {}
@@ -3555,9 +3555,9 @@ elif section == "Trends from 2024":
             schkms_by_m = {m: 0.0 for m in months_order}
             _sros_dbg = ""
             try:
-                sros_path = Path(r"D:\Dashboard\SMASTER.parquet")
+                sros_path = Path(r"SMASTER.parquet")
                 if not sros_path.exists():
-                    for alt in [Path(r"D:\dashboard\SMASTER.parquet"), Path(r"D:\MONTHLY\SMASTER.parquet"), Path("SMASTER.parquet"), Path(r"/home/workdir/attachments/SMASTER.parquet")]:
+                    for alt in [Path(r"SMASTER.parquet"), Path(r"SMASTER.parquet"), Path("SMASTER.parquet"), Path(r"SMASTER.parquet")]:
                         if alt.exists():
                             sros_path = alt
                             break
@@ -3698,7 +3698,7 @@ elif section == "Trends from 2024":
 
             # ORF for OR rows (same rules as ACT)
             try:
-                orf_map, orf_by_prod, _oe = load_orf_map(r"D:\dashboard\ORF.xlsx")
+                orf_map, orf_by_prod, _oe = load_orf_map(r"ORF.xlsx")
             except Exception:
                 orf_map, orf_by_prod = {}, {}
             depot_orf = orf_map if isinstance(orf_map, dict) else {}
@@ -4129,9 +4129,9 @@ elif section == "Service-wise (SROS)":
     fpd_filter = "ALL"
 
     # --- Load SMASTER services from parquet ---
-    sros_path = Path(r"D:\Dashboard\SMASTER.parquet")
+    sros_path = Path(r"SMASTER.parquet")
     if not sros_path.exists():
-        for alt in [Path(r"D:\dashboard\SMASTER.parquet"), Path(r"D:\MONTHLY\SMASTER.parquet"), Path("SMASTER.parquet"), Path(r"/home/workdir/attachments/SMASTER.parquet")]:
+        for alt in [Path(r"SMASTER.parquet"), Path(r"SMASTER.parquet"), Path("SMASTER.parquet"), Path(r"SMASTER.parquet")]:
             if alt.exists():
                 sros_path = alt
                 break
@@ -4483,7 +4483,7 @@ elif section == "Task":
 
             # ORF / OR columns
             try:
-                orf_map, orf_by_prod, _oe = load_orf_map(r"D:\dashboard\ORF.xlsx")
+                orf_map, orf_by_prod, _oe = load_orf_map(r"ORF.xlsx")
             except Exception:
                 orf_map, orf_by_prod = {}, {}
             def _orf_dep(d):
@@ -4598,14 +4598,14 @@ elif section == "Task":
 elif section == "Schedules":
     st.markdown('<div class="title-bar">Schedules – SCHs / SERVICES / SCH KMS</div>', unsafe_allow_html=True)
 
-    SCHEDULE_PARQUET = r"D:\Dashboard\SMASTER.parquet"
+    SCHEDULE_PARQUET = r"SMASTER.parquet"
 
     @st.cache_data(ttl=300)
     def load_smaster(path):
         p = Path(path)
         if not p.exists():
             for alt in [
-                Path(r"D:\dashboard\SMASTER.parquet"),
+                Path(r"SMASTER.parquet"),
                 Path(r"D:\MONTHLY\SMASTER.parquet"),
                 Path("SMASTER.parquet"),
                 Path(r"/home/workdir/attachments/SMASTER.parquet"),
