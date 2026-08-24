@@ -585,12 +585,139 @@ st.markdown(
     .freeze-table thead tr:nth-child(3) th { position: sticky; top: 58px; z-index: 4; }
     .op-table thead tr:first-child th { position: sticky; top: 0; z-index: 4; }
     .op-table thead tr:nth-child(2) th { position: sticky; top: 34px; z-index: 4; }
+
+    /* Horizontal table scroller */
+    .table-scroll {
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        margin-bottom: 10px;
+    }
+
+    /* ========== MOBILE / PHONE ========== */
+    @media (max-width: 900px) {
+        html, body, [data-testid="stAppViewContainer"] {
+            overflow-x: hidden !important;
+        }
+        .block-container {
+            padding-top: 3.2rem !important;
+            padding-left: 0.55rem !important;
+            padding-right: 0.55rem !important;
+            padding-bottom: 4.5rem !important;
+            max-width: 100% !important;
+        }
+        header[data-testid="stHeader"] {
+            background: #0f172a !important;
+        }
+        div[data-testid="stHorizontalBlock"]:has(div[data-testid="stSelectbox"]) {
+            flex-wrap: wrap !important;
+            padding: 10px 8px !important;
+            gap: 6px !important;
+            margin-top: 4px !important;
+            margin-bottom: 8px !important;
+        }
+        div[data-testid="stHorizontalBlock"]:has(div[data-testid="stSelectbox"]) > div {
+            min-width: calc(50% - 8px) !important;
+            flex: 1 1 calc(50% - 8px) !important;
+        }
+        div[data-testid="stSelectbox"] label p {
+            font-size: 10px !important;
+        }
+        div[data-testid="stSelectbox"] div[data-baseweb="select"] > div {
+            min-height: 40px !important;
+            height: 40px !important;
+            line-height: 40px !important;
+            font-size: 13px !important;
+        }
+        div[data-testid="stTabs"] div[role="tablist"] {
+            flex-wrap: wrap !important;
+            overflow-x: auto !important;
+            gap: 4px !important;
+        }
+        div[data-testid="stTabs"] button {
+            font-size: 11px !important;
+            padding: 8px 10px !important;
+            min-height: 36px !important;
+            white-space: nowrap !important;
+        }
+        h4 { font-size: 14px !important; }
+        .title-bar {
+            font-size: 12px !important;
+            padding: 8px 6px !important;
+            line-height: 1.3 !important;
+            white-space: normal !important;
+        }
+        .excel-table { font-size: 10px !important; }
+        .excel-table th, .excel-table td {
+            padding: 5px 6px !important;
+            font-size: 10px !important;
+        }
+        .freeze-wrap, .op-wrap, .table-scroll {
+            max-height: 70vh;
+            overflow: auto !important;
+            -webkit-overflow-scrolling: touch;
+            width: 100%;
+        }
+        .freeze-table, .op-table { font-size: 10px !important; }
+        div[data-testid="stDownloadButton"] button {
+            width: 100% !important;
+            min-height: 40px !important;
+            font-size: 13px !important;
+        }
+        .js-plotly-plot, .plotly, .plot-container {
+            max-width: 100% !important;
+        }
+        div[data-testid="stRadio"] label,
+        div[data-testid="stCheckbox"] label {
+            font-size: 13px !important;
+        }
+        button[kind="secondary"], button[kind="primary"] {
+            min-height: 40px !important;
+        }
+        .stCaption, [data-testid="stCaptionContainer"] {
+            font-size: 11px !important;
+        }
+    }
+
+    @media (max-width: 540px) {
+        .block-container {
+            padding-left: 0.4rem !important;
+            padding-right: 0.4rem !important;
+            padding-bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px)) !important;
+        }
+        div[data-testid="stHorizontalBlock"]:has(div[data-testid="stSelectbox"]) > div {
+            min-width: 100% !important;
+            flex: 1 1 100% !important;
+        }
+        div[data-testid="stTabs"] button {
+            font-size: 10px !important;
+            padding: 7px 8px !important;
+        }
+        .title-bar { font-size: 11px !important; }
+        .excel-table th, .excel-table td {
+            font-size: 9px !important;
+            padding: 4px 5px !important;
+        }
+    }
+
+    @media (max-width: 900px) and (orientation: landscape) {
+        .freeze-wrap, .op-wrap, .table-scroll { max-height: 55vh; }
+        .block-container { padding-top: 2.4rem !important; }
+        div[data-testid="stHorizontalBlock"]:has(div[data-testid="stSelectbox"]) > div {
+            min-width: calc(33% - 8px) !important;
+            flex: 1 1 calc(33% - 8px) !important;
+        }
+    }
 </style>
 """,
     unsafe_allow_html=True,
 )
+st.markdown(
+    '<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">',
+    unsafe_allow_html=True,
+)
 # ========== PATH ==========
-PARQUET_FILE = r"ser_wise.parquet"
+PARQUET_FILE = r"D:\dashboard\ser_wise.parquet"
 
 @st.cache_data(ttl=300)
 def load_data():
@@ -598,10 +725,10 @@ def load_data():
     path = Path(PARQUET_FILE)
     if not path.exists():
         for alt in [
-            Path(r"ser_wise.parquet"),
-            Path(r"ser_wise.parquet"),
+            Path(r"D:\Dashboard\ser_wise.parquet"),
+            Path(r"D:\MONTHLY\ser_wise.parquet"),
             Path("ser_wise.parquet"),
-            Path(r"ser_wise.parquet"),
+            Path(r"/home/workdir/attachments/ser_wise.parquet"),
         ]:
             if alt.exists():
                 path = alt
@@ -764,21 +891,44 @@ df = load_data()
 
 
 @st.cache_data(ttl=300)
-def load_fleet_map(path: str = r"FLEET.parquet"):
-    """FLEET counts by (DEPOT, PRODUCT, MONTH) and aggregates."""
+def load_fleet_map(path: str = r"D:\Dashboard\FLEET.parquet"):
+    """FLEET counts by (DEPOT, PRODUCT, MONTH).
+
+    FLEET.parquet layout:
+      LAST DAY = last day of the month the fleet belongs to  (e.g. 2026-07-31 → Jul-2026)
+      Date     = first day of the NEXT month                 (e.g. 2026-08-01)
+
+    Month key MUST come from LAST DAY (not Date), otherwise July fleet
+    appears under August and values look wrong.
+
+    Depot alias: TDR → TNDR.  PRODUCT=TOTAL excluded from depot/month totals.
+    """
     p = Path(path)
     if not p.exists():
-        for alt in [Path(r"FLEET.parquet"), Path(r"D:\MONTHLY\FLEET.parquet"), Path("FLEET.parquet")]:
+        for alt in [
+            Path(r"D:\Dashboard\FLEET.parquet"),
+            Path(r"D:\dashboard\FLEET.parquet"),
+            Path(r"D:\MONTHLY\FLEET.parquet"),
+            Path("FLEET.parquet"),
+            Path(r"/home/workdir/attachments/FLEET.parquet"),
+        ]:
             if alt.exists():
                 p = alt
                 break
         else:
             return {}, "FLEET.parquet not found"
     try:
-        fdf = pd.read_parquet(p)
+        try:
+            fdf = pd.read_parquet(p, engine="pyarrow")
+        except Exception:
+            fdf = pd.read_parquet(p)
         fdf.columns = [str(c).strip() for c in fdf.columns]
+
         def fc(cands):
-            n = {str(c).strip().lower().replace(" ", "").replace("_", "").replace("/", ""): c for c in fdf.columns}
+            n = {
+                str(c).strip().lower().replace(" ", "").replace("_", "").replace("/", ""): c
+                for c in fdf.columns
+            }
             for cand in cands:
                 k = cand.lower().replace(" ", "").replace("_", "").replace("/", "")
                 if k in n:
@@ -789,25 +939,47 @@ def load_fleet_map(path: str = r"FLEET.parquet"):
                     if cand.lower().replace(" ", "").replace("_", "") in cl:
                         return c
             return None
-        c_dep, c_prod = fc(["DEPOT"]), fc(["PRODUCT"])
-        c_mon, c_year = fc(["MONTH", "Month", "Month_Name", "Month Name"]), fc(["YEAR", "Year"])
-        c_fleet = fc(["FLEET", "Fleet", "FLEET_COUNT", "Buses", "BUSES", "COUNT", "NO_OF_FLEET"])
+
+        DEPOT_ALIAS = {"TDR": "TNDR", "TANDUR": "TNDR"}
+
+        c_dep = fc(["DEPOT"])
+        c_prod = fc(["PRODUCT"])
+        c_mon = fc(["MONTH", "Month", "Month_Name", "Month Name"])
+        c_year = fc(["YEAR", "Year"])
+        c_date = fc(["Date", "DATE"])
+        c_last = fc(["LAST DAY", "LASTDAY", "LAST_DAY"])
+        c_fleet = fc(["FLEET", "Fleet", "FLEET_COUNT", "Buses", "BUSES", "NO_OF_FLEET"])
         if c_fleet is None:
             for c in fdf.columns:
-                if pd.api.types.is_numeric_dtype(fdf[c]) and c not in (c_dep, c_year):
-                    c_fleet = c
-                    break
+                if not pd.api.types.is_numeric_dtype(fdf[c]):
+                    continue
+                if c in (c_dep, c_year, c_date, c_last):
+                    continue
+                if any(x in str(c).lower() for x in ("sch", "kms", "km")):
+                    continue
+                c_fleet = c
+                break
         if c_fleet is None:
-            return {}, "No fleet column found"
-        out = {"by_dpm": {}, "by_dm": {}, "by_m": {}, "by_d": {}}
+            return {}, f"No fleet column found. Columns: {list(fdf.columns)}"
+
+        out = {
+            "by_dpm": {}, "by_dm": {}, "by_m": {}, "by_d": {},
+            "_source": str(p), "_rows": len(fdf),
+        }
+
         for _, row in fdf.iterrows():
             try:
                 val = float(pd.to_numeric(row[c_fleet], errors="coerce") or 0)
             except Exception:
                 val = 0.0
+
             dep = str(row[c_dep]).strip().upper() if c_dep else "ALL"
+            dep = DEPOT_ALIAS.get(dep, dep)
             prod = str(row[c_prod]).strip().upper() if c_prod else "ALL"
+
+            # ---- month key (ONE correct key per row) ----
             mon_key = "ALL"
+
             if c_mon is not None:
                 mraw = str(row[c_mon]).strip()
                 if c_year is not None and str(row.get(c_year, "")).strip() not in ("", "nan", "None"):
@@ -815,13 +987,33 @@ def load_fleet_map(path: str = r"FLEET.parquet"):
                         yr = int(float(row[c_year]))
                         mon_key = f"{mraw[:3].title()}-{yr}"
                     except Exception:
-                        mon_key = mraw
-                else:
+                        mon_key = mraw if mraw else "ALL"
+                elif mraw and mraw.lower() not in ("nan", "none", ""):
                     mon_key = mraw
-            out["by_dpm"][(dep, prod, mon_key)] = out["by_dpm"].get((dep, prod, mon_key), 0) + val
-            out["by_dm"][(dep, mon_key)] = out["by_dm"].get((dep, mon_key), 0) + val
-            out["by_m"][mon_key] = out["by_m"].get(mon_key, 0) + val
+
+            elif c_last is not None:
+                # Preferred: LAST DAY = actual month of fleet (Jul-31 → Jul-2026)
+                dt = pd.to_datetime(row[c_last], errors="coerce")
+                if pd.notna(dt):
+                    mon_key = dt.strftime("%b-%Y")
+
+            elif c_date is not None:
+                # Fallback: Date is 1st of NEXT month → subtract 1 month
+                dt = pd.to_datetime(row[c_date], errors="coerce")
+                if pd.notna(dt):
+                    dt_prev = dt - pd.DateOffset(months=1)
+                    mon_key = dt_prev.strftime("%b-%Y")
+
+            # by_dpm always (includes PRODUCT=TOTAL for explicit TOTAL lookup)
+            out["by_dpm"][(dep, prod, mon_key)] = (
+                out["by_dpm"].get((dep, prod, mon_key), 0) + val
+            )
+            # depot/month totals: skip PRODUCT=TOTAL to avoid double-count
+            if prod not in ("TOTAL",):
+                out["by_dm"][(dep, mon_key)] = out["by_dm"].get((dep, mon_key), 0) + val
+                out["by_m"][mon_key] = out["by_m"].get(mon_key, 0) + val
             out["by_d"][dep] = out["by_d"].get(dep, 0) + val
+
         return out, None
     except Exception as e:
         return {}, str(e)
@@ -837,7 +1029,7 @@ except Exception:
 
 
 @st.cache_data(ttl=300)
-def load_orf_map(path: str = r"ORF.xlsx"):
+def load_orf_map(path: str = r"D:\dashboard\ORF.xlsx"):
     """
     ORF.xlsx: DEPOT, PRODUCT, CY ORF, LY ORF
     Depot ORF = row where PRODUCT == TOTAL (e.g. BHEL + TOTAL = 7374.33)
@@ -845,7 +1037,7 @@ def load_orf_map(path: str = r"ORF.xlsx"):
     """
     p = Path(path)
     if not p.exists():
-        for alt in [Path(r"ORF.xlsx"), Path(r"D:\MONTHLY\ORF.xlsx"), Path("ORF.xlsx")]:
+        for alt in [Path(r"D:\Dashboard\ORF.xlsx"), Path(r"D:\MONTHLY\ORF.xlsx"), Path("ORF.xlsx")]:
             if alt.exists():
                 p = alt
                 break
@@ -2167,7 +2359,7 @@ elif section == "ACT VS ACT":
     except Exception as _act_e:
         st.caption(f"ACT VS ACT data rebuild: {_act_e}")
 
-    orf_map, orf_by_prod, orf_err = load_orf_map(r"ORF.xlsx")
+    orf_map, orf_by_prod, orf_err = load_orf_map(r"D:\dashboard\ORF.xlsx")
     if orf_map:
         _bhel = orf_map.get("BHEL", {})
         st.caption(
@@ -2322,7 +2514,7 @@ elif section == "ACT VS ACT":
 
         # ORF / OR (TOT) per depot from PRODUCT=TOTAL
         try:
-            _orf_map, _, _ = load_orf_map(r"ORF.xlsx")
+            _orf_map, _, _ = load_orf_map(r"D:\dashboard\ORF.xlsx")
         except Exception:
             _orf_map = {}
         def _orf_val(dep, which="cy"):
@@ -2507,16 +2699,16 @@ elif section == "ACT VS ACT":
 
 elif section == "Product wise":
     pax_heading = {"FPD": "FPD PASSENGERS", "MHL": "MHL PASSENGERS"}.get(passengers, "TOTAL PASSENGERS")
-    orf_map, orf_by_prod, orf_err = load_orf_map(r"ORF.xlsx")
+    orf_map, orf_by_prod, orf_err = load_orf_map(r"D:\dashboard\ORF.xlsx")
     if orf_err:
         st.warning(f"ORF: {orf_err}")
 
     # Schedules from SMASTER.parquet (shared for both tables)
     sch_map = {}
     try:
-        sros_path = Path(r"SMASTER.parquet")
+        sros_path = Path(r"D:\Dashboard\SMASTER.parquet")
         if not sros_path.exists():
-            for alt in [Path(r"SMASTER.parquet"), Path(r"D:\MONTHLY\SMASTER.parquet"), Path("SMASTER.parquet"), Path(r"/home/workdir/attachments/SMASTER.parquet")]:
+            for alt in [Path(r"D:\dashboard\SMASTER.parquet"), Path(r"D:\MONTHLY\SMASTER.parquet"), Path("SMASTER.parquet"), Path(r"/home/workdir/attachments/SMASTER.parquet")]:
                 if alt.exists():
                     sros_path = alt
                     break
@@ -3255,7 +3447,7 @@ elif section == "ACT vs ACT TRENDS":
                 """Apply same ORF as ACT (depot/product filters) to every month row."""
                 if df_m is None or len(df_m) == 0:
                     return df_m
-                orf_map, orf_by_prod, _err = load_orf_map(r"ORF.xlsx")
+                orf_map, orf_by_prod, _err = load_orf_map(r"D:\dashboard\ORF.xlsx")
                 # Fake a one-row depot frame to reuse add_or_columns_depot logic per EPK
                 # Simpler: get single ORF rates for current depot/product selection
                 depot_orf = orf_map if isinstance(orf_map, dict) else {}
@@ -3555,9 +3747,9 @@ elif section == "Trends from 2024":
             schkms_by_m = {m: 0.0 for m in months_order}
             _sros_dbg = ""
             try:
-                sros_path = Path(r"SMASTER.parquet")
+                sros_path = Path(r"D:\Dashboard\SMASTER.parquet")
                 if not sros_path.exists():
-                    for alt in [Path(r"SMASTER.parquet"), Path(r"SMASTER.parquet"), Path("SMASTER.parquet"), Path(r"SMASTER.parquet")]:
+                    for alt in [Path(r"D:\dashboard\SMASTER.parquet"), Path(r"D:\MONTHLY\SMASTER.parquet"), Path("SMASTER.parquet"), Path(r"/home/workdir/attachments/SMASTER.parquet")]:
                         if alt.exists():
                             sros_path = alt
                             break
@@ -3698,7 +3890,7 @@ elif section == "Trends from 2024":
 
             # ORF for OR rows (same rules as ACT)
             try:
-                orf_map, orf_by_prod, _oe = load_orf_map(r"ORF.xlsx")
+                orf_map, orf_by_prod, _oe = load_orf_map(r"D:\dashboard\ORF.xlsx")
             except Exception:
                 orf_map, orf_by_prod = {}, {}
             depot_orf = orf_map if isinstance(orf_map, dict) else {}
@@ -4129,9 +4321,9 @@ elif section == "Service-wise (SROS)":
     fpd_filter = "ALL"
 
     # --- Load SMASTER services from parquet ---
-    sros_path = Path(r"SMASTER.parquet")
+    sros_path = Path(r"D:\Dashboard\SMASTER.parquet")
     if not sros_path.exists():
-        for alt in [Path(r"SMASTER.parquet"), Path(r"SMASTER.parquet"), Path("SMASTER.parquet"), Path(r"SMASTER.parquet")]:
+        for alt in [Path(r"D:\dashboard\SMASTER.parquet"), Path(r"D:\MONTHLY\SMASTER.parquet"), Path("SMASTER.parquet"), Path(r"/home/workdir/attachments/SMASTER.parquet")]:
             if alt.exists():
                 sros_path = alt
                 break
@@ -4483,7 +4675,7 @@ elif section == "Task":
 
             # ORF / OR columns
             try:
-                orf_map, orf_by_prod, _oe = load_orf_map(r"ORF.xlsx")
+                orf_map, orf_by_prod, _oe = load_orf_map(r"D:\dashboard\ORF.xlsx")
             except Exception:
                 orf_map, orf_by_prod = {}, {}
             def _orf_dep(d):
@@ -4598,14 +4790,14 @@ elif section == "Task":
 elif section == "Schedules":
     st.markdown('<div class="title-bar">Schedules – SCHs / SERVICES / SCH KMS</div>', unsafe_allow_html=True)
 
-    SCHEDULE_PARQUET = r"SMASTER.parquet"
+    SCHEDULE_PARQUET = r"D:\Dashboard\SMASTER.parquet"
 
     @st.cache_data(ttl=300)
     def load_smaster(path):
         p = Path(path)
         if not p.exists():
             for alt in [
-                Path(r"SMASTER.parquet"),
+                Path(r"D:\dashboard\SMASTER.parquet"),
                 Path(r"D:\MONTHLY\SMASTER.parquet"),
                 Path("SMASTER.parquet"),
                 Path(r"/home/workdir/attachments/SMASTER.parquet"),
