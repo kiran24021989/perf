@@ -420,7 +420,7 @@ st.set_page_config(
     page_title="Historical Analysis Dashboard",
     page_icon="📊",
     layout="wide",
-    initial_sidebar_state="collapsed",
+    initial_sidebar_state="expanded",
 )
 
 # ========== CUSTOM CSS ==========
@@ -586,156 +586,151 @@ st.markdown(
     .op-table thead tr:first-child th { position: sticky; top: 0; z-index: 4; }
     .op-table thead tr:nth-child(2) th { position: sticky; top: 34px; z-index: 4; }
 
-    /* Horizontal table scroller */
-    .table-scroll {
+    /* Scrollable tables – keep scrollbar clickable (avoid sticky overlay) */
+    .table-scroll-fixable {
+        max-height: 70vh;
+        overflow: scroll !important;
+        border: 1px solid #cbd5e1;
         width: 100%;
-        overflow-x: auto;
+        position: relative;
+        z-index: 0;
+        isolation: isolate;
         -webkit-overflow-scrolling: touch;
+        pointer-events: auto !important;
         margin-bottom: 10px;
+        background: #fff;
+    }
+    .table-scroll-fixable table {
+        position: relative;
+        z-index: 0;
     }
 
-    /* ========== MOBILE / PHONE ========== */
-    @media (max-width: 900px) {
-        html, body, [data-testid="stAppViewContainer"] {
-            overflow-x: hidden !important;
-        }
-        .block-container {
-            padding-top: 3.2rem !important;
-            padding-left: 0.55rem !important;
-            padding-right: 0.55rem !important;
-            padding-bottom: 4.5rem !important;
-            max-width: 100% !important;
-        }
-        header[data-testid="stHeader"] {
-            background: #0f172a !important;
-        }
-        div[data-testid="stHorizontalBlock"]:has(div[data-testid="stSelectbox"]) {
-            flex-wrap: wrap !important;
-            padding: 10px 8px !important;
-            gap: 6px !important;
-            margin-top: 4px !important;
-            margin-bottom: 8px !important;
-        }
-        div[data-testid="stHorizontalBlock"]:has(div[data-testid="stSelectbox"]) > div {
-            min-width: calc(50% - 8px) !important;
-            flex: 1 1 calc(50% - 8px) !important;
-        }
-        div[data-testid="stSelectbox"] label p {
-            font-size: 10px !important;
-        }
-        div[data-testid="stSelectbox"] div[data-baseweb="select"] > div {
-            min-height: 40px !important;
-            height: 40px !important;
-            line-height: 40px !important;
-            font-size: 13px !important;
-        }
-        div[data-testid="stTabs"] div[role="tablist"] {
-            flex-wrap: wrap !important;
-            overflow-x: auto !important;
-            gap: 4px !important;
-        }
-        div[data-testid="stTabs"] button {
-            font-size: 11px !important;
-            padding: 8px 10px !important;
-            min-height: 36px !important;
-            white-space: nowrap !important;
-        }
-        h4 { font-size: 14px !important; }
-        .title-bar {
-            font-size: 12px !important;
-            padding: 8px 6px !important;
-            line-height: 1.3 !important;
-            white-space: normal !important;
-        }
-        .excel-table { font-size: 10px !important; }
-        .excel-table th, .excel-table td {
-            padding: 5px 6px !important;
-            font-size: 10px !important;
-        }
-        .freeze-wrap, .op-wrap, .table-scroll {
-            max-height: 70vh;
-            overflow: auto !important;
-            -webkit-overflow-scrolling: touch;
-            width: 100%;
-        }
-        .freeze-table, .op-table { font-size: 10px !important; }
-        div[data-testid="stDownloadButton"] button {
-            width: 100% !important;
-            min-height: 40px !important;
-            font-size: 13px !important;
-        }
-        .js-plotly-plot, .plotly, .plot-container {
-            max-width: 100% !important;
-        }
-        div[data-testid="stRadio"] label,
-        div[data-testid="stCheckbox"] label {
-            font-size: 13px !important;
-        }
-        button[kind="secondary"], button[kind="primary"] {
-            min-height: 40px !important;
-        }
-        .stCaption, [data-testid="stCaptionContainer"] {
-            font-size: 11px !important;
-        }
+    /* ---- Sidebar navigation (open / close via Streamlit << control) ---- */
+    section[data-testid="stSidebar"] {
+        background: linear-gradient(180deg, #f8fafc 0%, #eef2ff 45%, #f1f5f9 100%) !important;
+        border-right: 1px solid #c7d2fe !important;
     }
-
-    @media (max-width: 540px) {
-        .block-container {
-            padding-left: 0.4rem !important;
-            padding-right: 0.4rem !important;
-            padding-bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px)) !important;
-        }
-        div[data-testid="stHorizontalBlock"]:has(div[data-testid="stSelectbox"]) > div {
-            min-width: 100% !important;
-            flex: 1 1 100% !important;
-        }
-        div[data-testid="stTabs"] button {
-            font-size: 10px !important;
-            padding: 7px 8px !important;
-        }
-        .title-bar { font-size: 11px !important; }
-        .excel-table th, .excel-table td {
-            font-size: 9px !important;
-            padding: 4px 5px !important;
-        }
+    section[data-testid="stSidebar"] > div {
+        padding-top: 0.6rem !important;
     }
-
-    @media (max-width: 900px) and (orientation: landscape) {
-        .freeze-wrap, .op-wrap, .table-scroll { max-height: 55vh; }
-        .block-container { padding-top: 2.4rem !important; }
-        div[data-testid="stHorizontalBlock"]:has(div[data-testid="stSelectbox"]) > div {
-            min-width: calc(33% - 8px) !important;
-            flex: 1 1 calc(33% - 8px) !important;
-        }
+    .nav-brand {
+        background: linear-gradient(135deg, #1e3a8a 0%, #7c3aed 55%, #db2777 100%);
+        color: #fff;
+        font-weight: 800;
+        font-size: 13px;
+        letter-spacing: 0.6px;
+        text-align: center;
+        padding: 12px 10px;
+        border-radius: 10px;
+        margin: 4px 4px 14px 4px;
+        box-shadow: 0 4px 12px rgba(30, 58, 138, 0.25);
+        text-transform: uppercase;
+    }
+    .nav-brand small {
+        display: block;
+        font-size: 10px;
+        font-weight: 600;
+        opacity: 0.9;
+        margin-top: 4px;
+        letter-spacing: 0.3px;
+        text-transform: none;
+    }
+    /* Radio list as menu rows */
+    section[data-testid="stSidebar"] div[role="radiogroup"] {
+        gap: 2px !important;
+    }
+    section[data-testid="stSidebar"] div[role="radiogroup"] label {
+        background: transparent !important;
+        border-radius: 8px !important;
+        padding: 8px 12px !important;
+        margin: 1px 4px !important;
+        border: 1px solid transparent !important;
+        transition: all 0.15s ease;
+    }
+    section[data-testid="stSidebar"] div[role="radiogroup"] label:hover {
+        background: #e0e7ff !important;
+        border-color: #c7d2fe !important;
+    }
+    section[data-testid="stSidebar"] div[role="radiogroup"] label[data-checked="true"],
+    section[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {
+        background: linear-gradient(90deg, #e0e7ff 0%, #ddd6fe 100%) !important;
+        border-color: #a5b4fc !important;
+        box-shadow: inset 3px 0 0 #4f46e5;
+    }
+    section[data-testid="stSidebar"] div[role="radiogroup"] label p {
+        font-family: 'Segoe UI', Roboto, sans-serif !important;
+        font-size: 13px !important;
+        font-weight: 600 !important;
+        color: #334155 !important;
+    }
+    section[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) p {
+        color: #1e3a8a !important;
+        font-weight: 700 !important;
+    }
+    /* Hide radio circles for cleaner menu look */
+    section[data-testid="stSidebar"] div[role="radiogroup"] label > div:first-child {
+        display: none !important;
+    }
+    section[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p {
+        color: #64748b;
     }
 </style>
 """,
     unsafe_allow_html=True,
 )
-st.markdown(
-    '<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">',
-    unsafe_allow_html=True,
-)
 # ========== PATH ==========
-PARQUET_FILE = r"ser_wise.parquet"
+PARQUET_FILE = r"D:\dashboard\ser_wise.parquet"
+SERVICE_MONTHLY_FILE = r"D:\Dashboard\ser_monthly.parquet"
+SERVICE_MONTHLY_TABS = {
+    "ACT VS ACT",
+    "ACT vs ACT TRENDS",
+    "Trends from 2024",
+}
+
+
+def _resolve_parquet(primary, extra_alts=None):
+    path = Path(primary)
+    if path.exists():
+        return path
+    name = Path(primary).name
+    candidates = list(extra_alts or []) + [
+        Path(name),
+        Path(r"D:\Dashboard") / name,
+        Path(r"D:\dashboard") / name,
+        Path(r"D:\MONTHLY") / name,
+        Path(r"/home/workdir/attachments") / name,
+    ]
+    for alt in candidates:
+        p = Path(alt)
+        if p.exists():
+            return p
+    return None
+
 
 @st.cache_data(ttl=300)
-def load_data():
-    """Load ser_wise.parquet and normalize column names to app-standard names."""
-    path = Path(PARQUET_FILE)
-    if not path.exists():
-        for alt in [
-            Path(r"ser_wise.parquet"),
-            Path(r"ser_wise.parquet"),
-            Path("ser_wise.parquet"),
-            Path(r"/home/workdir/attachments/ser_wise.parquet"),
-        ]:
-            if alt.exists():
-                path = alt
-                break
-        else:
-            st.error(f"File not found: {PARQUET_FILE}")
+def load_data(parquet_path=None, required=True):
+    """Load performance parquet; normalize columns to app-standard names.
+
+    parquet_path: optional override (ser_wise.parquet).
+    required: if False, return empty DataFrame when missing (no st.stop).
+    """
+    if parquet_path:
+        path = _resolve_parquet(parquet_path)
+    else:
+        path = _resolve_parquet(
+            PARQUET_FILE,
+            [
+                Path(r"D:\Dashboard\ser_wise.parquet"),
+                Path(r"D:\MONTHLY\ser_wise.parquet"),
+                Path("ser_wise.parquet"),
+                Path(r"/home/workdir/attachments/ser_wise.parquet"),
+            ],
+        )
+    if path is None:
+        if required:
+            st.error(f"File not found: {parquet_path or PARQUET_FILE}")
             st.stop()
+        return pd.DataFrame()
     df = pd.read_parquet(path)
 
     # Map actual parquet columns -> names expected by the dashboard
@@ -849,19 +844,17 @@ def load_data():
     ]
     missing = [c for c in required if c not in df.columns]
     if missing:
-        # soft-create empty columns so app does not crash
         for c in missing:
             df[c] = np.nan if c not in ("Month_Name", "DEPOT", "PRODUCT", "ROUTEE", "SER_NO", "Weekday", "MHL_NMHL", "RTC_HIRE") else ""
-        # show once
-        try:
-            st.warning(f"Parquet missing columns (filled blank): {missing}")
-        except Exception:
-            pass
 
-    if "Date" in df.columns and not pd.api.types.is_datetime64_any_dtype(df["Date"]):
-        df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
+    # Month_Name aliases (ser_monthly often uses "Month Name")
+    if "Month_Name" not in df.columns or df["Month_Name"].astype(str).str.strip().isin(["", "nan", "None"]).all():
+        for alt in ["Month Name", "MONTH_NAME", "Month", "MONTH"]:
+            if alt in df.columns:
+                df["Month_Name"] = df[alt].astype(str).str.strip()
+                break
 
-    # numeric coercions (only if Series, not duplicate DataFrame)
+    # numeric coercions
     for c in ["Optd_KMs", "GE_TOT", "GE_FPD", "GE_MHL", "NE_TOT", "NE_FPD", "NE_MHL",
               "PSNGR_TOT", "PSNGR_FPD", "PSNGR_MHL"]:
         if c in df.columns:
@@ -870,7 +863,6 @@ def load_data():
                 s = s.iloc[:, 0]
             df[c] = pd.to_numeric(s, errors="coerce").fillna(0)
 
-    # string clean
     for c in ["DEPOT", "PRODUCT", "ROUTEE", "Month_Name", "MHL_NMHL", "RTC_HIRE", "SER_NO", "Weekday"]:
         if c in df.columns:
             s = df[c]
@@ -878,20 +870,45 @@ def load_data():
                 s = s.iloc[:, 0]
             df[c] = s.astype(str).str.strip().replace({"nan": "", "None": "", "<NA>": ""})
 
-    # Date clean
+    # Date: parse existing, or synthesize from Month_Name (ser_monthly has no Date)
     if "Date" in df.columns:
         s = df["Date"]
         if isinstance(s, pd.DataFrame):
             s = s.iloc[:, 0]
         df["Date"] = pd.to_datetime(s, errors="coerce")
+    else:
+        df["Date"] = pd.NaT
+
+    if df["Date"].isna().all() and "Month_Name" in df.columns:
+        def _month_to_date(m):
+            m = str(m).strip()
+            if not m or m.lower() in ("nan", "none", ""):
+                return pd.NaT
+            for fmt in ("%b-%Y", "%b-%y", "%B-%Y", "%Y-%m"):
+                try:
+                    return pd.to_datetime(m, format=fmt)
+                except Exception:
+                    continue
+            return pd.to_datetime(m, errors="coerce")
+        df["Date"] = df["Month_Name"].map(_month_to_date)
+
+    if "Weekday" not in df.columns or df["Weekday"].astype(str).str.strip().isin(["", "nan", "None"]).all():
+        try:
+            df["Weekday"] = pd.to_datetime(df["Date"], errors="coerce").dt.day_name().fillna("")
+        except Exception:
+            if "Weekday" not in df.columns:
+                df["Weekday"] = ""
 
     return df
 
-df = load_data()
+df_ser_wise = load_data()
+df_service_monthly = load_data(SERVICE_MONTHLY_FILE, required=False)
+# Default working frame; switched per tab after section is chosen
+df = df_ser_wise
 
 
 @st.cache_data(ttl=300)
-def load_fleet_map(path: str = r"FLEET.parquet"):
+def load_fleet_map(path: str = r"D:\Dashboard\FLEET.parquet"):
     """FLEET counts by (DEPOT, PRODUCT, MONTH).
 
     FLEET.parquet layout:
@@ -906,9 +923,9 @@ def load_fleet_map(path: str = r"FLEET.parquet"):
     p = Path(path)
     if not p.exists():
         for alt in [
-            Path(r"FLEET.parquet"),
-            Path(r"FLEET.parquet"),
-            Path(r"FLEET.parquet"),
+            Path(r"D:\Dashboard\FLEET.parquet"),
+            Path(r"D:\dashboard\FLEET.parquet"),
+            Path(r"D:\MONTHLY\FLEET.parquet"),
             Path("FLEET.parquet"),
             Path(r"/home/workdir/attachments/FLEET.parquet"),
         ]:
@@ -1029,7 +1046,7 @@ except Exception:
 
 
 @st.cache_data(ttl=300)
-def load_orf_map(path: str = r"ORF.xlsx"):
+def load_orf_map(path: str = r"D:\dashboard\ORF.xlsx"):
     """
     ORF.xlsx: DEPOT, PRODUCT, CY ORF, LY ORF
     Depot ORF = row where PRODUCT == TOTAL (e.g. BHEL + TOTAL = 7374.33)
@@ -1037,7 +1054,7 @@ def load_orf_map(path: str = r"ORF.xlsx"):
     """
     p = Path(path)
     if not p.exists():
-        for alt in [Path(r"ORF.xlsx"), Path(r"ORF.xlsx"), Path("ORF.xlsx")]:
+        for alt in [Path(r"D:\Dashboard\ORF.xlsx"), Path(r"D:\MONTHLY\ORF.xlsx"), Path("ORF.xlsx")]:
             if alt.exists():
                 p = alt
                 break
@@ -1113,6 +1130,132 @@ def load_orf_map(path: str = r"ORF.xlsx"):
         return depot_orf, by_prod, None
     except Exception as e:
         return {}, {}, str(e)
+
+
+
+def _resolve_smaster_path(primary=r"D:\Dashboard\SMASTER.parquet"):
+    """Resolve SMASTER.parquet from known locations."""
+    p = Path(primary)
+    if p.exists():
+        return p
+    for alt in [
+        Path(r"D:\Dashboard\SMASTER.parquet"),
+        Path(r"D:\dashboard\SMASTER.parquet"),
+        Path(r"D:\MONTHLY\SMASTER.parquet"),
+        Path("SMASTER.parquet"),
+        Path(r"/home/workdir/attachments/SMASTER.parquet"),
+    ]:
+        if alt.exists():
+            return alt
+    return p
+
+
+@st.cache_data(ttl=300)
+def load_smaster(path):
+    """Load SMASTER schedule master parquet."""
+    p = Path(path)
+    if not p.exists():
+        resolved = _resolve_smaster_path(path)
+        if resolved.exists():
+            p = resolved
+        else:
+            return None, f"File not found: {path}"
+    try:
+        sdf = pd.read_parquet(p)
+        sdf.columns = [str(c).strip() for c in sdf.columns]
+        if "DATE" in sdf.columns and not pd.api.types.is_datetime64_any_dtype(sdf["DATE"]):
+            sdf["DATE"] = pd.to_datetime(sdf["DATE"], errors="coerce")
+        return sdf.dropna(axis=1, how="all"), None
+    except Exception as e:
+        return None, str(e)
+
+
+@st.cache_data(ttl=300)
+def _load_sros_sch_map_pw(smaster_path: str, month_key: str, depot_key: str = "ALL"):
+    """Product-wise schedule counts from SMASTER for a month (CY + LY pair)."""
+    s = pd.read_parquet(smaster_path)
+    s.columns = [str(c).strip() for c in s.columns]
+
+    def fc(cands):
+        n = {str(c).strip().lower().replace(" ", "").replace("_", ""): c for c in s.columns}
+        for cand in cands:
+            k = cand.lower().replace(" ", "").replace("_", "")
+            if k in n:
+                return n[k]
+        return None
+
+    cp, cs, cm, cyear, cd = fc(["PRODUCT"]), fc(["NoOfSchedules", "NoOfSchedule"]), fc(["MONTH"]), fc(["YEAR"]), fc(["DEPOT"])
+    if not cp or not cs:
+        return {}
+    s = s.copy()
+    s["_P"] = s[cp].astype(str).str.strip()
+    s["_SCH"] = pd.to_numeric(s[cs], errors="coerce").fillna(0)
+    if cd and depot_key and str(depot_key).upper() not in ("ALL", "REGION", "NONE", ""):
+        s = s[s[cd].astype(str).str.strip().str.upper() == str(depot_key).strip().upper()]
+    if cm and cyear:
+        def mk(row):
+            try:
+                return f"{str(row[cm]).strip()[:3].title()}-{int(float(row[cyear]))}"
+            except Exception:
+                return ""
+        s["_MK"] = s.apply(mk, axis=1)
+    else:
+        s["_MK"] = "ALL"
+    cy_g = s[s["_MK"] == month_key].groupby("_P")["_SCH"].sum() if month_key else s.groupby("_P")["_SCH"].sum()
+    ly_key = ""
+    try:
+        parts = str(month_key).split("-")
+        ly_key = f"{parts[0]}-{int(parts[1]) - 1}"
+    except Exception:
+        pass
+    ly_g = s[s["_MK"] == ly_key].groupby("_P")["_SCH"].sum() if ly_key else pd.Series(dtype=float)
+    out = {}
+    for p in set(list(cy_g.index) + list(ly_g.index)):
+        out[str(p).strip()] = (float(cy_g.get(p, 0)), float(ly_g.get(p, 0)))
+    return out
+
+
+@st.cache_data(ttl=300)
+def _load_sros_services_full(smaster_path: str, depot_key: str, month_key: str):
+    """Service-level rows from SMASTER for Service-wise (SROS) tab."""
+    s = pd.read_parquet(smaster_path)
+    s.columns = [str(c).strip() for c in s.columns]
+
+    def fc(cands):
+        n = {str(c).strip().lower().replace(" ", "").replace("_", ""): c for c in s.columns}
+        for cand in cands:
+            k = cand.lower().replace(" ", "").replace("_", "")
+            if k in n:
+                return n[k]
+        return None
+
+    c_svc = fc(["ServiceNo", "SER_NO", "SERVICE_NO"])
+    c_dep = fc(["DEPOT"])
+    c_prod = fc(["PRODUCT"])
+    c_route = fc(["ROUTEE", "ROUTE", "RouteName", "Route"])
+    c_sch = fc(["NoOfSchedules", "NoOfSchedule"])
+    c_mon = fc(["MONTH"])
+    c_year = fc(["YEAR"])
+    if not c_svc:
+        return pd.DataFrame()
+    s = s.copy()
+    s["_SVC"] = s[c_svc].map(lambda v: str(int(float(v))) if str(v).replace(".", "", 1).isdigit() else str(v).strip())
+    s["_DEP"] = s[c_dep].astype(str).str.strip().str.upper() if c_dep else ""
+    s["_PROD"] = s[c_prod].astype(str).str.strip() if c_prod else ""
+    s["_ROUTE"] = s[c_route].astype(str).str.strip() if c_route else ""
+    s["_SCH"] = pd.to_numeric(s[c_sch], errors="coerce").fillna(0) if c_sch else 0
+    if c_mon and c_year:
+        def mk(row):
+            try:
+                return f"{str(row[c_mon]).strip()[:3].title()}-{int(float(row[c_year]))}"
+            except Exception:
+                return ""
+        s["_MK"] = s.apply(mk, axis=1)
+    else:
+        s["_MK"] = "ALL"
+    if depot_key and str(depot_key).upper() not in ("ALL", "REGION", ""):
+        s = s[s["_DEP"] == str(depot_key).strip().upper()]
+    return s
 
 
 def add_or_columns_depot(merged, data_cy, data_ly, earn_tot_c, earn_fpd_c, earn_mhl_c, orf_map,
@@ -1229,24 +1372,130 @@ def add_or_columns_depot(merged, data_cy, data_ly, earn_tot_c, earn_fpd_c, earn_
     return merged
 
 
+def add_avu_epb_columns(merged, data_cy, data_ly, fleet_map, month_key, group_col="DEPOT", product_filter="ALL"):
+    """AVU = kms / (fleet * days); EPB = earnings / (fleet * days).
+    kms/earn in merged are in lakhs → convert back to absolute units.
+    Fleet from FLEET.parquet (by_dm / by_m). Days = unique dates in side data.
+    """
+    merged = merged.copy()
+    fmap = fleet_map if isinstance(fleet_map, dict) else {}
+    by_dm = fmap.get("by_dm", {}) or {}
+    by_m = fmap.get("by_m", {}) or {}
+    by_dpm = fmap.get("by_dpm", {}) or {}
+    prod_sel = str(product_filter or "ALL").strip().upper()
+    prod_is_all = prod_sel in ("ALL", "NONE", "", "NAN")
+
+    def _days(data):
+        if data is None or len(data) == 0 or "Date" not in getattr(data, "columns", []):
+            return 0
+        return int(pd.to_datetime(data["Date"], errors="coerce").dropna().dt.normalize().nunique())
+
+    days_cy = max(1, _days(data_cy))
+    days_ly = max(1, _days(data_ly))
+
+    def _month_keys(mk):
+        keys = [str(mk).strip()] if mk else []
+        raw = str(mk).strip() if mk else ""
+        try:
+            parts = raw.replace(" ", "").split("-")
+            if len(parts) >= 2:
+                mon = parts[0][:3].title()
+                yr = parts[1]
+                if yr.isdigit():
+                    if len(yr) == 2:
+                        keys += [f"{mon}-{yr}", f"{mon}-20{yr}", f"{mon}-19{yr}"]
+                    elif len(yr) == 4:
+                        keys += [f"{mon}-{yr}", f"{mon}-{yr[-2:]}"]
+        except Exception:
+            pass
+        try:
+            dt = pd.to_datetime(str(mk), errors="coerce")
+            if pd.notna(dt):
+                keys += [
+                    dt.strftime("%b-%Y"),
+                    dt.strftime("%b-%y"),
+                    f"{dt.strftime('%b')}-{dt.year}",
+                    f"{dt.strftime('%b').title()}-{dt.year}",
+                ]
+        except Exception:
+            pass
+        out, seen = [], set()
+        for k in keys:
+            if k and k not in seen:
+                seen.add(k)
+                out.append(k)
+        return out
+
+    mkeys = _month_keys(month_key)
+
+    def fleet_for(dep):
+        d = str(dep).strip().upper()
+        if d in ("TOTAL", "REGION", "ALL", ""):
+            for k in mkeys:
+                if k in by_m and by_m[k]:
+                    return float(by_m[k])
+            # sum unique depot totals for matching month keys only
+            tot = 0.0
+            for (dd, mk), v in by_dm.items():
+                if str(mk) in mkeys and str(dd).upper() not in ("TOTAL", "REGION", "ALL", ""):
+                    tot += float(v or 0)
+            if tot:
+                return tot
+            return float(sum(by_m.values()) if by_m else 0)
+        if not prod_is_all:
+            for k in mkeys:
+                v = by_dpm.get((d, prod_sel, k), 0) or 0
+                if v:
+                    return float(v)
+                # case-insensitive product scan
+                for (dd, pr, mk), vv in by_dpm.items():
+                    if str(dd).upper() == d and str(mk) == k and str(pr).upper() == prod_sel:
+                        if vv:
+                            return float(vv)
+        for k in mkeys:
+            v = by_dm.get((d, k), 0) or 0
+            if v:
+                return float(v)
+            for (dd, mk), vv in by_dm.items():
+                if str(dd).upper() == d and str(mk) == k and vv:
+                    return float(vv)
+        return 0.0
+
+    for side, days in (("CY", days_cy), ("LY", days_ly)):
+        fleets = merged[group_col].map(fleet_for)
+        # kms / earn stored in lakhs in ACT tables
+        kms_abs = pd.to_numeric(merged.get(f"kms_{side}"), errors="coerce").fillna(0) * 100000.0
+        earn_abs = pd.to_numeric(merged.get(f"earn_tot_{side}"), errors="coerce").fillna(0) * 100000.0
+        denom = fleets * float(days)
+        merged[f"avu_{side}"] = np.where(denom > 0, kms_abs / denom, np.nan)
+        merged[f"epb_{side}"] = np.where(denom > 0, earn_abs / denom, np.nan)
+
+    for base in ("avu", "epb"):
+        merged[f"{base}_VAR"] = merged[f"{base}_CY"] - merged[f"{base}_LY"]
+        merged[f"{base}_PCT"] = np.where(
+            pd.to_numeric(merged[f"{base}_LY"], errors="coerce").fillna(0) != 0,
+            merged[f"{base}_VAR"] * 100 / merged[f"{base}_LY"],
+            np.nan,
+        )
+    return merged
+
+
 def render_act_table_with_or(merged, group_col, prefix, pax_heading):
-    """HTML ACT VS ACT + OR; freeze S.No+DEPOT and top 2 header rows. Fixed column alignment."""
-    # Column groups (each 4 subcols: CY LY VAR %)
-    # 1 KMS  2 EARN  3 TOT EPK  4 FPD EPK  5 MHL EPK  6 TOT OR  7 FPD OR  8 MHL OR  9 PAX  = 9
-    n_groups = 9
+    """HTML ACT VS ACT + OR + AVU + EPB; freeze S.No+group; clickable scrollbar."""
+    # groups of 4: kms, earn, 3 epk, 3 or, avu, epb, pax = 11
+    n_groups = 11
     html = [
-        '<div style="max-height:70vh;overflow:auto;border:1px solid #cbd5e1;width:100%;">',
+        '<div class="table-scroll-fixable">',
         '<table class="excel-table" style="border-collapse:separate;border-spacing:0;width:max-content;">',
         "<thead>",
     ]
-    # Row 1 – group headers
     html.append("<tr>")
     html.append(
-        '<th rowspan="2" style="position:sticky;left:0;top:0;z-index:6;background:#0369a1;color:#fff;'
+        '<th rowspan="2" style="position:sticky;left:0;top:0;z-index:4;background:#0369a1;color:#fff;'
         'min-width:48px;padding:6px 4px;">S.No</th>'
     )
     html.append(
-        f'<th rowspan="2" style="position:sticky;left:48px;top:0;z-index:6;background:#0369a1;color:#fff;'
+        f'<th rowspan="2" style="position:sticky;left:48px;top:0;z-index:4;background:#0369a1;color:#fff;'
         f'min-width:72px;padding:6px 4px;">{group_col}</th>'
     )
     groups = [
@@ -1258,20 +1507,21 @@ def render_act_table_with_or(merged, group_col, prefix, pax_heading):
         ("TOT OR", "#7c3aed"),
         ("FPD OR", "#0d9488"),
         ("MHL OR", "#2563eb"),
+        ("AVU", "#b45309"),
+        ("EPB", "#be123c"),
         (pax_heading, "#0369a1"),
     ]
     for title, bg in groups:
         html.append(
-            f'<th colspan="4" style="position:sticky;top:0;z-index:5;background:{bg};color:#fff;'
+            f'<th colspan="4" style="position:sticky;top:0;z-index:3;background:{bg};color:#fff;'
             f'padding:6px 4px;text-align:center;">{title}</th>'
         )
     html.append("</tr>")
-    # Row 2 – sub headers
     html.append("<tr>")
     for _ in range(n_groups):
         for s in ("CY", "LY", "VAR", "% ▲/▼"):
             html.append(
-                f'<th style="position:sticky;top:32px;z-index:5;background:#f1f5f9;color:#334155;'
+                f'<th style="position:sticky;top:32px;z-index:3;background:#f1f5f9;color:#334155;'
                 f'padding:4px 3px;font-size:10px;">{s}</th>'
             )
     html.append("</tr></thead><tbody>")
@@ -1286,11 +1536,11 @@ def render_act_table_with_or(merged, group_col, prefix, pax_heading):
         fw = "font-weight:700;" if is_total else ""
         html.append(f'<tr style="background:{row_bg};{fw}">')
         html.append(
-            f'<td style="position:sticky;left:0;z-index:3;background:{left_bg};min-width:48px;'
+            f'<td style="position:sticky;left:0;z-index:2;background:{left_bg};min-width:48px;'
             f'text-align:center;">{"" if is_total else sno}</td>'
         )
         html.append(
-            f'<td style="position:sticky;left:48px;z-index:3;background:{left_bg};min-width:72px;'
+            f'<td style="position:sticky;left:48px;z-index:2;background:{left_bg};min-width:72px;'
             f'text-align:center;">{row[group_col]}</td>'
         )
         for metric in ["kms", "earn_tot"]:
@@ -1308,6 +1558,11 @@ def render_act_table_with_or(merged, group_col, prefix, pax_heading):
             html.append(f'<td>{fmt(row.get(f"or_{or_type}_LY"))}</td>')
             html.append(f'<td class="{var_class(row.get(f"or_{or_type}_VAR"))}">{fmt(row.get(f"or_{or_type}_VAR"))}</td>')
             html.append(f'<td class="{var_class(row.get(f"or_{or_type}_PCT"))}">{fmt_growth(row.get(f"or_{or_type}_PCT"))}</td>')
+        for metric in ["avu", "epb"]:
+            html.append(f'<td>{fmt(row.get(f"{metric}_CY"))}</td>')
+            html.append(f'<td>{fmt(row.get(f"{metric}_LY"))}</td>')
+            html.append(f'<td class="{var_class(row.get(f"{metric}_VAR"))}">{fmt(row.get(f"{metric}_VAR"))}</td>')
+            html.append(f'<td class="{var_class(row.get(f"{metric}_PCT"))}">{fmt_growth(row.get(f"{metric}_PCT"))}</td>')
         html.append(f'<td>{fmt_pax(row.get("pax_CY", 0))}</td>')
         html.append(f'<td>{fmt_pax(row.get("pax_LY", 0))}</td>')
         html.append(f'<td class="{var_class(row.get("pax_VAR", 0))}">{fmt_pax(row.get("pax_VAR", 0))}</td>')
@@ -1492,14 +1747,50 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-SECTIONS = [
-    "Route Day-wise", "ACT VS ACT", "Product wise", "Day wise",
-    "ACT vs ACT TRENDS", "Trends from 2024", "Service performance", "Service-wise (SROS)", "Period Comparison", "Schedules",
-    "Task",
+# Sidebar menu labels (display) → internal section keys used by elif branches
+NAV_ITEMS = [
+    ("Home", "Home"),
+    ("Schedules", "Schedules"),
+    ("Route Daywise", "Route Day-wise"),
+    ("ACT VS ACT", "ACT VS ACT"),
+    ("ACT vs ACT TRENDS", "ACT vs ACT TRENDS"),
+    ("Day wise", "Day wise"),
+    ("Product wise", "Product wise"),
+    ("Service performance", "Service performance"),
+    ("Service wise SROS", "Service-wise (SROS)"),
+    ("Period Comparison", "Period Comparison"),
+    ("Trends from 2024", "Trends from 2024"),
+    ("Task", "Task"),
+    ("DOR", "DOR"),
+    ("Monthly files", "Monthly files"),
+    ("MISSION RR", "MISSION RR"),
 ]
-c_nav, _c_sp = st.columns([1, 2])
-with c_nav:
-    section = st.selectbox("SELECT DASHBOARD TAB", SECTIONS, key="main_section")
+NAV_LABELS = [x[0] for x in NAV_ITEMS]
+NAV_TO_SECTION = {x[0]: x[1] for x in NAV_ITEMS}
+SECTIONS = [x[1] for x in NAV_ITEMS]
+
+with st.sidebar:
+    st.markdown(
+        '<div class="nav-brand">RR Region Dashboard'
+        f"<small>Data updated · {DATA_UPDATED_ON}</small></div>",
+        unsafe_allow_html=True,
+    )
+    # Default selection
+    if "main_section_label" not in st.session_state:
+        st.session_state["main_section_label"] = "ACT vs ACT TRENDS"
+    nav_label = st.radio(
+        "Menu",
+        NAV_LABELS,
+        index=NAV_LABELS.index(st.session_state["main_section_label"])
+        if st.session_state["main_section_label"] in NAV_LABELS
+        else 0,
+        key="sidebar_nav_radio",
+        label_visibility="collapsed",
+    )
+    st.session_state["main_section_label"] = nav_label
+    section = NAV_TO_SECTION.get(nav_label, nav_label)
+    st.caption("Click « at top to close / open menu")
+
 st.markdown(
     '<div style="height:4px;background:linear-gradient(90deg,#f59e0b,#ef4444,#8b5cf6);border-radius:2px;margin:6px 0 12px 0;"></div>',
     unsafe_allow_html=True,
@@ -1509,7 +1800,22 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-if section != "Schedules":
+# 1 ACT VS ACT  2 ACT vs ACT TRENDS  3 Product wise  4 Service-wise (SROS)  5 Trends from 2024
+# → load from ser_wise.parquet (same folder as ser_wise)
+if section in SERVICE_MONTHLY_TABS:
+    if df_service_monthly is not None and len(df_service_monthly) > 0:
+        df = df_service_monthly
+    else:
+        st.warning(
+            f"**ser_wise.parquet** not found for **{section}**. "
+            f"Using **ser_wise.parquet**. Put `ser_wise.parquet` in the same folder "
+            f"as ser_wise (e.g. `D:\\dashboard\\ser_wise.parquet`)."
+        )
+        df = df_ser_wise
+else:
+    df = df_ser_wise
+
+if section not in ("Schedules", "Home", "DOR", "MISSION RR"):
     st.markdown("<div style='font-size:13px;font-weight:600;color:#334155;margin-bottom:2px;'>Filters</div>", unsafe_allow_html=True)
 
     def _find_col(frame, *cands):
@@ -1528,26 +1834,90 @@ if section != "Schedules":
                     return c
         return None
 
-    col_depot = _find_col(df, "DEPOT")
-    col_mhl = _find_col(df, "MHL_NMHL", "MHL/NMHL", "MHLNMHL", "MHL")
-    col_rtc = _find_col(df, "RTC_HIRE", "RTC/HIRE", "RTCHIRE", "RTC")
-    col_product = _find_col(df, "PRODUCT")
-    col_route = _find_col(df, "ROUTEE", "ROUTE", "RouteName", "Route")
-    col_month = _find_col(df, "Month_Name", "MONTH_NAME", "Month", "MONTH")
-    col_date = _find_col(df, "Date", "DATE", "TravelDate", "TripDate")
+    # Prefer exact column names used in ser_wise / service_monthly
+    def _exact_or_find(frame, exact_names, *fuzzy):
+        for n in exact_names:
+            if n in frame.columns:
+                return n
+        return _find_col(frame, *exact_names, *fuzzy)
+
+    col_depot = _exact_or_find(df, ["DEPOT", "Depot"], "DEPOT")
+    col_mhl = _exact_or_find(df, ["MHL_NMHL", "MHL/NMHL"], "MHL_NMHL", "MHL/NMHL", "MHLNMHL", "MHL")
+    col_rtc = _exact_or_find(df, ["RTC_HIRE", "RTC/HIRE"], "RTC_HIRE", "RTC/HIRE", "RTCHIRE", "RTC")
+    col_product = _exact_or_find(df, ["PRODUCT", "Product"], "PRODUCT")
+    # Route MUST come from ROUTEE column (not a fuzzy ROUTE match that picks wrong col)
+    col_route = None
+    for rn in ("ROUTEE", "Routee", "routee"):
+        if rn in df.columns:
+            col_route = rn
+            break
+    if col_route is None:
+        col_route = _find_col(df, "ROUTEE", "ROUTE", "RouteName", "Route")
+    col_month = _exact_or_find(df, ["Month_Name", "MONTH_NAME", "Month"], "Month_Name", "MONTH_NAME", "Month", "MONTH")
+    col_date = _exact_or_find(df, ["Date", "DATE"], "Date", "DATE", "TravelDate", "TripDate")
 
     temp = df.copy()
 
-    c1, c2, c3, c4, c5, c6, c7, c8, c9 = st.columns(9)
+    AC_PRODUCTS = {
+        "AC-HBD", "AC-SLP", "GRD+", "RJD", "e-GRD", "AC-HBD R", "AC-HBD H", "AC SLP", "AC HBD",
+        "AC-HBD-R", "AC-HBD-H", "ACHBD", "ACSLP", "AC HBD R", "AC HBD H",
+    }
+
+    def _is_ac_product(p):
+        raw = str(p).strip().upper()
+        if not raw or raw in ("NAN", "NONE", "NAT", ""):
+            return False
+        compact = raw.replace(" ", "").replace("-", "").replace("_", "").replace("/", "")
+        # known AC product codes
+        known = {x.upper().replace(" ", "").replace("-", "").replace("_", "") for x in AC_PRODUCTS}
+        if compact in known:
+            return True
+        # any product whose code starts with AC (but not words like "ACTIVE")
+        if compact.startswith("AC") and len(compact) <= 12:
+            return True
+        if raw.startswith("AC-") or raw.startswith("AC ") or raw.startswith("AC/"):
+            return True
+        return False
+
+    def _rtc_match_mask(series, rtc_val):
+        s = series.astype(str).str.strip().str.upper()
+        if rtc_val == "RTC":
+            return (s == "RTC") | (s == "R") | s.str.startswith("RTC")
+        if rtc_val == "HIRE":
+            # H, HIRE, HIRED, HIRE BUS, etc.
+            return (
+                (s == "H")
+                | s.str.startswith("HIRE")
+                | s.str.contains(r"\bHIRE", regex=True, na=False)
+            )
+        return pd.Series(True, index=series.index)
+
+    def _nat_sort_key(s):
+        """Sort HYD1, HYD2, PKT… naturally."""
+        import re
+        parts = re.split(r"(\d+)", str(s).upper())
+        return [int(p) if p.isdigit() else p for p in parts]
+
+    c1, c2, c3, c4, c5, c6, c7, c8, c9, c10 = st.columns(10)
 
     with c1:
+        # Depot list always from full frame (ser_wise / monthly) — HYD1, HYD2, PKT…
         if col_depot:
-            depot_opts = ["ALL", "REGION"] + sorted([str(x).strip() for x in temp[col_depot].dropna().unique() if str(x).strip() and str(x).lower() not in ("nan","region","all")])
+            _deps = [
+                str(x).strip()
+                for x in df[col_depot].dropna().unique()
+                if str(x).strip() and str(x).strip().lower() not in ("nan", "region", "all", "none", "total", "")
+            ]
+            try:
+                _deps = sorted(set(_deps), key=_nat_sort_key)
+            except Exception:
+                _deps = sorted(set(_deps), key=lambda z: str(z).upper())
+            depot_opts = ["ALL", "REGION"] + _deps
         else:
             depot_opts = ["ALL"]
         depot = st.selectbox("DEPOT", depot_opts, index=0)
     if col_depot and depot not in ("ALL", "REGION"):
-        temp = temp[temp[col_depot].astype(str).str.strip() == str(depot).strip()]
+        temp = temp[temp[col_depot].astype(str).str.strip().str.upper() == str(depot).strip().upper()]
 
     with c2:
         if col_mhl:
@@ -1556,40 +1926,51 @@ if section != "Schedules":
             mhl_opts = ["ALL"]
         mhl = st.selectbox("MHL / NMHL", mhl_opts, index=0)
     if col_mhl and mhl != "ALL":
-        temp = temp[temp[col_mhl].astype(str).str.strip() == str(mhl).strip()]
+        temp = temp[temp[col_mhl].astype(str).str.strip().str.upper() == str(mhl).strip().upper()]
 
     with c3:
-        if col_rtc:
-            rtc_opts = ["ALL"] + sorted([str(x).strip() for x in temp[col_rtc].dropna().unique() if str(x).strip() and str(x).lower() != "nan"])
-        else:
-            rtc_opts = ["ALL"]
+        rtc_opts = ["ALL", "RTC", "HIRE"]
         rtc = st.selectbox("RTC / HIRE", rtc_opts, index=0)
     if col_rtc and rtc != "ALL":
-        temp = temp[temp[col_rtc].astype(str).str.strip() == str(rtc).strip()]
+        temp = temp[_rtc_match_mask(temp[col_rtc], rtc)]
 
     with c4:
         pax_opts = ["TOT", "FPD", "MHL"]
         passengers = st.selectbox("PASSENGERS", pax_opts, index=0)
 
     with c5:
+        ac_opts = ["ALL", "AC", "NON-AC"]
+        ac_type = st.selectbox("AC / NON-AC", ac_opts, index=0)
+    if col_product and ac_type != "ALL":
+        _ac_mask = temp[col_product].map(_is_ac_product)
+        if ac_type == "AC":
+            temp = temp[_ac_mask]
+        else:
+            temp = temp[~_ac_mask]
+
+    with c6:
         if col_product:
             product_opts = ["ALL"] + sorted([str(x).strip() for x in temp[col_product].dropna().unique() if str(x).strip() and str(x).lower() != "nan"])
         else:
             product_opts = ["ALL"]
         product = st.selectbox("PRODUCT", product_opts, index=0)
     if col_product and product != "ALL":
-        temp = temp[temp[col_product].astype(str).str.strip() == str(product).strip()]
+        temp = temp[temp[col_product].astype(str).str.strip().str.upper() == str(product).strip().upper()]
 
-    with c6:
-        if col_route:
-            route_opts = ["ALL"] + sorted([str(x).strip() for x in temp[col_route].dropna().unique() if str(x).strip() and str(x).lower() != "nan"])
+    with c7:
+        # Route options from ROUTEE on the cascading frame
+        if col_route and col_route in temp.columns:
+            route_opts = ["ALL"] + sorted(
+                [str(x).strip() for x in temp[col_route].dropna().unique() if str(x).strip() and str(x).lower() not in ("nan", "none", "")],
+                key=lambda z: str(z).upper(),
+            )
         else:
             route_opts = ["ALL"]
         route = st.selectbox("ROUTE", route_opts, index=0)
     if col_route and route != "ALL":
-        temp = temp[temp[col_route].astype(str).str.strip() == str(route).strip()]
+        temp = temp[temp[col_route].astype(str).str.strip().str.upper() == str(route).strip().upper()]
 
-    with c7:
+    with c8:
         if col_month:
             raw_months = [x for x in temp[col_month].dropna().unique() if str(x).strip()]
             if not raw_months:
@@ -1607,10 +1988,10 @@ if section != "Schedules":
         month_opts = sorted(raw_months, key=parse_month_key, reverse=True) if raw_months else ["ALL"]
         month = st.selectbox("MONTH", month_opts, index=0)
 
-    with c8:
+    with c9:
         for_upto = st.selectbox("For / Upto", ["UPTO", "FOR"], index=0)
 
-    with c9:
+    with c10:
         net_gross = st.selectbox("NET / GROSS", ["Gross", "Net"], index=0)
 
     st.markdown("<div style='margin-top:2px;margin-bottom:2px;'></div>", unsafe_allow_html=True)
@@ -1620,29 +2001,31 @@ if section != "Schedules":
 
     base_mask = pd.Series(True, index=df.index)
 
-    if depot not in ("ALL", "REGION"):
+    if depot not in ("ALL", "REGION") and col_depot:
+        base_mask &= df[col_depot].astype(str).str.strip().str.upper() == str(depot).strip().upper()
 
-        base_mask &= df[col_depot].astype(str).str.strip() == str(depot).strip() if col_depot else base_mask
+    if mhl != "ALL" and col_mhl:
+        base_mask &= df[col_mhl].astype(str).str.strip().str.upper() == str(mhl).strip().upper()
 
-    if mhl != "ALL":
+    if route != "ALL" and col_route:
+        base_mask &= df[col_route].astype(str).str.strip().str.upper() == str(route).strip().upper()
 
-        base_mask &= df[col_mhl].astype(str).str.strip() == str(mhl).strip() if col_mhl else base_mask
+    if product != "ALL" and col_product:
+        base_mask &= df[col_product].astype(str).str.strip().str.upper() == str(product).strip().upper()
 
-    if route != "ALL":
+    if rtc != "ALL" and col_rtc:
+        base_mask &= _rtc_match_mask(df[col_rtc], rtc)
 
-        base_mask &= df[col_route].astype(str).str.strip() == str(route).strip() if col_route else base_mask
-
-    if product != "ALL":
-
-        base_mask &= df[col_product].astype(str).str.strip() == str(product).strip() if col_product else base_mask
-
-    if "rtc" in dir() and rtc != "ALL":
-
-        base_mask &= df[col_rtc].astype(str).str.strip() == str(rtc).strip() if col_rtc else base_mask
+    if ac_type != "ALL" and col_product:
+        _ac_full = df[col_product].map(_is_ac_product)
+        if ac_type == "AC":
+            base_mask &= _ac_full
+        else:
+            base_mask &= ~_ac_full
 
     # Resolve month / date columns safely
     _mcol = col_month if col_month else _find_col(df, "Month_Name", "MONTH_NAME", "Month", "MONTH")
-    _dcol = col_date if "col_date" in dir() and col_date else _find_col(df, "Date", "DATE", "TravelDate")
+    _dcol = col_date if col_date else _find_col(df, "Date", "DATE", "TravelDate")
 
     if _mcol and _dcol:
         selected_max_date = pd.to_datetime(df.loc[df[_mcol].astype(str).str.strip() == str(month).strip(), _dcol], errors="coerce").max()
@@ -1777,6 +2160,39 @@ if section != "Schedules":
 
             return pd.DataFrame()
 
+        data = data.copy()
+
+        # Normalize Weekday to Mon/Tue/... so pivot columns match day_order
+        _wd_full = {
+            "MONDAY": "Mon", "TUESDAY": "Tue", "WEDNESDAY": "Wed", "THURSDAY": "Thu",
+            "FRIDAY": "Fri", "SATURDAY": "Sat", "SUNDAY": "Sun",
+            "MON": "Mon", "TUE": "Tue", "WED": "Wed", "THU": "Thu",
+            "FRI": "Fri", "SAT": "Sat", "SUN": "Sun",
+        }
+        need_from_date = True
+        if "Weekday" in data.columns:
+            s = data["Weekday"].astype(str).str.strip()
+            non_empty = s[~s.str.lower().isin(["", "nan", "none", "nat", "<na>"])]
+            if len(non_empty) > 0:
+                need_from_date = False
+                mapped = s.str.upper().map(_wd_full)
+                fallback = s.str[:3].str.title()
+                data["Weekday"] = mapped.fillna(fallback)
+                data["Weekday"] = data["Weekday"].where(
+                    data["Weekday"].isin(day_order),
+                    fallback,
+                )
+        if need_from_date:
+            if "Date" in data.columns:
+                _dt = pd.to_datetime(data["Date"], errors="coerce")
+                data["Weekday"] = _dt.dt.strftime("%a")
+            else:
+                data["Weekday"] = ""
+
+        data = data[data["Weekday"].isin(day_order)].copy()
+        if len(data) == 0:
+            return pd.DataFrame()
+
         g = (
 
             data.groupby(group_cols + ["Weekday"])
@@ -1898,298 +2314,156 @@ if section != "Schedules":
 
 
     def build_act_vs_act_table(group_col, data_cy=None, data_ly=None, cy_label="CY", ly_label="LY"):
-
         if data_cy is None:
-
             data_cy = cy_data
-
         if data_ly is None:
-
             data_ly = ly_data
-
-
-
         if len(data_cy) == 0 and len(data_ly) == 0:
-
             return None, pd.DataFrame()
-
         def agg_summary(data):
-
             if len(data) == 0:
-
                 return pd.DataFrame(columns=[group_col, "kms", "earn_tot", "earn_fpd", "earn_mhl", "pax"])
-
             g = (
-
                 data.groupby(group_col)
-
                 .agg(
-
                     kms=("Optd_KMs", "sum"),
-
                     earn_tot=(earn_tot, "sum"),
-
                     earn_fpd=(earn_fpd, "sum"),
-
                     earn_mhl=(earn_mhl, "sum"),
-
                     pax=(pax_col, "sum"),
-
                 )
-
                 .reset_index()
-
             )
-
             return g
-
         cy_sum = agg_summary(data_cy)
-
         ly_sum = agg_summary(data_ly)
-
         merged = cy_sum.merge(ly_sum, on=group_col, how="outer", suffixes=("_CY", "_LY"))
-
         for col in ["kms_CY", "kms_LY", "earn_tot_CY", "earn_tot_LY", "earn_fpd_CY", "earn_fpd_LY", "earn_mhl_CY", "earn_mhl_LY", "pax_CY", "pax_LY"]:
-
             merged[col] = merged.get(col, pd.Series(0, index=merged.index)).fillna(0)
-
         # Ensure numeric types (pax can become object/str after merge)
         for col in ["kms_CY", "kms_LY", "earn_tot_CY", "earn_tot_LY", "earn_fpd_CY", "earn_fpd_LY",
                     "earn_mhl_CY", "earn_mhl_LY", "pax_CY", "pax_LY"]:
             if col not in merged.columns:
                 merged[col] = 0.0
             merged[col] = pd.to_numeric(merged[col], errors="coerce").fillna(0.0)
-
         merged["pax_VAR"] = merged["pax_CY"] - merged["pax_LY"]
         merged["pax_PCT"] = np.where(merged["pax_LY"] != 0, merged["pax_VAR"] * 100 / merged["pax_LY"], np.nan)
-
         # Passengers as whole numbers (no lakhs, no decimals)
         for col in ["pax_CY", "pax_LY", "pax_VAR"]:
             merged[col] = pd.to_numeric(merged[col], errors="coerce").fillna(0).round(0)
-
         merged["epk_tot_CY"] = np.where(merged["kms_CY"] > 0, merged["earn_tot_CY"] / merged["kms_CY"], np.nan)
-
         merged["epk_tot_LY"] = np.where(merged["kms_LY"] > 0, merged["earn_tot_LY"] / merged["kms_LY"], np.nan)
-
         merged["epk_fpd_CY"] = np.where(merged["kms_CY"] > 0, merged["earn_fpd_CY"] / merged["kms_CY"], np.nan)
-
         merged["epk_fpd_LY"] = np.where(merged["kms_LY"] > 0, merged["earn_fpd_LY"] / merged["kms_LY"], np.nan)
-
         merged["epk_mhl_CY"] = np.where(merged["kms_CY"] > 0, merged["earn_mhl_CY"] / merged["kms_CY"], np.nan)
-
         merged["epk_mhl_LY"] = np.where(merged["kms_LY"] > 0, merged["earn_mhl_LY"] / merged["kms_LY"], np.nan)
-
         merged["kms_VAR"] = merged["kms_CY"] - merged["kms_LY"]
-
         merged["kms_PCT"] = np.where(merged["kms_LY"] != 0, merged["kms_VAR"] * 100 / merged["kms_LY"], np.nan)
-
         merged["earn_tot_VAR"] = merged["earn_tot_CY"] - merged["earn_tot_LY"]
-
         merged["earn_tot_PCT"] = np.where(merged["earn_tot_LY"] != 0, merged["earn_tot_VAR"] * 100 / merged["earn_tot_LY"], np.nan)
-
         merged["epk_tot_VAR"] = merged["epk_tot_CY"] - merged["epk_tot_LY"]
-
         merged["epk_tot_PCT"] = np.where((merged["epk_tot_LY"].notna()) & (merged["epk_tot_LY"] != 0), merged["epk_tot_VAR"] * 100 / merged["epk_tot_LY"], np.nan)
-
         merged["epk_fpd_VAR"] = merged["epk_fpd_CY"] - merged["epk_fpd_LY"]
-
         merged["epk_fpd_PCT"] = np.where((merged["epk_fpd_LY"].notna()) & (merged["epk_fpd_LY"] != 0), merged["epk_fpd_VAR"] * 100 / merged["epk_fpd_LY"], np.nan)
-
         merged["epk_mhl_VAR"] = merged["epk_mhl_CY"] - merged["epk_mhl_LY"]
-
         merged["epk_mhl_PCT"] = np.where((merged["epk_mhl_LY"].notna()) & (merged["epk_mhl_LY"] != 0), merged["epk_mhl_VAR"] * 100 / merged["epk_mhl_LY"], np.nan)
-
         for col in ["kms_CY", "kms_LY", "kms_VAR", "earn_tot_CY", "earn_tot_LY", "earn_tot_VAR"]:
-
             merged[col] = merged[col] / 100000
-
         merged = merged.sort_values(group_col).reset_index(drop=True)
-
         t_kms_cy = data_cy["Optd_KMs"].sum() / 100000 if len(data_cy) else 0
-
         t_kms_ly = data_ly["Optd_KMs"].sum() / 100000 if len(data_ly) else 0
-
         t_earn_cy = data_cy[earn_tot].sum() / 100000 if len(data_cy) else 0
-
         t_earn_ly = data_ly[earn_tot].sum() / 100000 if len(data_ly) else 0
-
         t_epk_tot_cy = (data_cy[earn_tot].sum() / data_cy["Optd_KMs"].sum()) if len(data_cy) and data_cy["Optd_KMs"].sum() > 0 else np.nan
-
         t_epk_tot_ly = (data_ly[earn_tot].sum() / data_ly["Optd_KMs"].sum()) if len(data_ly) and data_ly["Optd_KMs"].sum() > 0 else np.nan
-
         t_epk_fpd_cy = (data_cy[earn_fpd].sum() / data_cy["Optd_KMs"].sum()) if len(data_cy) and data_cy["Optd_KMs"].sum() > 0 else np.nan
-
         t_epk_fpd_ly = (data_ly[earn_fpd].sum() / data_ly["Optd_KMs"].sum()) if len(data_ly) and data_ly["Optd_KMs"].sum() > 0 else np.nan
-
         t_epk_mhl_cy = (data_cy[earn_mhl].sum() / data_cy["Optd_KMs"].sum()) if len(data_cy) and data_cy["Optd_KMs"].sum() > 0 else np.nan
-
         t_epk_mhl_ly = (data_ly[earn_mhl].sum() / data_ly["Optd_KMs"].sum()) if len(data_ly) and data_ly["Optd_KMs"].sum() > 0 else np.nan
-
         kms_v = t_kms_cy - t_kms_ly
-
         earn_v = t_earn_cy - t_earn_ly
-
         epk_tot_v = (t_epk_tot_cy - t_epk_tot_ly) if pd.notna(t_epk_tot_cy) and pd.notna(t_epk_tot_ly) else np.nan
-
         epk_fpd_v = (t_epk_fpd_cy - t_epk_fpd_ly) if pd.notna(t_epk_fpd_cy) and pd.notna(t_epk_fpd_ly) else np.nan
-
         epk_mhl_v = (t_epk_mhl_cy - t_epk_mhl_ly) if pd.notna(t_epk_mhl_cy) and pd.notna(t_epk_mhl_ly) else np.nan
-
         total = {
-
             group_col: "TOTAL",
-
             "kms_CY": t_kms_cy,
-
             "kms_LY": t_kms_ly,
-
             "kms_VAR": kms_v,
-
             "kms_PCT": (kms_v * 100 / t_kms_ly) if t_kms_ly else np.nan,
-
             "earn_tot_CY": t_earn_cy,
-
             "earn_tot_LY": t_earn_ly,
-
             "earn_tot_VAR": earn_v,
-
             "earn_tot_PCT": (earn_v * 100 / t_earn_ly) if t_earn_ly else np.nan,
-
             "epk_tot_CY": t_epk_tot_cy,
-
             "epk_tot_LY": t_epk_tot_ly,
-
             "epk_tot_VAR": epk_tot_v,
-
             "epk_tot_PCT": (epk_tot_v * 100 / t_epk_tot_ly) if (pd.notna(t_epk_tot_ly) and t_epk_tot_ly != 0) else np.nan,
-
             "epk_fpd_CY": t_epk_fpd_cy,
-
             "epk_fpd_LY": t_epk_fpd_ly,
-
             "epk_fpd_VAR": epk_fpd_v,
-
             "epk_fpd_PCT": (epk_fpd_v * 100 / t_epk_fpd_ly) if (pd.notna(t_epk_fpd_ly) and t_epk_fpd_ly != 0) else np.nan,
-
             "epk_mhl_CY": t_epk_mhl_cy,
-
             "epk_mhl_LY": t_epk_mhl_ly,
-
             "epk_mhl_VAR": epk_mhl_v,
-
             "epk_mhl_PCT": (epk_mhl_v * 100 / t_epk_mhl_ly) if (pd.notna(t_epk_mhl_ly) and t_epk_mhl_ly != 0) else np.nan,
-
             "pax_CY": round(data_cy[pax_col].sum() if len(data_cy) else 0),
-
             "pax_LY": round(data_ly[pax_col].sum() if len(data_ly) else 0),
-
             "pax_VAR": 0,
-
             "pax_PCT": np.nan,
-
         }
-
         total["pax_VAR"] = total["pax_CY"] - total["pax_LY"]
-
         if total["pax_LY"]:
-
             total["pax_PCT"] = total["pax_VAR"] * 100 / total["pax_LY"]
-
         merged = pd.concat([merged, pd.DataFrame([total])], ignore_index=True)
-
         html = ['<div class="table-scroll"><table class="excel-table"><thead>']
-
         html.append("<tr>")
-
         html.append('<th class="header-left" rowspan="2">S.No</th>')
         html.append(f'<th class="header-left" rowspan="2">{group_col}</th>')
-
         html.append('<th class="header-km" colspan="4">KILOMETERS (in lks.)</th>')
-
         html.append(f'<th class="header-earn" colspan="4">{prefix} EARNINGS (in lks.)</th>')
-
         html.append(f'<th class="header-tot" colspan="4">{prefix} TOT EPK</th>')
-
         html.append(f'<th class="header-fpd" colspan="4">{prefix} FPD EPK</th>')
-
         html.append(f'<th class="header-mhl" colspan="4">{prefix} MHL EPK</th>')
-
         pax_heading = {"FPD": "FPD PASSENGERS", "MHL": "MHL PASSENGERS"}.get(passengers, "TOTAL PASSENGERS")
-
         html.append(f'<th class="header-left" colspan="4">{pax_heading}</th>')
-
         html.append("</tr><tr>")
-
         for _ in range(6):
-
             html.append(f'<th class="header-sub">{cy_label}</th>')
-
             html.append(f'<th class="header-sub">{ly_label}</th>')
-
             html.append('<th class="header-sub">VAR</th>')
-
             html.append('<th class="header-sub">% ▲/▼</th>')
-
         html.append("</tr>")
-
         for sno, (_, row) in enumerate(merged.iterrows(), 1):
-
             is_total = row[group_col] == "TOTAL"
-
             style = "font-weight:bold; background:#e2efda;" if is_total else ""
-
             html.append(f'<tr style="{style}">')
             html.append(f'<td>{"" if is_total else sno}</td>')
             html.append(f'<td>{row[group_col]}</td>')
-
-       
-
             for metric in ["kms", "earn_tot"]:
-
                 html.append(f'<td>{fmt(row[f"{metric}_CY"])}</td>')
-
                 html.append(f'<td>{fmt(row[f"{metric}_LY"])}</td>')
-
                 html.append(f'<td class="{var_class(row[f"{metric}_VAR"])}">{fmt(row[f"{metric}_VAR"])}</td>')
-
                 html.append(f'<td class="{var_class(row[f"{metric}_PCT"])}">{fmt_growth(row[f"{metric}_PCT"])}</td>')
-
             for epk_type in ["tot", "fpd", "mhl"]:
-
                 html.append(f'<td>{fmt(row[f"epk_{epk_type}_CY"])}</td>')
-
                 html.append(f'<td>{fmt(row[f"epk_{epk_type}_LY"])}</td>')
-
                 html.append(f'<td class="{var_class(row[f"epk_{epk_type}_VAR"])}">{fmt(row[f"epk_{epk_type}_VAR"])}</td>')
-
                 html.append(f'<td class="{var_class(row[f"epk_{epk_type}_PCT"])}">{fmt_growth(row[f"epk_{epk_type}_PCT"])}</td>')
-
             # Passengers (already in lakhs, rounded)
-
             html.append(f'<td>{fmt_pax(row.get("pax_CY", 0))}</td>')
-
             html.append(f'<td>{fmt_pax(row.get("pax_LY", 0))}</td>')
-
             html.append(f'<td class="{var_class(row.get("pax_VAR", 0))}">{fmt_pax(row.get("pax_VAR", 0))}</td>')
-
             html.append(f'<td class="{var_class(row.get("pax_PCT", 0))}">{fmt_growth(row.get("pax_PCT", 0))}</td>')
-
             html.append("</tr>")
-
         html.append("</table></div>")
-
         return "".join(html), merged
-
-
-
-
-
     # ==================== TAB 1 ====================
-
 else:
-    # Defaults so Schedules tab does not recompute 4M-row filters
+    # Defaults so Schedules / Home / DOR do not recompute heavy filters
     depot = mhl = rtc = product = route = month = "ALL"
     passengers = "TOT"
+    ac_type = "ALL"
     for_upto = "UPTO"
     net_gross = "Gross"
     service_col = next((col for col in ["SER_NO", "SERVICE_NO", "SERVICE", "SERVICE_NUMBER"] if col in df.columns), None)
@@ -2201,8 +2475,1038 @@ else:
     ly_data = df.iloc[0:0].copy()
     base_mask = pd.Series(True, index=df.index)
     selected_max_date = pd.NaT
+    col_depot = col_mhl = col_rtc = col_product = col_route = col_month = col_date = None
 
-if section == "Route Day-wise":
+if section == "Home":
+    st.markdown(
+        f"""<div class="title-bar" style="font-size:16px;padding:14px;">
+        Welcome — Historical Analysis of Rangareddy Region<br>
+        <span style="font-weight:600;font-size:13px;">Data updated on {DATA_UPDATED_ON}</span>
+        </div>""",
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        """
+        Use the **left menu** to open a report. Click the **«** control at the top of the sidebar to collapse or expand the menu.
+
+        | Menu item | Description |
+        |---|---|
+        | **Schedules** | SCHs / Services / SCH KMs |
+        | **Route Daywise** | Route × weekday EPK |
+        | **ACT VS ACT** | Depot actuals CY vs LY (+ OR) |
+        | **ACT vs ACT TRENDS** | Month-wise trends |
+        | **Day wise** | Weekday performance |
+        | **Product wise** | Product comparison |
+        | **Service performance** | Service metrics |
+        | **Service wise SROS** | SROS service-wise |
+        | **Period Comparison** | Custom period compare |
+        | **Trends from 2024** | Long-run trends |
+        | **Task** | Daily depot performance |
+        | **DOR** | Daily operating report |
+        | **Monthly files** | Depot route / product trend / service / range / sector boards + Excel |
+        """
+    )
+
+elif section == "DOR":
+    st.markdown('<div class="title-bar">DOR — Daily Operating Report</div>', unsafe_allow_html=True)
+    st.info("Use **Monthly files** tab for route / service / product / range boards with Excel download. DOR day-boards can be wired next.")
+
+elif section == "Monthly files":
+    st.markdown(
+        '<div class="title-bar">Monthly Files — Depot Route / Product / Service / Range / Sector boards</div>',
+        unsafe_allow_html=True,
+    )
+    _mf = df_ser_wise if (df_ser_wise is not None and len(df_ser_wise)) else df
+    if _mf is None or len(_mf) == 0:
+        st.error("ser_wise.parquet not available.")
+        st.stop()
+    mf = _mf.copy()
+    mf["Date"] = pd.to_datetime(mf["Date"], errors="coerce")
+    mf = mf.dropna(subset=["Date"])
+    _col_alts = {
+        "GE_TOT": ["Gross Total", "GE_TOT"],
+        "GE_FPD": ["Gross Fare Paid", "GE_FPD"],
+        "GE_MHL": ["Gross MHL", "GE_MHL"],
+        "NE_TOT": ["Net Total", "NE_TOT"],
+        "NE_FPD": ["Net Fare Paid", "NE_FPD"],
+        "NE_MHL": ["Net MHL", "NE_MHL"],
+        "Optd_KMs": ["OPD_KMS", "Optd_KMs"],
+        "NO_OF_SCHS": ["NO.OF SCHs", "NO_OF_SCHS", "NoOfSchedules"],
+    }
+    for c, alts in _col_alts.items():
+        src = c if c in mf.columns else next((a for a in alts if a in mf.columns), None)
+        if src is not None:
+            s = mf[src]
+            if isinstance(s, pd.DataFrame):
+                s = s.iloc[:, 0]
+            mf[c] = pd.to_numeric(s, errors="coerce").fillna(0)
+        else:
+            mf[c] = 0.0
+    if "Month_Name" not in mf.columns and "Month Name" in mf.columns:
+        mf["Month_Name"] = mf["Month Name"]
+    if "RTC_HIRE" not in mf.columns and "RTC/HIRE" in mf.columns:
+        mf["RTC_HIRE"] = mf["RTC/HIRE"]
+    if "ROUTEE" not in mf.columns and "ROUTE" in mf.columns:
+        mf["ROUTEE"] = mf["ROUTE"]
+    if "PRODUCT" not in mf.columns:
+        mf["PRODUCT"] = ""
+    if "SER_NO" not in mf.columns:
+        mf["SER_NO"] = ""
+    if "TYPE" not in mf.columns and "TYPE OF SERV." in mf.columns:
+        mf["TYPE"] = mf["TYPE OF SERV."]
+    if "R_L" not in mf.columns:
+        if "R/L" in mf.columns:
+            mf["R_L"] = pd.to_numeric(mf["R/L"], errors="coerce").fillna(0)
+        else:
+            mf["R_L"] = 0.0
+    if "SCH_KMS" not in mf.columns:
+        if "DAY SCH_KMS" in mf.columns:
+            mf["SCH_KMS"] = pd.to_numeric(mf["DAY SCH_KMS"], errors="coerce").fillna(0)
+        elif "DAY_SCH_KMS" in mf.columns:
+            mf["SCH_KMS"] = pd.to_numeric(mf["DAY_SCH_KMS"], errors="coerce").fillna(0)
+        else:
+            mf["SCH_KMS"] = 0.0
+    if "SCH_DEP" not in mf.columns:
+        if "SCH_DEP." in mf.columns:
+            mf["SCH_DEP"] = mf["SCH_DEP."].astype(str)
+        else:
+            mf["SCH_DEP"] = ""
+    if "NATURE" not in mf.columns:
+        if "NATURE OF SERV." in mf.columns:
+            mf["NATURE"] = mf["NATURE OF SERV."].astype(str)
+        else:
+            mf["NATURE"] = ""
+    if "PRODUCT_NAME" not in mf.columns:
+        if "PRODUCT NAME" in mf.columns:
+            mf["PRODUCT_NAME"] = mf["PRODUCT NAME"].astype(str)
+        elif "PRODUCT" in mf.columns:
+            mf["PRODUCT_NAME"] = mf["PRODUCT"].astype(str)
+        else:
+            mf["PRODUCT_NAME"] = ""
+    if "INTERSTATE" not in mf.columns:
+        mf["INTERSTATE"] = ""
+    if "MHL_NMHL" not in mf.columns and "MHL/NMHL" in mf.columns:
+        mf["MHL_NMHL"] = mf["MHL/NMHL"]
+
+    # Month options
+    def _pm(m):
+        try:
+            return pd.to_datetime(str(m), format="%b-%Y")
+        except Exception:
+            return pd.to_datetime(str(m), errors="coerce")
+    months = sorted([str(x).strip() for x in mf["Month_Name"].dropna().unique() if str(x).strip()], key=_pm, reverse=True)
+    c1, c2, c3, c4 = st.columns(4)
+    with c1:
+        mf_month = st.selectbox("Month (FOR / Current)", months, index=0, key="mf_month")
+    with c2:
+        dep_opts = ["ALL"] + sorted({str(x).strip() for x in mf["DEPOT"].dropna().unique() if str(x).strip()})
+        mf_depot = st.selectbox("Depot", dep_opts, index=0, key="mf_depot")
+    with c3:
+        mf_board = st.selectbox(
+            "Report board",
+            [
+                "1. Depot Route Wise",
+                "2. Product Wise Trend",
+                "3. Low EPK Service Wise (<25 FPD)",
+                "4. Range Wise EPK (Gross)",
+                "5. Range Wise EPK (Net)",
+                "6. Inter State Sector Wise",
+                "7. Service Wise Performance",
+                "8. Trend Service Wise (Gross)",
+            ],
+            key="mf_board",
+        )
+    with c4:
+        mf_ng = st.selectbox("Default basis", ["Gross", "Net"], index=0, key="mf_ng")
+
+    # Parse selected month → FY window
+    try:
+        mon_name, yr = str(mf_month).split("-")[0], int(str(mf_month).split("-")[1])
+    except Exception:
+        mon_name, yr = "Jul", 2026
+    cy_dt = _pm(mf_month)
+    if pd.isna(cy_dt):
+        cy_dt = pd.Timestamp(year=yr if yr > 100 else 2000 + yr, month=7, day=1)
+    cy_year = int(cy_dt.year)
+    cy_mon = int(cy_dt.month)
+    fy_start_y = cy_year if cy_mon >= 4 else cy_year - 1
+    fy_start = pd.Timestamp(year=fy_start_y, month=4, day=1)
+    # month end of selected month
+    cy_end = (cy_dt + pd.offsets.MonthEnd(0))
+    ly_start = fy_start - pd.DateOffset(years=1)
+    ly_end = cy_end - pd.DateOffset(years=1)
+    ly_month_key = f"{mon_name}-{cy_year - 1}"
+
+    base = mf.copy()
+    if mf_depot != "ALL":
+        base = base[base["DEPOT"].astype(str).str.strip().str.upper() == mf_depot.strip().upper()]
+
+    # Period slices
+    cm = base[base["Month_Name"].astype(str).str.strip() == str(mf_month).strip()].copy()  # current month FOR
+    cy_um = base[(base["Date"] >= fy_start) & (base["Date"] <= cy_end)].copy()
+    ly_um = base[(base["Date"] >= ly_start) & (base["Date"] <= ly_end)].copy()
+    ly_cm = base[base["Month_Name"].astype(str).str.strip() == ly_month_key].copy()
+
+    orf_map, orf_by_prod, orf_err = load_orf_map(r"D:\\dashboard\\ORF.xlsx")
+
+    def _orf(dep, prod=None, side="cy"):
+        d = str(dep).strip().upper()
+        if prod and orf_by_prod:
+            rec = orf_by_prod.get((d, str(prod).strip().upper()), {})
+            v = rec.get(side, np.nan)
+            if v is not None and not (isinstance(v, float) and np.isnan(v)):
+                try:
+                    return float(v)
+                except Exception:
+                    pass
+        if orf_map and d in orf_map:
+            try:
+                return float(orf_map[d].get(side, np.nan))
+            except Exception:
+                return np.nan
+        if orf_map and "REGION" in orf_map:
+            try:
+                return float(orf_map["REGION"].get(side, np.nan))
+            except Exception:
+                return np.nan
+        return np.nan
+
+    def _epk(earn, kms):
+        try:
+            e, k = float(earn), float(kms)
+            return e / k if k > 0 else np.nan
+        except Exception:
+            return np.nan
+
+    def _or(epk, orf):
+        if pd.isna(epk) or pd.isna(orf) or not orf:
+            return np.nan
+        return epk * 10000 / orf
+
+    def _f2(v):
+        try:
+            fv = float(v)
+            if abs(fv) < 1e-12 or (isinstance(fv, float) and np.isnan(fv)):
+                return ""
+            return f"{fv:.2f}"
+        except Exception:
+            return ""
+
+    def _f0(v):
+        try:
+            fv = float(v)
+            if abs(fv) < 1e-12:
+                return ""
+            return f"{fv:.0f}"
+        except Exception:
+            return ""
+
+    def _excel_bytes(df, title=""):
+        bio = BytesIO()
+        try:
+            from openpyxl import Workbook
+            from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+            from openpyxl.utils.dataframe import dataframe_to_rows
+            wb = Workbook()
+            ws = wb.active
+            ws.title = "Report"[:31]
+            thin = Border(
+                left=Side(style="thin", color="94A3B8"),
+                right=Side(style="thin", color="94A3B8"),
+                top=Side(style="thin", color="94A3B8"),
+                bottom=Side(style="thin", color="94A3B8"),
+            )
+            hdr = PatternFill("solid", fgColor="1E3A8A")
+            white = Font(bold=True, color="FFFFFF", size=10)
+            center = Alignment(horizontal="center", vertical="center", wrap_text=True)
+            r0 = 1
+            if title:
+                ws.cell(1, 1, title)
+                ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=max(1, len(df.columns)))
+                ws.cell(1, 1).font = Font(bold=True, size=12, color="1E3A8A")
+                r0 = 2
+            for j, col in enumerate(df.columns, 1):
+                cell = ws.cell(r0, j, col)
+                cell.fill = hdr
+                cell.font = white
+                cell.alignment = center
+                cell.border = thin
+            for i, row in enumerate(df.itertuples(index=False), r0 + 1):
+                for j, val in enumerate(row, 1):
+                    cell = ws.cell(i, j, None if (val is None or (isinstance(val, float) and np.isnan(val))) else val)
+                    cell.alignment = center
+                    cell.border = thin
+            for col in ws.columns:
+                letter = col[0].column_letter
+                ws.column_dimensions[letter].width = min(16, max(8, max(len(str(c.value or "")) for c in col) + 2))
+            wb.save(bio)
+            bio.seek(0)
+            return bio.getvalue()
+        except Exception:
+            bio = BytesIO()
+            df.to_excel(bio, index=False)
+            bio.seek(0)
+            return bio.getvalue()
+
+    def _th(text, bg="#1e3a8a", colspan=1, rowspan=1, color="#fff", top=None):
+        sticky = f"position:sticky;top:{top}px;z-index:3;" if top is not None else ""
+        return (
+            f'<th colspan="{colspan}" rowspan="{rowspan}" '
+            f'style="background:{bg};color:{color};padding:5px 4px;font-size:10px;'
+            f'text-align:center;border:1px solid #94a3b8;{sticky}">{text}</th>'
+        )
+
+    def _cell(v, is_int=False):
+        if v is None or v == "" or (isinstance(v, float) and (np.isnan(v) or abs(v) < 1e-12)):
+            s = ""
+        elif isinstance(v, (int, float)):
+            try:
+                fv = float(v)
+                if is_int or abs(fv - round(fv)) < 1e-6:
+                    s = f"{int(round(fv))}" if abs(fv) > 1e-12 else ""
+                else:
+                    s = f"{fv:.2f}"
+            except Exception:
+                s = str(v)
+        else:
+            s = str(v)
+        return f'<td style="padding:3px 5px;text-align:center;border:1px solid #e2e8f0;font-size:11px;">{s}</td>'
+
+    def _render_board(title, thead_html, body_rows_html, df_for_excel, key_suffix):
+        st.markdown(f'<div class="title-bar">{title}</div>', unsafe_allow_html=True)
+        if not body_rows_html:
+            st.warning("No rows for this board.")
+            return
+        html = [
+            '<div class="table-scroll-fixable"><table class="excel-table" style="border-collapse:collapse;width:max-content;">',
+            "<thead>", thead_html, "</thead><tbody>",
+            body_rows_html, "</tbody></table></div>",
+        ]
+        st.markdown("".join(html), unsafe_allow_html=True)
+        st.download_button(
+            "Download Excel (as on screen)",
+            _excel_bytes(df_for_excel, title),
+            f"Monthly_{mf_month}_{key_suffix}.xlsx",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            key=f"mf_dl_{key_suffix}",
+        )
+
+    def _html_table(df, title, freeze_cols=2):
+        """Flat fallback."""
+        st.markdown(f'<div class="title-bar">{title}</div>', unsafe_allow_html=True)
+        if df is None or len(df) == 0:
+            st.warning("No rows for this board.")
+            return
+        cols = list(df.columns)
+        html = ['<div class="table-scroll-fixable"><table class="excel-table" style="border-collapse:collapse;font-size:11px;">']
+        html.append("<thead><tr>")
+        for c in cols:
+            html.append(_th(c, top=0))
+        html.append("</tr></thead><tbody>")
+        for _, row in df.iterrows():
+            html.append("<tr>")
+            for c in cols:
+                html.append(_cell(row[c]))
+            html.append("</tr>")
+        html.append("</tbody></table></div>")
+        st.markdown("".join(html), unsafe_allow_html=True)
+        st.download_button(
+            "Download Excel (as on screen)",
+            _excel_bytes(df, title),
+            f"Monthly_{mf_month}_{mf_board[:20].replace(' ', '_')}.xlsx",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            key=f"mf_dl_{mf_board[:12]}",
+        )
+
+    # ========== BOARD 1: Depot Route Wise ==========
+    if mf_board.startswith("1."):
+        title = f"GROSS - DEPOT ROUTE WISE PERFORMANCE FOR AND UPTO {mf_month}"
+        keys = ["DEPOT", "ROUTEE", "PRODUCT", "RTC_HIRE"]
+        def _agg_side(data):
+            if len(data) == 0:
+                return pd.DataFrame(columns=keys + ["schs", "sers", "rl", "sch_kms", "kms", "earn_tot", "earn_mhl", "earn_fpd"])
+            g = data.groupby(keys, dropna=False).agg(
+                schs=("NO_OF_SCHS", "sum"),
+                sers=("SER_NO", "nunique"),
+                rl=("R_L", "max"),
+                sch_kms=("SCH_KMS", "sum"),
+                kms=("Optd_KMs", "sum"),
+                earn_tot=("GE_TOT", "sum"),
+                earn_mhl=("GE_MHL", "sum"),
+                earn_fpd=("GE_FPD", "sum"),
+            ).reset_index()
+            return g
+        a_cm, a_cy, a_ly = _agg_side(cm), _agg_side(cy_um), _agg_side(ly_um)
+        merged = a_cm.merge(a_cy, on=keys, how="outer", suffixes=("_cm", "_cy"))
+        merged = merged.merge(a_ly, on=keys, how="outer")
+        # rename LY cols
+        for c in ["schs", "sers", "rl", "sch_kms", "kms", "earn_tot", "earn_mhl", "earn_fpd"]:
+            if c in merged.columns:
+                merged.rename(columns={c: f"{c}_ly"}, inplace=True)
+        rows = []
+        sno = 0
+        for _, r in merged.fillna(0).iterrows():
+            sno += 1
+            kms_cm, kms_cy, kms_ly = float(r.get("kms_cm", 0)), float(r.get("kms_cy", 0)), float(r.get("kms_ly", 0))
+            dep = str(r.get("DEPOT", ""))
+            orf_c, orf_l = _orf(dep, side="cy"), _orf(dep, side="ly")
+            def pack(earn_t, earn_m, earn_f, kms, orf):
+                et, em, ef = _epk(earn_t, kms), _epk(earn_m, kms), _epk(earn_f, kms)
+                return et, em, ef, _or(et, orf), _or(em, orf), _or(ef, orf)
+            et_cm, em_cm, ef_cm, ot_cm, om_cm, of_cm = pack(r.get("earn_tot_cm", 0), r.get("earn_mhl_cm", 0), r.get("earn_fpd_cm", 0), kms_cm, orf_c)
+            et_cy, em_cy, ef_cy, ot_cy, om_cy, of_cy = pack(r.get("earn_tot_cy", 0), r.get("earn_mhl_cy", 0), r.get("earn_fpd_cy", 0), kms_cy, orf_c)
+            et_ly, em_ly, ef_ly, ot_ly, om_ly, of_ly = pack(r.get("earn_tot_ly", 0), r.get("earn_mhl_ly", 0), r.get("earn_fpd_ly", 0), kms_ly, orf_l)
+            rows.append({
+                "SL.NO.": sno,
+                "DEPOT": dep,
+                "ROUTE": r.get("ROUTEE", ""),
+                "Product": r.get("PRODUCT", ""),
+                "RTC/HIRE": r.get("RTC_HIRE", ""),
+                "No. of Schs": int(round(float(r.get("schs_cm", 0) or 0))) or "",
+                "No. of Ser": int(round(float(r.get("sers_cm", 0) or 0))) or "",
+                "R/L": _f0(r.get("rl_cm", 0)),
+                "Sch Kms": _f0(r.get("sch_kms_cm", 0)),
+                "CM TOT EPK": round(et_cm, 2) if pd.notna(et_cm) else None,
+                "CM MHL EPK": round(em_cm, 2) if pd.notna(em_cm) else None,
+                "CM FPD EPK": round(ef_cm, 2) if pd.notna(ef_cm) else None,
+                "CY UM TOT EPK": round(et_cy, 2) if pd.notna(et_cy) else None,
+                "CY UM MHL EPK": round(em_cy, 2) if pd.notna(em_cy) else None,
+                "CY UM FPD EPK": round(ef_cy, 2) if pd.notna(ef_cy) else None,
+                "LY UM TOT EPK": round(et_ly, 2) if pd.notna(et_ly) else None,
+                "LY UM MHL EPK": round(em_ly, 2) if pd.notna(em_ly) else None,
+                "LY UM FPD EPK": round(ef_ly, 2) if pd.notna(ef_ly) else None,
+                "CM TOT OR": round(ot_cm, 0) if pd.notna(ot_cm) else None,
+                "CM MHL OR": round(om_cm, 0) if pd.notna(om_cm) else None,
+                "CM FPD OR": round(of_cm, 0) if pd.notna(of_cm) else None,
+                "CY UM TOT OR": round(ot_cy, 0) if pd.notna(ot_cy) else None,
+                "CY UM MHL OR": round(om_cy, 0) if pd.notna(om_cy) else None,
+                "CY UM FPD OR": round(of_cy, 0) if pd.notna(of_cy) else None,
+                "LY UM TOT OR": round(ot_ly, 0) if pd.notna(ot_ly) else None,
+                "LY UM MHL OR": round(om_ly, 0) if pd.notna(om_ly) else None,
+                "LY UM FPD OR": round(of_ly, 0) if pd.notna(of_ly) else None,
+            })
+        out = pd.DataFrame(rows)
+        # Multi-level headers matching image: GROSS EPK | GROSS OR
+        thead = (
+            "<tr>"
+            + _th("SL.<br>NO.", rowspan=3, top=0)
+            + _th("DEPOT", rowspan=3, top=0)
+            + _th("ROUTE", rowspan=3, top=0)
+            + _th("Product", rowspan=3, top=0)
+            + _th("RTC/<br>HIRE", rowspan=3, top=0)
+            + _th("No.<br>of<br>Schs", rowspan=3, top=0)
+            + _th("No.<br>of<br>Ser", rowspan=3, top=0)
+            + _th("R/L", rowspan=3, top=0)
+            + _th("Sch<br>Kms", rowspan=3, top=0)
+            + _th("GROSS E P K", bg="#dcfce7", color="#14532d", colspan=9, top=0)
+            + _th("GROSS OR", bg="#dbeafe", color="#1e3a8a", colspan=9, top=0)
+            + "</tr><tr>"
+            + _th("Current Month", bg="#bbf7d0", color="#14532d", colspan=3, top=28)
+            + _th("CY Upto The Month", bg="#86efac", color="#14532d", colspan=3, top=28)
+            + _th("LY Upto The Month", bg="#bbf7d0", color="#14532d", colspan=3, top=28)
+            + _th("Current Month", bg="#bfdbfe", color="#1e3a8a", colspan=3, top=28)
+            + _th("CY Upto The Month", bg="#93c5fd", color="#1e3a8a", colspan=3, top=28)
+            + _th("LY Upto The Month", bg="#bfdbfe", color="#1e3a8a", colspan=3, top=28)
+            + "</tr><tr>"
+        )
+        for _ in range(6):
+            thead += _th("TOT", bg="#fef3c7", color="#92400e", top=56) + _th("MHL", bg="#fef3c7", color="#92400e", top=56) + _th("FPD", bg="#fef3c7", color="#92400e", top=56)
+        thead += "</tr>"
+        body = []
+        data_cols = [
+            "SL.NO.", "DEPOT", "ROUTE", "Product", "RTC/HIRE", "No. of Schs", "No. of Ser", "R/L", "Sch Kms",
+            "CM TOT EPK", "CM MHL EPK", "CM FPD EPK", "CY UM TOT EPK", "CY UM MHL EPK", "CY UM FPD EPK",
+            "LY UM TOT EPK", "LY UM MHL EPK", "LY UM FPD EPK",
+            "CM TOT OR", "CM MHL OR", "CM FPD OR", "CY UM TOT OR", "CY UM MHL OR", "CY UM FPD OR",
+            "LY UM TOT OR", "LY UM MHL OR", "LY UM FPD OR",
+        ]
+        for _, r in out.iterrows():
+            body.append("<tr>")
+            for c in data_cols:
+                body.append(_cell(r.get(c)))
+            body.append("</tr>")
+        _render_board(title, thead, "".join(body), out, "DepotRoute")
+        if orf_err:
+            st.caption(f"OR blank without ORF.xlsx ({orf_err})")
+
+    # ========== BOARD 2: Product Wise Trend ==========
+    elif mf_board.startswith("2."):
+        title = f"PRODUCT WISE TREND UPTO {mf_month}"
+        # months in FY up to selected
+        fy_months = []
+        cur = fy_start
+        while cur <= cy_end:
+            fy_months.append(cur.strftime("%b-%Y"))
+            cur += pd.DateOffset(months=1)
+        # TYPE OF SERVICE ≈ PRODUCT_NAME or PRODUCT
+        svc_col = "PRODUCT_NAME" if "PRODUCT_NAME" in base.columns else "PRODUCT"
+        rows = []
+        groups = base.groupby(["DEPOT", svc_col], dropna=False)
+        for (dep, ptype), g in groups:
+            if not str(ptype).strip() or str(ptype).lower() in ("nan", "none"):
+                continue
+            sch_for = int(round(g[g["Month_Name"].astype(str).str.strip() == str(mf_month).strip()]["NO_OF_SCHS"].sum())) if len(g) else 0
+            sch_upto = int(round(g[(g["Date"] >= fy_start) & (g["Date"] <= cy_end)]["NO_OF_SCHS"].sum())) if len(g) else 0
+            rec = {"DEPOT": dep, "TYPE OF SERVICE": ptype, "SCHs FOR": sch_for or "", "SCHs UPTO": sch_upto or ""}
+            orf_c = _orf(dep, side="cy")
+            orf_l = _orf(dep, side="ly")
+            for mkey in fy_months:
+                sub = g[g["Month_Name"].astype(str).str.strip() == mkey]
+                kms = float(sub["Optd_KMs"].sum())
+                ne = float(sub["NE_TOT"].sum())
+                ge = float(sub["GE_TOT"].sum())
+                nepk, gepk = _epk(ne, kms), _epk(ge, kms)
+                lab = mkey.split("-")[0]  # Apr
+                rec[f"{lab} NET EPK"] = round(nepk, 2) if pd.notna(nepk) else None
+                rec[f"{lab} NET OR"] = round(_or(nepk, orf_c), 0) if pd.notna(nepk) else None
+                rec[f"{lab} GROSS EPK"] = round(gepk, 2) if pd.notna(gepk) else None
+                rec[f"{lab} GROSS OR"] = round(_or(gepk, orf_c), 0) if pd.notna(gepk) else None
+            # CY UM / LY UM
+            sub_cy = g[(g["Date"] >= fy_start) & (g["Date"] <= cy_end)]
+            sub_ly = g[(g["Date"] >= ly_start) & (g["Date"] <= ly_end)]
+            for label, sub, orf in (("CY UM", sub_cy, orf_c), ("LY UM", sub_ly, orf_l)):
+                kms = float(sub["Optd_KMs"].sum())
+                ne, ge = float(sub["NE_TOT"].sum()), float(sub["GE_TOT"].sum())
+                nepk, gepk = _epk(ne, kms), _epk(ge, kms)
+                rec[f"{label} NET EPK"] = round(nepk, 2) if pd.notna(nepk) else None
+                rec[f"{label} NET OR"] = round(_or(nepk, orf), 0) if pd.notna(nepk) else None
+                rec[f"{label} GROSS EPK"] = round(gepk, 2) if pd.notna(gepk) else None
+                rec[f"{label} GROSS OR"] = round(_or(gepk, orf), 0) if pd.notna(gepk) else None
+            rows.append(rec)
+        out = pd.DataFrame(rows)
+        if len(out):
+            out = out.sort_values(["DEPOT", "TYPE OF SERVICE"])
+        # Header: SCHs FOR/UPTO | each month NET/GROSS EPK OR | CY UM | LY UM
+        mon_labs = [m.split("-")[0] for m in fy_months]
+        thead = "<tr>" + _th("DEPOT", rowspan=3, top=0) + _th("TYPE OF SERVICE", rowspan=3, top=0)
+        thead += _th("SCHs", bg="#1e40af", colspan=2, top=0)
+        for lab in mon_labs:
+            thead += _th(lab, bg="#0f766e", colspan=4, top=0)
+        thead += _th("CY UM", bg="#7c3aed", colspan=4, top=0)
+        thead += _th("LY UM", bg="#a21caf", colspan=4, top=0)
+        thead += "</tr><tr>"
+        thead += _th("FOR", bg="#3b82f6", top=28) + _th("UPTO", bg="#3b82f6", top=28)
+        for _ in range(len(mon_labs) + 2):
+            thead += _th("NET", bg="#dbeafe", color="#1e3a8a", colspan=2, top=28) + _th("GROSS", bg="#dcfce7", color="#14532d", colspan=2, top=28)
+        thead += "</tr><tr>"
+        thead += _th("", bg="#e2e8f0", color="#334155", top=56) + _th("", bg="#e2e8f0", color="#334155", top=56)
+        for _ in range(len(mon_labs) + 2):
+            for pair_bg in ("#eff6ff", "#eff6ff", "#f0fdf4", "#f0fdf4"):
+                pass
+            thead += _th("E.P.K", bg="#eff6ff", color="#1e3a8a", top=56) + _th("O.R", bg="#eff6ff", color="#1e3a8a", top=56)
+            thead += _th("E.P.K", bg="#f0fdf4", color="#14532d", top=56) + _th("O.R", bg="#f0fdf4", color="#14532d", top=56)
+        thead += "</tr>"
+        body = []
+        for _, r in out.iterrows():
+            body.append("<tr>")
+            body.append(_cell(r.get("DEPOT")))
+            body.append(_cell(r.get("TYPE OF SERVICE")))
+            body.append(_cell(r.get("SCHs FOR"), is_int=True))
+            body.append(_cell(r.get("SCHs UPTO"), is_int=True))
+            for lab in mon_labs:
+                body.append(_cell(r.get(f"{lab} NET EPK")))
+                body.append(_cell(r.get(f"{lab} NET OR"), is_int=True))
+                body.append(_cell(r.get(f"{lab} GROSS EPK")))
+                body.append(_cell(r.get(f"{lab} GROSS OR"), is_int=True))
+            for label in ("CY UM", "LY UM"):
+                body.append(_cell(r.get(f"{label} NET EPK")))
+                body.append(_cell(r.get(f"{label} NET OR"), is_int=True))
+                body.append(_cell(r.get(f"{label} GROSS EPK")))
+                body.append(_cell(r.get(f"{label} GROSS OR"), is_int=True))
+            body.append("</tr>")
+        _render_board(title, thead, "".join(body), out, "ProductTrend")
+
+    # ========== BOARD 3: Low EPK Service Wise ==========
+    elif mf_board.startswith("3."):
+        title = f"GROSS LESS THAN 25.00 EPK FARE PAID SERVICE WISE PERFORMANCE UPTO {mf_month}"
+        # service-level FPD EPK on CY UM; filter < 25
+        keys = ["DEPOT", "SER_NO"]
+        g_cy = cy_um.groupby(keys, dropna=False).agg(
+            kms=("Optd_KMs", "sum"), earn_fpd=("GE_FPD", "sum"), earn_tot=("GE_TOT", "sum"),
+            earn_mhl=("GE_MHL", "sum"), days=("Date", "nunique"),
+            route=("ROUTEE", "first"), rtc=("RTC_HIRE", "first"),
+            typ=("TYPE", "first"), nature=("NATURE", "first"),
+            schs=("NO_OF_SCHS", "sum"), sch_kms=("SCH_KMS", "sum"),
+            sch_dep=("SCH_DEP", "first"), rl=("R_L", "max"),
+            prod=("PRODUCT", "first"),
+        ).reset_index()
+        g_cy["fpd_epk"] = np.where(g_cy["kms"] > 0, g_cy["earn_fpd"] / g_cy["kms"], np.nan)
+        low = g_cy[(g_cy["fpd_epk"].notna()) & (g_cy["fpd_epk"] < 25)].copy()
+        g_cm = cm.groupby(keys, dropna=False).agg(
+            kms=("Optd_KMs", "sum"), earn_fpd=("GE_FPD", "sum"), earn_tot=("GE_TOT", "sum"),
+            earn_mhl=("GE_MHL", "sum"), days=("Date", "nunique"),
+        ).reset_index()
+        g_ly = ly_um.groupby(keys, dropna=False).agg(
+            kms=("Optd_KMs", "sum"), earn_fpd=("GE_FPD", "sum"), earn_tot=("GE_TOT", "sum"),
+            earn_mhl=("GE_MHL", "sum"),
+        ).reset_index()
+        low = low.merge(g_cm, on=keys, how="left", suffixes=("", "_cm"))
+        low = low.merge(g_ly, on=keys, how="left", suffixes=("", "_ly"))
+        rows = []
+        for i, r in low.iterrows():
+            dep = str(r.get("DEPOT", ""))
+            orf_c, orf_l = _orf(dep, side="cy"), _orf(dep, side="ly")
+            def trio(et, em, ef, kms, orf):
+                a, b, c = _epk(et, kms), _epk(em, kms), _epk(ef, kms)
+                return a, b, c, _or(a, orf), _or(b, orf), _or(c, orf)
+            et_cm, em_cm, ef_cm, ot_cm, om_cm, of_cm = trio(
+                r.get("earn_tot_cm", 0), r.get("earn_mhl_cm", 0), r.get("earn_fpd_cm", 0),
+                r.get("kms_cm", 0), orf_c)
+            et_um, em_um, ef_um, ot_um, om_um, of_um = trio(
+                r.get("earn_tot", 0), r.get("earn_mhl", 0), r.get("earn_fpd", 0),
+                r.get("kms", 0), orf_c)
+            et_ly, em_ly, ef_ly, ot_ly, om_ly, of_ly = trio(
+                r.get("earn_tot_ly", 0), r.get("earn_mhl_ly", 0), r.get("earn_fpd_ly", 0),
+                r.get("kms_ly", 0), orf_l)
+            rows.append({
+                "SL NO": len(rows) + 1,
+                "Depot": dep,
+                "Ser No": r.get("SER_NO", ""),
+                "Sch Dep": r.get("sch_dep", ""),
+                "Route": r.get("route", ""),
+                "RTC/HIRE": r.get("rtc", ""),
+                "TP": r.get("typ", ""),
+                "Type": r.get("prod", ""),
+                "D/N": r.get("nature", ""),
+                "No.of Schs": int(round(float(r.get("schs", 0) or 0))) or "",
+                "No. of Sers": 1,
+                "Sch. Kms": _f0(r.get("sch_kms", 0)),
+                "Optd Days CM": int(r.get("days_cm", 0) or 0) or "",
+                "Optd Days UM": int(r.get("days", 0) or 0) or "",
+                "CM TOT EPK": round(et_cm, 2) if pd.notna(et_cm) else None,
+                "CM MHL EPK": round(em_cm, 2) if pd.notna(em_cm) else None,
+                "CM FP EPK": round(ef_cm, 2) if pd.notna(ef_cm) else None,
+                "UM TOT EPK": round(et_um, 2) if pd.notna(et_um) else None,
+                "UM MHL EPK": round(em_um, 2) if pd.notna(em_um) else None,
+                "UM FP EPK": round(ef_um, 2) if pd.notna(ef_um) else None,
+                "LY UM TOT EPK": round(et_ly, 2) if pd.notna(et_ly) else None,
+                "LY UM MHL EPK": round(em_ly, 2) if pd.notna(em_ly) else None,
+                "LY UM FP EPK": round(ef_ly, 2) if pd.notna(ef_ly) else None,
+                "CM TOT OR": round(ot_cm, 0) if pd.notna(ot_cm) else None,
+                "CM MHL OR": round(om_cm, 0) if pd.notna(om_cm) else None,
+                "CM FP OR": round(of_cm, 0) if pd.notna(of_cm) else None,
+                "UM TOT OR": round(ot_um, 0) if pd.notna(ot_um) else None,
+                "UM MHL OR": round(om_um, 0) if pd.notna(om_um) else None,
+                "UM FP OR": round(of_um, 0) if pd.notna(of_um) else None,
+                "LY UM TOT OR": round(ot_ly, 0) if pd.notna(ot_ly) else None,
+                "LY UM MHL OR": round(om_ly, 0) if pd.notna(om_ly) else None,
+                "LY UM FP OR": round(of_ly, 0) if pd.notna(of_ly) else None,
+            })
+        out = pd.DataFrame(rows)
+        thead = (
+            "<tr>"
+            + _th("SL<br>NO", rowspan=3, top=0) + _th("Depot", rowspan=3, top=0)
+            + _th("Ser<br>No", rowspan=3, top=0) + _th("Sch<br>Dep", rowspan=3, top=0)
+            + _th("Route", rowspan=3, top=0) + _th("RTC/<br>HIRE", rowspan=3, top=0)
+            + _th("TP", rowspan=3, top=0) + _th("Type", rowspan=3, top=0)
+            + _th("D/N", rowspan=3, top=0) + _th("No.of<br>Schs", rowspan=3, top=0)
+            + _th("No.<br>of<br>Sers", rowspan=3, top=0) + _th("Sch.<br>Kms", rowspan=3, top=0)
+            + _th("Optd<br>Days", bg="#0f766e", colspan=2, top=0)
+            + _th("GROSS EPK", bg="#dcfce7", color="#14532d", colspan=9, top=0)
+            + _th("GROSS OR", bg="#dbeafe", color="#1e3a8a", colspan=9, top=0)
+            + "</tr><tr>"
+            + _th("CM", bg="#14b8a6", top=28) + _th("UM", bg="#14b8a6", top=28)
+            + _th("CM", bg="#86efac", color="#14532d", colspan=3, top=28)
+            + _th("UM", bg="#4ade80", color="#14532d", colspan=3, top=28)
+            + _th("LY UM", bg="#86efac", color="#14532d", colspan=3, top=28)
+            + _th("CM", bg="#93c5fd", color="#1e3a8a", colspan=3, top=28)
+            + _th("UM", bg="#60a5fa", color="#1e3a8a", colspan=3, top=28)
+            + _th("LY UM", bg="#93c5fd", color="#1e3a8a", colspan=3, top=28)
+            + "</tr><tr>"
+        )
+        for _ in range(6):
+            thead += _th("TOT", bg="#fef3c7", color="#92400e", top=56) + _th("MHL", bg="#fef3c7", color="#92400e", top=56) + _th("FP", bg="#fef3c7", color="#92400e", top=56)
+        thead += "</tr>"
+        body = []
+        cols3 = [
+            "SL NO", "Depot", "Ser No", "Sch Dep", "Route", "RTC/HIRE", "TP", "Type", "D/N",
+            "No.of Schs", "No. of Sers", "Sch. Kms", "Optd Days CM", "Optd Days UM",
+            "CM TOT EPK", "CM MHL EPK", "CM FP EPK", "UM TOT EPK", "UM MHL EPK", "UM FP EPK",
+            "LY UM TOT EPK", "LY UM MHL EPK", "LY UM FP EPK",
+            "CM TOT OR", "CM MHL OR", "CM FP OR", "UM TOT OR", "UM MHL OR", "UM FP OR",
+            "LY UM TOT OR", "LY UM MHL OR", "LY UM FP OR",
+        ]
+        for _, r in out.iterrows():
+            body.append("<tr>")
+            for c in cols3:
+                body.append(_cell(r.get(c)))
+            body.append("</tr>")
+        _render_board(title, thead, "".join(body), out, "LowEPK")
+
+    # ========== BOARD 4 & 5: Range Wise EPK ==========
+    elif mf_board.startswith("4.") or mf_board.startswith("5."):
+        is_gross = mf_board.startswith("4.")
+        basis = "GROSS" if is_gross else "NET"
+        title = f"{basis} RANGE WISE FARE PAID MHL & NMHL EPK SERVICES OF RR REGION UPTO {mf_month}"
+        earn_col = "GE_FPD" if is_gross else "NE_FPD"
+        # service-level FPD EPK on CY UM
+        g = cy_um.groupby(["DEPOT", "SER_NO", "TYPE", "RTC_HIRE"], dropna=False).agg(
+            kms=("Optd_KMs", "sum"), earn=(earn_col, "sum"),
+        ).reset_index()
+        g["epk"] = np.where(g["kms"] > 0, g["earn"] / g["kms"], np.nan)
+        g = g[g["epk"].notna()]
+        ranges = [("01-15", 0, 15), ("15-20", 15, 20), ("21-30", 21, 30), ("31-40", 31, 40), ("41-50", 41, 50), (">51", 51, 1e9)]
+        rtc_types = ["AL", "MY", "IM", "AH", "HA", "MB", "IB", "HL", "HT", "IH", "SL", "IL", "EX", "IE", "ME", "OR", "IO"]
+        phb_types = ["EG", "LH", "PE", "EP", "PO", "OP"]
+        all_types = rtc_types + phb_types
+        depots = sorted(g["DEPOT"].astype(str).str.strip().unique())
+        rows = []
+        for dep in depots:
+            gd = g[g["DEPOT"].astype(str).str.strip() == dep]
+            for rlab, lo, hi in ranges:
+                rec = {"Depot": dep, "EPK RANGE": rlab}
+                total = 0
+                for t in all_types:
+                    sub = gd[(gd["TYPE"].astype(str).str.strip().str.upper() == t) & (gd["epk"] >= lo) & (gd["epk"] < hi if hi < 1e8 else gd["epk"] >= lo)]
+                    # for >51 use >= 51
+                    if rlab == ">51":
+                        sub = gd[(gd["TYPE"].astype(str).str.strip().str.upper() == t) & (gd["epk"] >= 51)]
+                    elif rlab == "01-15":
+                        sub = gd[(gd["TYPE"].astype(str).str.strip().str.upper() == t) & (gd["epk"] >= 0) & (gd["epk"] < 15)]
+                    elif rlab == "15-20":
+                        sub = gd[(gd["TYPE"].astype(str).str.strip().str.upper() == t) & (gd["epk"] >= 15) & (gd["epk"] < 20)]
+                    cnt = int(sub["SER_NO"].nunique())
+                    rec[t] = cnt if cnt else ""
+                    total += cnt
+                rec["Grand Total"] = total if total else ""
+                rows.append(rec)
+            # depot total row
+            tot = {"Depot": dep, "EPK RANGE": "Total"}
+            grand = 0
+            for t in all_types:
+                cnt = int(gd[gd["TYPE"].astype(str).str.strip().str.upper() == t]["SER_NO"].nunique())
+                tot[t] = cnt if cnt else ""
+                grand += cnt
+            tot["Grand Total"] = grand if grand else ""
+            rows.append(tot)
+        out = pd.DataFrame(rows)
+        # order columns
+        cols = ["Depot", "EPK RANGE"] + all_types + ["Grand Total"]
+        out = out.reindex(columns=[c for c in cols if c in out.columns])
+        thead = (
+            "<tr>"
+            + _th("Depot", rowspan=2, top=0) + _th("EPK<br>RANGE", rowspan=2, top=0)
+            + _th("RTC INTRA / INTER", bg="#1e40af", colspan=len(rtc_types), top=0)
+            + _th("PHB INTRA / INTER", bg="#9a3412", colspan=len(phb_types), top=0)
+            + _th("Grand<br>Total", rowspan=2, bg="#0f172a", top=0)
+            + "</tr><tr>"
+        )
+        for t in rtc_types:
+            thead += _th(t, bg="#3b82f6", top=28)
+        for t in phb_types:
+            thead += _th(t, bg="#ea580c", top=28)
+        thead += "</tr>"
+        body = []
+        for _, r in out.iterrows():
+            is_tot = str(r.get("EPK RANGE", "")) == "Total"
+            style = ' style="font-weight:700;background:#e2efda;"' if is_tot else ""
+            body.append(f"<tr{style}>")
+            body.append(_cell(r.get("Depot")))
+            body.append(_cell(r.get("EPK RANGE")))
+            for t in rtc_types + phb_types:
+                body.append(_cell(r.get(t), is_int=True))
+            body.append(_cell(r.get("Grand Total"), is_int=True))
+            body.append("</tr>")
+        _render_board(title, thead, "".join(body), out, "RangeEPK")
+        st.caption("RTC INTRA/INTER: " + ", ".join(rtc_types) + " | PHB: " + ", ".join(phb_types))
+
+    # ========== BOARD 6: Inter State Sector Wise ==========
+    elif mf_board.startswith("6."):
+        title = f"INTER STATE SECTOR WISE PERFORMANCE FOR & UPTO {mf_month} (WITH MYP-1)"
+        # INTERSTATE flag or long routes
+        sec = base.copy()
+        if "INTERSTATE" in sec.columns:
+            sec = sec[sec["INTERSTATE"].astype(str).str.upper().str.contains("INTER", na=False)]
+        keys = ["ROUTEE", "DEPOT", "PRODUCT", "RTC_HIRE"]
+        def agg(data):
+            if len(data) == 0:
+                return pd.DataFrame()
+            return data.groupby(keys, dropna=False).agg(
+                schs=("NO_OF_SCHS", "sum"), sers=("SER_NO", "nunique"),
+                sch_kms=("SCH_KMS", "sum"), kms=("Optd_KMs", "sum"),
+                ge=("GE_TOT", "sum"), ne=("NE_TOT", "sum"),
+            ).reset_index()
+        a_cm, a_cy, a_ly = agg(cm if "INTERSTATE" not in cm.columns else cm[cm["INTERSTATE"].astype(str).str.upper().str.contains("INTER", na=False)]), \
+            agg(cy_um if "INTERSTATE" not in cy_um.columns else cy_um[cy_um["INTERSTATE"].astype(str).str.upper().str.contains("INTER", na=False)]), \
+            agg(ly_um if "INTERSTATE" not in ly_um.columns else ly_um[ly_um["INTERSTATE"].astype(str).str.upper().str.contains("INTER", na=False)])
+        if len(a_cm) == 0 and len(a_cy) == 0:
+            st.warning("No INTERSTATE rows found — showing all long ROUTEE groups.")
+            a_cm, a_cy, a_ly = agg(cm), agg(cy_um), agg(ly_um)
+        merged = a_cy.merge(a_cm, on=keys, how="outer", suffixes=("_cy", "_cm"))
+        merged = merged.merge(a_ly, on=keys, how="outer")
+        for c in ["schs", "sers", "sch_kms", "kms", "ge", "ne"]:
+            if c in merged.columns:
+                merged.rename(columns={c: f"{c}_ly"}, inplace=True)
+        rows = []
+        for _, r in merged.fillna(0).iterrows():
+            dep = str(r.get("DEPOT", ""))
+            orf_c, orf_l = _orf(dep, side="cy"), _orf(dep, side="ly")
+            def side(ge, ne, kms, orf):
+                g, n = _epk(ge, kms), _epk(ne, kms)
+                return g, n, _or(g, orf), _or(n, orf)
+            g_cm, n_cm, og_cm, on_cm = side(r.get("ge_cm", 0), r.get("ne_cm", 0), r.get("kms_cm", 0), orf_c)
+            g_cy, n_cy, og_cy, on_cy = side(r.get("ge_cy", 0), r.get("ne_cy", 0), r.get("kms_cy", 0), orf_c)
+            g_ly, n_ly, og_ly, on_ly = side(r.get("ge_ly", 0), r.get("ne_ly", 0), r.get("kms_ly", 0), orf_l)
+            var_epk = (g_cy - g_ly) if pd.notna(g_cy) and pd.notna(g_ly) else np.nan
+            var_or = (og_cy - og_ly) if pd.notna(og_cy) and pd.notna(og_ly) else np.nan
+            rows.append({
+                "SL NO.": len(rows) + 1,
+                "SECTOR": r.get("ROUTEE", ""),
+                "DEPOT": dep,
+                "ROUTE": r.get("ROUTEE", ""),
+                "LONG_TP.": r.get("PRODUCT", ""),
+                "RTC/HIRE": r.get("RTC_HIRE", ""),
+                "No. of Schs": int(round(float(r.get("schs_cy", 0) or 0))) or "",
+                "No. of Ser": int(round(float(r.get("sers_cy", 0) or 0))) or "",
+                "Sch Kms": _f0(r.get("sch_kms_cy", 0)),
+                "GROSS EPK CM": round(g_cm, 2) if pd.notna(g_cm) else None,
+                "GROSS EPK UM": round(g_cy, 2) if pd.notna(g_cy) else None,
+                "GROSS EPK LYUM": round(g_ly, 2) if pd.notna(g_ly) else None,
+                "NET EPK CM": round(n_cm, 2) if pd.notna(n_cm) else None,
+                "NET EPK UM": round(n_cy, 2) if pd.notna(n_cy) else None,
+                "NET EPK LYUM": round(n_ly, 2) if pd.notna(n_ly) else None,
+                "GROSS OR CM": round(og_cm, 0) if pd.notna(og_cm) else None,
+                "GROSS OR UM": round(og_cy, 0) if pd.notna(og_cy) else None,
+                "GROSS OR LYUM": round(og_ly, 0) if pd.notna(og_ly) else None,
+                "NET OR CM": round(on_cm, 0) if pd.notna(on_cm) else None,
+                "NET OR UM": round(on_cy, 0) if pd.notna(on_cy) else None,
+                "NET OR LYUM": round(on_ly, 0) if pd.notna(on_ly) else None,
+                "VAR UM EPK": round(var_epk, 2) if pd.notna(var_epk) else None,
+                "VAR UM OR": round(var_or, 0) if pd.notna(var_or) else None,
+            })
+        out = pd.DataFrame(rows)
+        thead = (
+            "<tr>"
+            + _th("SL<br>NO.", rowspan=2, top=0) + _th("SECTOR", rowspan=2, top=0)
+            + _th("DEPOT", rowspan=2, top=0) + _th("ROUTE", rowspan=2, top=0)
+            + _th("LONG_TP.", rowspan=2, top=0) + _th("RTC/<br>HIRE", rowspan=2, top=0)
+            + _th("No.<br>of<br>Schs", rowspan=2, top=0) + _th("No.<br>of<br>Ser", rowspan=2, top=0)
+            + _th("Sch<br>Kms", rowspan=2, top=0)
+            + _th("GROSS E P K", bg="#dcfce7", color="#14532d", colspan=3, top=0)
+            + _th("NET E P K", bg="#fef3c7", color="#92400e", colspan=3, top=0)
+            + _th("GROSS OR", bg="#dbeafe", color="#1e3a8a", colspan=3, top=0)
+            + _th("NET OR", bg="#ede9fe", color="#5b21b6", colspan=3, top=0)
+            + _th("VAR- GROSS", bg="#fee2e2", color="#991b1b", colspan=2, top=0)
+            + "</tr><tr>"
+        )
+        for grp in range(4):
+            thead += _th("CM", bg="#f1f5f9", color="#334155", top=28) + _th("UM", bg="#f1f5f9", color="#334155", top=28) + _th("LYUM", bg="#f1f5f9", color="#334155", top=28)
+        thead += _th("UM EPK", bg="#fecaca", color="#991b1b", top=28) + _th("UM OR", bg="#fecaca", color="#991b1b", top=28)
+        thead += "</tr>"
+        body = []
+        cols6 = [
+            "SL NO.", "SECTOR", "DEPOT", "ROUTE", "LONG_TP.", "RTC/HIRE", "No. of Schs", "No. of Ser", "Sch Kms",
+            "GROSS EPK CM", "GROSS EPK UM", "GROSS EPK LYUM",
+            "NET EPK CM", "NET EPK UM", "NET EPK LYUM",
+            "GROSS OR CM", "GROSS OR UM", "GROSS OR LYUM",
+            "NET OR CM", "NET OR UM", "NET OR LYUM",
+            "VAR UM EPK", "VAR UM OR",
+        ]
+        for _, r in out.iterrows():
+            body.append("<tr>")
+            for c in cols6:
+                body.append(_cell(r.get(c)))
+            body.append("</tr>")
+        _render_board(title, thead, "".join(body), out, "InterState")
+
+    # ========== BOARD 7: Service Wise Performance ==========
+    elif mf_board.startswith("7."):
+        title = f"RR REGION SERVICE WISE PERFORMANCE FOR AND UPTO {mf_month}"
+        keys = ["DEPOT", "SER_NO"]
+        def agg(data):
+            if len(data) == 0:
+                return pd.DataFrame()
+            return data.groupby(keys, dropna=False).agg(
+                route=("ROUTEE", "first"), rtc=("RTC_HIRE", "first"), typ=("TYPE", "first"),
+                nature=("NATURE", "first"), prod=("PRODUCT", "first"),
+                sch_dep=("SCH_DEP", "first"), rl=("R_L", "max"),
+                schs=("NO_OF_SCHS", "sum"), sers=("SER_NO", "nunique"),
+                sch_kms=("SCH_KMS", "sum"), kms=("Optd_KMs", "sum"),
+                ge=("GE_TOT", "sum"), ne=("NE_TOT", "sum"),
+                days=("Date", "nunique"),
+            ).reset_index()
+        a_cm, a_cy, a_ly = agg(cm), agg(cy_um), agg(ly_um)
+        merged = a_cy.merge(a_cm, on=keys, how="left", suffixes=("_cy", "_cm"))
+        merged = merged.merge(a_ly, on=keys, how="left")
+        for c in ["route", "rtc", "typ", "nature", "prod", "sch_dep", "rl", "schs", "sers", "sch_kms", "kms", "ge", "ne", "days"]:
+            if c in merged.columns:
+                merged.rename(columns={c: f"{c}_ly"}, inplace=True)
+        rows = []
+        for _, r in merged.fillna(0).iterrows():
+            dep = str(r.get("DEPOT", ""))
+            orf_c, orf_l = _orf(dep, side="cy"), _orf(dep, side="ly")
+            def side(ge, ne, kms, orf):
+                g, n = _epk(ge, kms), _epk(ne, kms)
+                return g, n, _or(g, orf), _or(n, orf)
+            g_cm, n_cm, og_cm, on_cm = side(r.get("ge_cm", 0), r.get("ne_cm", 0), r.get("kms_cm", 0), orf_c)
+            g_cy, n_cy, og_cy, on_cy = side(r.get("ge_cy", 0), r.get("ne_cy", 0), r.get("kms_cy", 0), orf_c)
+            g_ly, n_ly, og_ly, on_ly = side(r.get("ge_ly", 0), r.get("ne_ly", 0), r.get("kms_ly", 0), orf_l)
+            var_epk = (g_cy - g_ly) if pd.notna(g_cy) and pd.notna(g_ly) else np.nan
+            var_or = (og_cy - og_ly) if pd.notna(og_cy) and pd.notna(og_ly) else np.nan
+            rows.append({
+                "SL NO": len(rows) + 1,
+                "Depot": dep,
+                "Ser No": r.get("SER_NO", ""),
+                "Sch Dep": r.get("sch_dep_cy", r.get("sch_dep_cm", "")),
+                "Route": r.get("route_cy", r.get("route_cm", "")),
+                "RTC/HIRE": r.get("rtc_cy", r.get("rtc_cm", "")),
+                "R/L": _f0(r.get("rl_cy", 0)),
+                "TP": r.get("typ_cy", r.get("typ_cm", "")),
+                "Type": r.get("prod_cy", r.get("prod_cm", "")),
+                "D/N": r.get("nature_cy", r.get("nature_cm", "")),
+                "No.of Schs": int(round(float(r.get("schs_cy", 0) or 0))) or "",
+                "No.of Sers": int(round(float(r.get("sers_cy", 0) or 0))) or "",
+                "Sch. Kms": _f0(r.get("sch_kms_cy", 0)),
+                "Optd Days CM": int(r.get("days_cm", 0) or 0) or "",
+                "Optd Days UM": int(r.get("days_cy", 0) or 0) or "",
+                "GROSS EPK CM": round(g_cm, 2) if pd.notna(g_cm) else None,
+                "GROSS EPK UM": round(g_cy, 2) if pd.notna(g_cy) else None,
+                "GROSS EPK LYUM": round(g_ly, 2) if pd.notna(g_ly) else None,
+                "NET EPK CM": round(n_cm, 2) if pd.notna(n_cm) else None,
+                "NET EPK UM": round(n_cy, 2) if pd.notna(n_cy) else None,
+                "NET EPK LYUM": round(n_ly, 2) if pd.notna(n_ly) else None,
+                "GROSS OR CM": round(og_cm, 0) if pd.notna(og_cm) else None,
+                "GROSS OR UM": round(og_cy, 0) if pd.notna(og_cy) else None,
+                "GROSS OR LYUM": round(og_ly, 0) if pd.notna(og_ly) else None,
+                "NET OR CM": round(on_cm, 0) if pd.notna(on_cm) else None,
+                "NET OR UM": round(on_cy, 0) if pd.notna(on_cy) else None,
+                "NET OR LYUM": round(on_ly, 0) if pd.notna(on_ly) else None,
+                "VAR UM EPK": round(var_epk, 2) if pd.notna(var_epk) else None,
+                "VAR UM OR": round(var_or, 0) if pd.notna(var_or) else None,
+            })
+        out = pd.DataFrame(rows)
+        thead = (
+            "<tr>"
+            + _th("SL<br>NO", rowspan=2, top=0) + _th("Depot", rowspan=2, top=0)
+            + _th("Ser No", rowspan=2, top=0) + _th("Sch<br>Dep", rowspan=2, top=0)
+            + _th("Route", rowspan=2, top=0) + _th("RTC/<br>HIRE", rowspan=2, top=0)
+            + _th("R/L", rowspan=2, top=0) + _th("TP", rowspan=2, top=0)
+            + _th("Type", rowspan=2, top=0) + _th("D/N", rowspan=2, top=0)
+            + _th("No.of<br>Schs", rowspan=2, top=0) + _th("No.of<br>Sers", rowspan=2, top=0)
+            + _th("Sch.<br>Kms", rowspan=2, top=0)
+            + _th("Optd<br>Days", bg="#0f766e", colspan=2, top=0)
+            + _th("GROSS EPK", bg="#dcfce7", color="#14532d", colspan=3, top=0)
+            + _th("NET EPK", bg="#fef3c7", color="#92400e", colspan=3, top=0)
+            + _th("GROSS OR", bg="#dbeafe", color="#1e3a8a", colspan=3, top=0)
+            + _th("NET OR", bg="#ede9fe", color="#5b21b6", colspan=3, top=0)
+            + _th("VAR - GROSS", bg="#fee2e2", color="#991b1b", colspan=2, top=0)
+            + "</tr><tr>"
+            + _th("CM", bg="#14b8a6", top=28) + _th("UM", bg="#14b8a6", top=28)
+        )
+        for _ in range(4):
+            thead += _th("CM", bg="#f1f5f9", color="#334155", top=28) + _th("UM", bg="#f1f5f9", color="#334155", top=28) + _th("LY UM", bg="#f1f5f9", color="#334155", top=28)
+        thead += _th("UM EPK", bg="#fecaca", color="#991b1b", top=28) + _th("UM OR", bg="#fecaca", color="#991b1b", top=28)
+        thead += "</tr>"
+        body = []
+        cols7 = [
+            "SL NO", "Depot", "Ser No", "Sch Dep", "Route", "RTC/HIRE", "R/L", "TP", "Type", "D/N",
+            "No.of Schs", "No.of Sers", "Sch. Kms", "Optd Days CM", "Optd Days UM",
+            "GROSS EPK CM", "GROSS EPK UM", "GROSS EPK LYUM",
+            "NET EPK CM", "NET EPK UM", "NET EPK LYUM",
+            "GROSS OR CM", "GROSS OR UM", "GROSS OR LYUM",
+            "NET OR CM", "NET OR UM", "NET OR LYUM",
+            "VAR UM EPK", "VAR UM OR",
+        ]
+        for _, r in out.iterrows():
+            body.append("<tr>")
+            for c in cols7:
+                body.append(_cell(r.get(c)))
+            body.append("</tr>")
+        _render_board(title, thead, "".join(body), out, "ServiceWise")
+
+    # ========== BOARD 8: Trend Service Wise Gross ==========
+    elif mf_board.startswith("8."):
+        title = f"TREND- GROSS DEPOT SERVICE WISE PERFORMANCE FOR AND UPTO {mf_month}"
+        fy_months = []
+        cur = fy_start
+        while cur <= cy_end:
+            fy_months.append(cur.strftime("%b-%Y"))
+            cur += pd.DateOffset(months=1)
+        keys = ["DEPOT", "SER_NO"]
+        meta = cy_um.groupby(keys, dropna=False).agg(
+            route=("ROUTEE", "first"), rtc=("RTC_HIRE", "first"), typ=("TYPE", "first"),
+            nature=("NATURE", "first"), prod=("PRODUCT", "first"),
+            sch_dep=("SCH_DEP", "first"),
+            schs=("NO_OF_SCHS", "sum"), sers=("SER_NO", "nunique"),
+            sch_kms=("SCH_KMS", "sum"),
+        ).reset_index()
+        rows = []
+        for _, m in meta.iterrows():
+            dep, ser = m["DEPOT"], m["SER_NO"]
+            orf_c = _orf(dep, side="cy")
+            orf_l = _orf(dep, side="ly")
+            rec = {
+                "SL NO": len(rows) + 1,
+                "Depot": dep,
+                "Ser No": ser,
+                "Sch Dep": m.get("sch_dep", ""),
+                "Route": m.get("route", ""),
+                "RTC/HIRE": m.get("rtc", ""),
+                "TP": m.get("typ", ""),
+                "Type": m.get("prod", ""),
+                "D/N": m.get("nature", ""),
+                "No. of Schs": int(round(float(m.get("schs", 0) or 0))) or "",
+                "No. of Ser": int(round(float(m.get("sers", 0) or 0))) or "",
+                "Sch. Kms": _f0(m.get("sch_kms", 0)),
+            }
+            for mkey in fy_months:
+                sub = base[(base["DEPOT"] == dep) & (base["SER_NO"] == ser) & (base["Month_Name"].astype(str).str.strip() == mkey)]
+                kms = float(sub["Optd_KMs"].sum())
+                ge = float(sub["GE_TOT"].sum())
+                epk = _epk(ge, kms)
+                lab = mkey.split("-")[0]
+                rec[f"{lab} EPK"] = round(epk, 2) if pd.notna(epk) else None
+                rec[f"{lab} OR"] = round(_or(epk, orf_c), 0) if pd.notna(epk) else None
+            sub_cy = cy_um[(cy_um["DEPOT"] == dep) & (cy_um["SER_NO"] == ser)]
+            sub_ly = ly_um[(ly_um["DEPOT"] == dep) & (ly_um["SER_NO"] == ser)]
+            for label, sub, orf in (("UM", sub_cy, orf_c), ("LY UM", sub_ly, orf_l)):
+                kms = float(sub["Optd_KMs"].sum())
+                ge = float(sub["GE_TOT"].sum())
+                epk = _epk(ge, kms)
+                rec[f"{label} EPK"] = round(epk, 2) if pd.notna(epk) else None
+                rec[f"{label} OR"] = round(_or(epk, orf), 0) if pd.notna(epk) else None
+            rows.append(rec)
+        out = pd.DataFrame(rows)
+        mon_labs = [m.split("-")[0] for m in fy_months]
+        thead = (
+            "<tr>"
+            + _th("SL<br>NO", rowspan=2, top=0) + _th("Depot", rowspan=2, top=0)
+            + _th("Ser No", rowspan=2, top=0) + _th("Sch<br>Dep", rowspan=2, top=0)
+            + _th("Route", rowspan=2, top=0) + _th("RTC/<br>HIRE", rowspan=2, top=0)
+            + _th("TP", rowspan=2, top=0) + _th("Type", rowspan=2, top=0)
+            + _th("D/N", rowspan=2, top=0) + _th("No.<br>of<br>Schs", rowspan=2, top=0)
+            + _th("No.<br>of<br>Ser", rowspan=2, top=0) + _th("Sch.<br>Kms", rowspan=2, top=0)
+            + _th("GROSS EPK", bg="#dcfce7", color="#14532d", colspan=len(mon_labs) + 2, top=0)
+            + _th("GROSS OR", bg="#dbeafe", color="#1e3a8a", colspan=len(mon_labs) + 2, top=0)
+            + "</tr><tr>"
+        )
+        for lab in mon_labs:
+            thead += _th(lab.upper()[:3], bg="#bbf7d0", color="#14532d", top=28)
+        thead += _th("UM", bg="#86efac", color="#14532d", top=28) + _th("LY UM", bg="#bbf7d0", color="#14532d", top=28)
+        for lab in mon_labs:
+            thead += _th(lab.upper()[:3], bg="#bfdbfe", color="#1e3a8a", top=28)
+        thead += _th("UM", bg="#93c5fd", color="#1e3a8a", top=28) + _th("LY UM", bg="#bfdbfe", color="#1e3a8a", top=28)
+        thead += "</tr>"
+        body = []
+        for _, r in out.iterrows():
+            body.append("<tr>")
+            for c in ["SL NO", "Depot", "Ser No", "Sch Dep", "Route", "RTC/HIRE", "TP", "Type", "D/N", "No. of Schs", "No. of Ser", "Sch. Kms"]:
+                body.append(_cell(r.get(c)))
+            for lab in mon_labs:
+                body.append(_cell(r.get(f"{lab} EPK")))
+            body.append(_cell(r.get("UM EPK")))
+            body.append(_cell(r.get("LY UM EPK")))
+            for lab in mon_labs:
+                body.append(_cell(r.get(f"{lab} OR"), is_int=True))
+            body.append(_cell(r.get("UM OR"), is_int=True))
+            body.append(_cell(r.get("LY UM OR"), is_int=True))
+            body.append("</tr>")
+        _render_board(title, thead, "".join(body), out, "TrendService")
+
+    else:
+        st.info("Select a report board.")
+
+elif section == "Route Day-wise":
     title = f"Route WISE, Day Wise {prefix} EPK ({for_upto}) - {month}"
     if depot != "ALL":
         title += f" of {depot} Depot"
@@ -2304,16 +3608,40 @@ elif section == "ACT VS ACT":
     try:
         _no_dep = pd.Series(True, index=df.index)
         if mhl != "ALL" and col_mhl:
-            _no_dep &= df[col_mhl].astype(str).str.strip() == str(mhl).strip()
+            _no_dep &= df[col_mhl].astype(str).str.strip().str.upper() == str(mhl).strip().upper()
         if route != "ALL" and col_route:
-            _no_dep &= df[col_route].astype(str).str.strip() == str(route).strip()
+            _no_dep &= df[col_route].astype(str).str.strip().str.upper() == str(route).strip().upper()
         if product != "ALL" and col_product:
-            _no_dep &= df[col_product].astype(str).str.strip() == str(product).strip()
-        if "rtc" in dir() and rtc != "ALL" and col_rtc:
-            _no_dep &= df[col_rtc].astype(str).str.strip() == str(rtc).strip()
+            _no_dep &= df[col_product].astype(str).str.strip().str.upper() == str(product).strip().upper()
+        if rtc != "ALL" and col_rtc:
+            _no_dep &= _rtc_match_mask(df[col_rtc], rtc)
+        if ac_type != "ALL" and col_product:
+            _ac_mask_act = df[col_product].map(_is_ac_product)
+            if ac_type == "AC":
+                _no_dep &= _ac_mask_act
+            else:
+                _no_dep &= ~_ac_mask_act
         _mcol2 = col_month if col_month else ("Month_Name" if "Month_Name" in df.columns else None)
-        _dcol2 = "Date" if "Date" in df.columns else (col_date if "col_date" in dir() and col_date else None)
-        # CY max date from selected month (available data)
+        _dcol2 = "Date" if "Date" in df.columns else (col_date if col_date else None)
+
+        # Prefer real latest date from ser_wise for display / day-cap
+        _sw_max = pd.NaT
+        try:
+            if df_ser_wise is not None and len(df_ser_wise) and "Date" in df_ser_wise.columns:
+                _swd = pd.to_datetime(df_ser_wise["Date"], errors="coerce")
+                if "Month_Name" in df_ser_wise.columns and month:
+                    _swd = _swd[df_ser_wise["Month_Name"].astype(str).str.strip() == str(month).strip()]
+                _sw_max = _swd.max()
+        except Exception:
+            _sw_max = pd.NaT
+
+        # Month_Name → datetime for monthly files (ser_monthly)
+        _mon_dt = None
+        if _mcol2:
+            _mon_dt = pd.to_datetime(df[_mcol2].astype(str).str.strip(), format="%b-%Y", errors="coerce")
+            if _mon_dt.isna().all():
+                _mon_dt = pd.to_datetime(df[_mcol2].astype(str).str.strip(), format="%b-%y", errors="coerce")
+
         if _mcol2 and _dcol2:
             _cy_max = pd.to_datetime(
                 df.loc[df[_mcol2].astype(str).str.strip() == str(month).strip(), _dcol2], errors="coerce"
@@ -2322,7 +3650,21 @@ elif section == "ACT VS ACT":
             _cy_max = pd.to_datetime(df[_dcol2], errors="coerce").max()
         else:
             _cy_max = pd.NaT
+        # If Date is only synthesized month-start (day=1) or missing, parse selected month key
+        if pd.isna(_cy_max) or (pd.notna(_cy_max) and int(_cy_max.day) == 1):
+            try:
+                _mk = pd.to_datetime(str(month).strip(), format="%b-%Y", errors="coerce")
+                if pd.isna(_mk):
+                    _mk = pd.to_datetime(str(month).strip(), format="%b-%y", errors="coerce")
+                if pd.notna(_mk):
+                    _cy_max = _mk
+            except Exception:
+                pass
+        if pd.notna(_sw_max):
+            # use ser_wise latest day for heading; keep month for period windows
+            pass
         _ly_max = _cy_max - pd.DateOffset(years=1) if pd.notna(_cy_max) else pd.NaT
+
         if for_upto == "FOR":
             _cy_m = _no_dep & (df[_mcol2].astype(str).str.strip() == str(month).strip()) if _mcol2 else _no_dep
             try:
@@ -2336,30 +3678,39 @@ elif section == "ACT VS ACT":
             except Exception:
                 _ly_m = pd.Series(False, index=df.index)
         else:
-            # UPTO: from Apr FY start to max available date
+            # UPTO: FY Apr → selected month, using Month_Name dates (works for ser_monthly)
             if pd.notna(_cy_max):
                 _fy_y = _cy_max.year if _cy_max.month >= 4 else _cy_max.year - 1
                 _fy_start = pd.Timestamp(year=_fy_y, month=4, day=1)
-                _dt = pd.to_datetime(df[_dcol2], errors="coerce") if _dcol2 else None
-                if _dt is not None:
+                _ly_end = _cy_max - pd.DateOffset(years=1)
+                _ly_fy = _fy_start - pd.DateOffset(years=1)
+                if _mon_dt is not None and _mon_dt.notna().any():
+                    _cy_m = _no_dep & (_mon_dt >= _fy_start) & (_mon_dt <= _cy_max)
+                    _ly_m = _no_dep & (_mon_dt >= _ly_fy) & (_mon_dt <= _ly_end)
+                elif _dcol2:
+                    _dt = pd.to_datetime(df[_dcol2], errors="coerce")
                     _cy_m = _no_dep & (_dt >= _fy_start) & (_dt <= _cy_max)
-                    _ly_m = _no_dep & (_dt >= (_fy_start - pd.DateOffset(years=1))) & (_dt <= _ly_max)
+                    _ly_m = _no_dep & (_dt >= _ly_fy) & (_dt <= _ly_end)
                 else:
-                    _cy_m, _ly_m = _no_dep.copy(), pd.Series(False, index=df.index)
+                    _cy_m = _no_dep & (df[_mcol2].astype(str).str.strip() == str(month).strip()) if _mcol2 else _no_dep
+                    _ly_m = pd.Series(False, index=df.index)
             else:
-                _cy_m, _ly_m = _no_dep.copy(), pd.Series(False, index=df.index)
-        # Cap FOR to available day-of-month
-        if _dcol2 and pd.notna(_cy_max):
-            _dt2 = pd.to_datetime(df[_dcol2], errors="coerce")
-            _cy_m = _cy_m & (_dt2 <= _cy_max)
-            if pd.notna(_ly_max):
-                _ly_m = _ly_m & (_dt2 <= _ly_max)
+                _cy_m = _no_dep & (df[_mcol2].astype(str).str.strip() == str(month).strip()) if _mcol2 else _no_dep
+                _ly_m = pd.Series(False, index=df.index)
+
         cy_data = df[_cy_m].copy()
         ly_data = df[_ly_m].copy()
+        # Expose ser_wise latest date for heading
+        if pd.notna(_sw_max):
+            selected_max_date = _sw_max
+            display_max_date = _sw_max
+        elif pd.notna(_cy_max):
+            selected_max_date = _cy_max
+            display_max_date = _cy_max
     except Exception as _act_e:
         st.caption(f"ACT VS ACT data rebuild: {_act_e}")
 
-    orf_map, orf_by_prod, orf_err = load_orf_map(r"ORF.xlsx")
+    orf_map, orf_by_prod, orf_err = load_orf_map(r"D:\dashboard\ORF.xlsx")
     if orf_map:
         _bhel = orf_map.get("BHEL", {})
         st.caption(
@@ -2370,8 +3721,33 @@ elif section == "ACT VS ACT":
     if orf_err:
         st.warning(f"ORF: {orf_err}")
 
+    # Heading: date from ser_wise latest available day
+    def _act_heading(ng_label):
+        fu = str(for_upto).upper()
+        date_br = ""
+        try:
+            _dshow = selected_max_date
+            try:
+                if pd.notna(display_max_date):
+                    _dshow = display_max_date
+            except NameError:
+                pass
+            if pd.notna(_dshow):
+                date_br = f" ({pd.Timestamp(_dshow).strftime('%d-%m-%Y')})"
+        except Exception:
+            date_br = ""
+        return f"Actual Vs Actuals {fu} the month of {month}{date_br} ({ng_label})"
+
+    # Fleet map for AVU / EPB
+    try:
+        _fleet_map, _fleet_err = load_fleet_map()
+    except Exception:
+        _fleet_map, _fleet_err = {}, "fleet load failed"
+    if _fleet_err:
+        st.caption(f"Fleet: {_fleet_err}")
+
     # ---- TABLE A: NET ----
-    st.markdown(f'<div class="title-bar">TABLE A – NET | {for_upto} | Month: {month}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="title-bar">{_act_heading("NET")}</div>', unsafe_allow_html=True)
     html_net, df_net = build_act_vs_act_table(
         group_col="DEPOT",
         data_cy=cy_data,
@@ -2379,23 +3755,21 @@ elif section == "ACT VS ACT":
         cy_label="CY",
         ly_label="LY",
     )
-    # Force NET earnings columns for metrics: rebuild with temporary earn cols is heavy;
-    # instead re-call after swapping global earn - use explicit data and local earn names
-    # build_act_vs_act uses outer earn_tot/earn_fpd/earn_mhl - so temporarily override
     if html_net is None or df_net is None or len(df_net) == 0:
         st.warning("No data for NET table.")
     else:
-        # Rebuild NET properly
         _et, _ef, _em, _px = earn_tot, earn_fpd, earn_mhl, prefix
         earn_tot, earn_fpd, earn_mhl, prefix = "NE_TOT", "NE_FPD", "NE_MHL", "Net"
         html_net, df_net = build_act_vs_act_table(group_col="DEPOT")
         if df_net is not None and len(df_net) > 0:
             df_net = add_or_columns_depot(df_net, cy_data, ly_data, "NE_TOT", "NE_FPD", "NE_MHL", orf_map, orf_by_prod=orf_by_prod, product_filter=product, depot_filter=depot)
+            df_net = add_avu_epb_columns(df_net, cy_data, ly_data, _fleet_map, month, group_col="DEPOT", product_filter=product)
             st.markdown(render_act_table_with_or(df_net, "DEPOT", "NET", pax_heading), unsafe_allow_html=True)
+            st.caption("AVU = KMs ÷ (Fleet × Days) · EPB = Earnings ÷ (Fleet × Days) · Fleet from FLEET.parquet · Days = unique dates in period")
         earn_tot, earn_fpd, earn_mhl, prefix = _et, _ef, _em, _px
 
     # ---- TABLE B: GROSS ----
-    st.markdown(f'<div class="title-bar">TABLE B – GROSS | {for_upto} | Month: {month}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="title-bar">{_act_heading("GROSS")}</div>', unsafe_allow_html=True)
     _et, _ef, _em, _px = earn_tot, earn_fpd, earn_mhl, prefix
     earn_tot, earn_fpd, earn_mhl, prefix = "GE_TOT", "GE_FPD", "GE_MHL", "Gross"
     html_gr, df_gr = build_act_vs_act_table(group_col="DEPOT")
@@ -2404,12 +3778,13 @@ elif section == "ACT VS ACT":
         df_gr = pd.DataFrame()
     else:
         df_gr = add_or_columns_depot(df_gr, cy_data, ly_data, "GE_TOT", "GE_FPD", "GE_MHL", orf_map, orf_by_prod=orf_by_prod, product_filter=product, depot_filter=depot)
+        df_gr = add_avu_epb_columns(df_gr, cy_data, ly_data, _fleet_map, month, group_col="DEPOT", product_filter=product)
         st.markdown(render_act_table_with_or(df_gr, "DEPOT", "GROSS", pax_heading), unsafe_allow_html=True)
     earn_tot, earn_fpd, earn_mhl, prefix = _et, _ef, _em, _px
 
     # Combined formatted Excel (NET + GROSS single sheet)
-    _dn = df_net if "df_net" in dir() and df_net is not None else pd.DataFrame()
-    _dg = df_gr if "df_gr" in dir() and df_gr is not None else pd.DataFrame()
+    _dn = df_net if df_net is not None else pd.DataFrame()
+    _dg = df_gr if df_gr is not None else pd.DataFrame()
     if len(_dn) or len(_dg):
         st.download_button(
             "Download Excel – NET + GROSS",
@@ -2428,13 +3803,27 @@ elif section == "ACT VS ACT":
         # Build data WITHOUT depot restriction so all depots always appear
         _cm = pd.Series(True, index=df.index)
         if product != "ALL" and "PRODUCT" in df.columns:
-            _cm &= df["PRODUCT"].astype(str).str.strip() == str(product).strip()
+            _cm &= df["PRODUCT"].astype(str).str.strip().str.upper() == str(product).strip().upper()
         if route != "ALL" and "ROUTEE" in df.columns:
-            _cm &= df["ROUTEE"].astype(str).str.strip() == str(route).strip()
+            _cm &= df["ROUTEE"].astype(str).str.strip().str.upper() == str(route).strip().upper()
         if mhl != "ALL" and "MHL_NMHL" in df.columns:
-            _cm &= df["MHL_NMHL"].astype(str).str.strip() == str(mhl).strip()
-        if rtc != "ALL" and "RTC_HIRE" in df.columns:
-            _cm &= df["RTC_HIRE"].astype(str).str.strip() == str(rtc).strip()
+            _cm &= df["MHL_NMHL"].astype(str).str.strip().str.upper() == str(mhl).strip().upper()
+        if rtc != "ALL" and col_rtc and col_rtc in df.columns:
+            _cm &= _rtc_match_mask(df[col_rtc], rtc)
+        elif rtc != "ALL" and "RTC_HIRE" in df.columns:
+            _cm &= _rtc_match_mask(df["RTC_HIRE"], rtc)
+        if ac_type != "ALL" and col_product and col_product in df.columns:
+            _ac_ch = df[col_product].map(_is_ac_product)
+            if ac_type == "AC":
+                _cm &= _ac_ch
+            else:
+                _cm &= ~_ac_ch
+        elif ac_type != "ALL" and "PRODUCT" in df.columns:
+            _ac_ch = df["PRODUCT"].map(_is_ac_product)
+            if ac_type == "AC":
+                _cm &= _ac_ch
+            else:
+                _cm &= ~_ac_ch
         def _months_upto_local(end_month_str, start_month=4):
             try:
                 parts = str(end_month_str).replace(" ", "").split("-")
@@ -2514,7 +3903,7 @@ elif section == "ACT VS ACT":
 
         # ORF / OR (TOT) per depot from PRODUCT=TOTAL
         try:
-            _orf_map, _, _ = load_orf_map(r"ORF.xlsx")
+            _orf_map, _, _ = load_orf_map(r"D:\dashboard\ORF.xlsx")
         except Exception:
             _orf_map = {}
         def _orf_val(dep, which="cy"):
@@ -2553,9 +3942,9 @@ elif section == "ACT VS ACT":
 
         charts_spec = [
             ("Kilometers", "kms_CY", "kms_LY", "KMs (lakhs)"),
-            ("Earnings", "earn_CY", "earn_LY", "Earnings (lakhs)"),
-            ("EPK (TOT)", "epk_CY", "epk_LY", "EPK"),
-            ("OR (TOT)", "or_CY", "or_LY", "OR"),
+            (f"{_pfx} Earnings", "earn_CY", "earn_LY", f"{_pfx} Earnings (lakhs)"),
+            (f"{_pfx} EPK (TOT)", "epk_CY", "epk_LY", f"{_pfx} EPK"),
+            (f"{_pfx} OR (TOT)", "or_CY", "or_LY", f"{_pfx} OR"),
             ("Passengers", "pax_CY", "pax_LY", "Passengers"),
         ]
 
@@ -2629,7 +4018,7 @@ elif section == "ACT VS ACT":
             or_ly = _wavg("or_LY", "kms_LY")
 
             pax_lbl = {"FPD": "FPD Passengers (lakhs)", "MHL": "MHL Passengers (lakhs)"}.get(
-                str(passengers).upper() if "passengers" in dir() else "", "TOT Passengers (lakhs)"
+                str(passengers).upper() if passengers is not None else "", "TOT Passengers (lakhs)"
             )
             if str(passengers).upper() not in ("FPD", "MHL"):
                 pax_lbl = "TOT Passengers (lakhs)"
@@ -2699,61 +4088,21 @@ elif section == "ACT VS ACT":
 
 elif section == "Product wise":
     pax_heading = {"FPD": "FPD PASSENGERS", "MHL": "MHL PASSENGERS"}.get(passengers, "TOTAL PASSENGERS")
-    orf_map, orf_by_prod, orf_err = load_orf_map(r"ORF.xlsx")
+    orf_map, orf_by_prod, orf_err = load_orf_map(r"D:\dashboard\ORF.xlsx")
     if orf_err:
         st.warning(f"ORF: {orf_err}")
 
     # Schedules from SMASTER.parquet (shared for both tables)
     sch_map = {}
     try:
-        sros_path = Path(r"SMASTER.parquet")
+        sros_path = Path(r"D:\Dashboard\SMASTER.parquet")
         if not sros_path.exists():
-            for alt in [Path(r"SMASTER.parquet"), Path(r"SMASTER.parquet"), Path("SMASTER.parquet"), Path(r"/home/workdir/attachments/SMASTER.parquet")]:
+            for alt in [Path(r"D:\dashboard\SMASTER.parquet"), Path(r"D:\MONTHLY\SMASTER.parquet"), Path("SMASTER.parquet"), Path(r"/home/workdir/attachments/SMASTER.parquet")]:
                 if alt.exists():
                     sros_path = alt
                     break
         if sros_path.exists():
-            @st.cache_data(ttl=300)
-            def _load_sros_sch_map_pw(month_key: str, depot_key: str = "ALL"):
-                s = pd.read_parquet(sros_path)
-                s.columns = [str(c).strip() for c in s.columns]
-                def fc(cands):
-                    n = {str(c).strip().lower().replace(" ", "").replace("_", ""): c for c in s.columns}
-                    for cand in cands:
-                        k = cand.lower().replace(" ", "").replace("_", "")
-                        if k in n:
-                            return n[k]
-                    return None
-                cp, cs, cm, cyear, cd = fc(["PRODUCT"]), fc(["NoOfSchedules", "NoOfSchedule"]), fc(["MONTH"]), fc(["YEAR"]), fc(["DEPOT"])
-                if not cp or not cs:
-                    return {}
-                s = s.copy()
-                s["_P"] = s[cp].astype(str).str.strip()
-                s["_SCH"] = pd.to_numeric(s[cs], errors="coerce").fillna(0)
-                if cd and depot_key and str(depot_key).upper() not in ("ALL", "REGION", "NONE", ""):
-                    s = s[s[cd].astype(str).str.strip().str.upper() == str(depot_key).strip().upper()]
-                if cm and cyear:
-                    def mk(row):
-                        try:
-                            return f"{str(row[cm]).strip()[:3].title()}-{int(float(row[cyear]))}"
-                        except Exception:
-                            return ""
-                    s["_MK"] = s.apply(mk, axis=1)
-                else:
-                    s["_MK"] = "ALL"
-                cy_g = s[s["_MK"] == month_key].groupby("_P")["_SCH"].sum() if month_key else s.groupby("_P")["_SCH"].sum()
-                ly_key = ""
-                try:
-                    parts = str(month_key).split("-")
-                    ly_key = f"{parts[0]}-{int(parts[1]) - 1}"
-                except Exception:
-                    pass
-                ly_g = s[s["_MK"] == ly_key].groupby("_P")["_SCH"].sum() if ly_key else pd.Series(dtype=float)
-                out = {}
-                for p in set(list(cy_g.index) + list(ly_g.index)):
-                    out[str(p).strip()] = (float(cy_g.get(p, 0)), float(ly_g.get(p, 0)))
-                return out
-            sch_map = _load_sros_sch_map_pw(str(month), str(depot))
+            sch_map = _load_sros_sch_map_pw(str(sros_path), str(month), str(depot))
     except Exception as _e:
         st.caption(f"SROS schedules: {_e}")
 
@@ -2795,8 +4144,8 @@ elif section == "Product wise":
         df_gr = add_or_columns_product(df_gr, orf_map, orf_by_prod=orf_by_prod, depot_filter=depot)
         st.markdown(render_product_table_with_or(df_gr, "GROSS", pax_heading), unsafe_allow_html=True)
 
-    _dn = df_net if "df_net" in dir() and df_net is not None else pd.DataFrame()
-    _dg = df_gr if "df_gr" in dir() and df_gr is not None else pd.DataFrame()
+    _dn = df_net if df_net is not None else pd.DataFrame()
+    _dg = df_gr if df_gr is not None else pd.DataFrame()
     if len(_dn) or len(_dg):
         st.download_button(
             "Download Excel – NET + GROSS",
@@ -3293,10 +4642,19 @@ elif section == "Day wise":
 elif section == "ACT vs ACT TRENDS":
     prep_text = "upto" if for_upto == "UPTO" else "for"
     loc_text = f"{depot} Depot" if depot != "ALL" else "ALL Depots"
-    title_tab5 = f"ACT vs ACT TRENDS – Month Wise of {loc_text} {prep_text} the month of {month}"
+    _date_br = ""
+    try:
+        if pd.notna(selected_max_date):
+            _now = pd.Timestamp.now()
+            if selected_max_date.year == _now.year and selected_max_date.month == _now.month:
+                _date_br = f" ({selected_max_date.strftime('%d-%m-%Y')})"
+    except Exception:
+        pass
+    _ng = str(net_gross).upper()
+    title_tab5 = f"Actual Vs Actuals {str(for_upto).upper()} the month of {month}{_date_br} ({_ng}) — Trends · {loc_text}"
     st.markdown(f'<div class="title-bar">{title_tab5}</div>', unsafe_allow_html=True)
 
-    m_base = df[base_mask].copy() if ("base_mask" in dir() and base_mask is not None) else df.copy()
+    m_base = df[base_mask].copy() if base_mask is not None else df.copy()
     if len(m_base) == 0:
         st.warning("No data found for selected filters.")
     else:
@@ -3447,7 +4805,7 @@ elif section == "ACT vs ACT TRENDS":
                 """Apply same ORF as ACT (depot/product filters) to every month row."""
                 if df_m is None or len(df_m) == 0:
                     return df_m
-                orf_map, orf_by_prod, _err = load_orf_map(r"ORF.xlsx")
+                orf_map, orf_by_prod, _err = load_orf_map(r"D:\dashboard\ORF.xlsx")
                 # Fake a one-row depot frame to reuse add_or_columns_depot logic per EPK
                 # Simpler: get single ORF rates for current depot/product selection
                 depot_orf = orf_map if isinstance(orf_map, dict) else {}
@@ -3493,11 +4851,11 @@ elif section == "ACT vs ACT TRENDS":
 
             def _render_trends_table(df_m, prefix_label, pax_heading):
                 html = [
-                    '<div style="max-height:70vh;overflow:auto;border:1px solid #cbd5e1;">',
+                    '<div class="table-scroll-fixable">',
                     '<table class="excel-table" style="border-collapse:separate;border-spacing:0;width:max-content;"><thead><tr>',
                 ]
-                html.append('<th rowspan="2" style="position:sticky;left:0;top:0;z-index:6;background:#0369a1;color:#fff;min-width:48px;">S.No</th>')
-                html.append('<th rowspan="2" style="position:sticky;left:48px;top:0;z-index:6;background:#0369a1;color:#fff;min-width:90px;">MONTH</th>')
+                html.append('<th rowspan="2" style="position:sticky;left:0;top:0;z-index:4;background:#0369a1;color:#fff;min-width:48px;">S.No</th>')
+                html.append('<th rowspan="2" style="position:sticky;left:48px;top:0;z-index:4;background:#0369a1;color:#fff;min-width:90px;">MONTH</th>')
                 groups = [
                     ("KILOMETERS (in lks.)", "#c2410c"),
                     (f"{prefix_label} EARNINGS (in lks.)", "#047857"),
@@ -3510,19 +4868,19 @@ elif section == "ACT vs ACT TRENDS":
                     (pax_heading, "#0369a1"),
                 ]
                 for title, bg in groups:
-                    html.append(f'<th colspan="4" style="position:sticky;top:0;z-index:5;background:{bg};color:#fff;">{title}</th>')
+                    html.append(f'<th colspan="4" style="position:sticky;top:0;z-index:3;background:{bg};color:#fff;">{title}</th>')
                 html.append("</tr><tr>")
                 for _ in range(9):
                     for s in ("CY", "LY", "VAR", "% ▲/▼"):
-                        html.append(f'<th style="position:sticky;top:32px;z-index:5;background:#f1f5f9;font-size:10px;">{s}</th>')
+                        html.append(f'<th style="position:sticky;top:32px;z-index:3;background:#f1f5f9;font-size:10px;">{s}</th>')
                 html.append("</tr></thead><tbody>")
                 for i, row in df_m.iterrows():
                     is_tot = "UPTO" in str(row.get("Month", "")).upper() or str(row.get("Month", "")).upper() == "TOTAL"
                     bg = "#e2efda" if is_tot else "#fff"
                     lbg = "#e2efda" if is_tot else "#f8fafc"
                     html.append(f'<tr style="background:{bg};{"font-weight:700;" if is_tot else ""}">')
-                    html.append(f'<td style="position:sticky;left:0;z-index:3;background:{lbg};">{"" if is_tot else (i + 1)}</td>')
-                    html.append(f'<td style="position:sticky;left:48px;z-index:3;background:{lbg};">{row["Month"]}</td>')
+                    html.append(f'<td style="position:sticky;left:0;z-index:2;background:{lbg};">{"" if is_tot else (i + 1)}</td>')
+                    html.append(f'<td style="position:sticky;left:48px;z-index:2;background:{lbg};">{row["Month"]}</td>')
                     for metric in ["kms", "earn_tot"]:
                         html.append(f'<td>{fmt(row[f"{metric}_CY"])}</td>')
                         html.append(f'<td>{fmt(row[f"{metric}_LY"])}</td>')
@@ -3598,7 +4956,10 @@ elif section == "ACT vs ACT TRENDS":
                     st.plotly_chart(_combo(df_chart_plot, "pax_CY", "pax_LY", pax_heading, "#db2777", "#f9a8d4", is_pax=True), use_container_width=True)
 
             # TABLE A NET
-            st.markdown(f'<div class="title-bar">TABLE A – NET | ACT vs ACT TRENDS | FY {selected_fy_str}</div>', unsafe_allow_html=True)
+            st.markdown(
+                f'<div class="title-bar">Actual Vs Actuals {str(for_upto).upper()} the month of {month}{_date_br} (NET) — FY {selected_fy_str}</div>',
+                unsafe_allow_html=True,
+            )
             cy_n = _agg_side(cy_tr, "NE_TOT", "NE_FPD", "NE_MHL")
             ly_n = _agg_side(ly_tr, "NE_TOT", "NE_FPD", "NE_MHL")
             df_net, _ = _build_month_df(cy_n, ly_n)
@@ -3607,7 +4968,10 @@ elif section == "ACT vs ACT TRENDS":
                 st.markdown(_render_trends_table(df_net, "NET", pax_heading), unsafe_allow_html=True)
 
             # TABLE B GROSS
-            st.markdown(f'<div class="title-bar">TABLE B – GROSS | ACT vs ACT TRENDS | FY {selected_fy_str}</div>', unsafe_allow_html=True)
+            st.markdown(
+                f'<div class="title-bar">Actual Vs Actuals {str(for_upto).upper()} the month of {month}{_date_br} (GROSS) — FY {selected_fy_str}</div>',
+                unsafe_allow_html=True,
+            )
             cy_g = _agg_side(cy_tr, "GE_TOT", "GE_FPD", "GE_MHL")
             ly_g = _agg_side(ly_tr, "GE_TOT", "GE_FPD", "GE_MHL")
             df_gr, _ = _build_month_df(cy_g, ly_g)
@@ -3747,9 +5111,9 @@ elif section == "Trends from 2024":
             schkms_by_m = {m: 0.0 for m in months_order}
             _sros_dbg = ""
             try:
-                sros_path = Path(r"SMASTER.parquet")
+                sros_path = Path(r"D:\Dashboard\SMASTER.parquet")
                 if not sros_path.exists():
-                    for alt in [Path(r"SMASTER.parquet"), Path(r"SMASTER.parquet"), Path("SMASTER.parquet"), Path(r"/home/workdir/attachments/SMASTER.parquet")]:
+                    for alt in [Path(r"D:\dashboard\SMASTER.parquet"), Path(r"D:\MONTHLY\SMASTER.parquet"), Path("SMASTER.parquet"), Path(r"/home/workdir/attachments/SMASTER.parquet")]:
                         if alt.exists():
                             sros_path = alt
                             break
@@ -3890,7 +5254,7 @@ elif section == "Trends from 2024":
 
             # ORF for OR rows (same rules as ACT)
             try:
-                orf_map, orf_by_prod, _oe = load_orf_map(r"ORF.xlsx")
+                orf_map, orf_by_prod, _oe = load_orf_map(r"D:\dashboard\ORF.xlsx")
             except Exception:
                 orf_map, orf_by_prod = {}, {}
             depot_orf = orf_map if isinstance(orf_map, dict) else {}
@@ -4321,57 +5685,16 @@ elif section == "Service-wise (SROS)":
     fpd_filter = "ALL"
 
     # --- Load SMASTER services from parquet ---
-    sros_path = Path(r"SMASTER.parquet")
+    sros_path = Path(r"D:\Dashboard\SMASTER.parquet")
     if not sros_path.exists():
-        for alt in [Path(r"SMASTER.parquet"), Path(r"SMASTER.parquet"), Path("SMASTER.parquet"), Path(r"/home/workdir/attachments/SMASTER.parquet")]:
+        for alt in [Path(r"D:\dashboard\SMASTER.parquet"), Path(r"D:\MONTHLY\SMASTER.parquet"), Path("SMASTER.parquet"), Path(r"/home/workdir/attachments/SMASTER.parquet")]:
             if alt.exists():
                 sros_path = alt
                 break
     if not sros_path.exists():
         st.error(f"SMASTER.parquet not found: {sros_path}")
     else:
-        @st.cache_data(ttl=300)
-        def _load_sros_services_full(depot_key: str, month_key: str):
-            s = pd.read_parquet(sros_path)
-            s.columns = [str(c).strip() for c in s.columns]
-
-            def fc(cands):
-                n = {str(c).strip().lower().replace(" ", "").replace("_", ""): c for c in s.columns}
-                for cand in cands:
-                    k = cand.lower().replace(" ", "").replace("_", "")
-                    if k in n:
-                        return n[k]
-                return None
-
-            c_svc = fc(["ServiceNo", "SER_NO", "SERVICE_NO"])
-            c_dep = fc(["DEPOT"])
-            c_prod = fc(["PRODUCT"])
-            c_route = fc(["ROUTEE", "ROUTE", "RouteName", "Route"])
-            c_sch = fc(["NoOfSchedules", "NoOfSchedule"])
-            c_mon = fc(["MONTH"])
-            c_year = fc(["YEAR"])
-            if not c_svc:
-                return pd.DataFrame()
-            s = s.copy()
-            s["_SVC"] = s[c_svc].map(lambda v: str(int(float(v))) if str(v).replace(".", "", 1).isdigit() else str(v).strip())
-            s["_DEP"] = s[c_dep].astype(str).str.strip().str.upper() if c_dep else ""
-            s["_PROD"] = s[c_prod].astype(str).str.strip() if c_prod else ""
-            s["_ROUTE"] = s[c_route].astype(str).str.strip() if c_route else ""
-            s["_SCH"] = pd.to_numeric(s[c_sch], errors="coerce").fillna(0) if c_sch else 0
-            if c_mon and c_year:
-                def mk(row):
-                    try:
-                        return f"{str(row[c_mon]).strip()[:3].title()}-{int(float(row[c_year]))}"
-                    except Exception:
-                        return ""
-                s["_MK"] = s.apply(mk, axis=1)
-            else:
-                s["_MK"] = "ALL"
-            if depot_key and str(depot_key).upper() not in ("ALL", "REGION", ""):
-                s = s[s["_DEP"] == str(depot_key).strip().upper()]
-            return s
-
-        sros = _load_sros_services_full(str(depot), str(month))
+        sros = _load_sros_services_full(str(sros_path), str(depot), str(month))
         if len(sros) == 0:
             st.warning("No services found in SROS/SMASTER for current Depot.")
         else:
@@ -4675,7 +5998,7 @@ elif section == "Task":
 
             # ORF / OR columns
             try:
-                orf_map, orf_by_prod, _oe = load_orf_map(r"ORF.xlsx")
+                orf_map, orf_by_prod, _oe = load_orf_map(r"D:\dashboard\ORF.xlsx")
             except Exception:
                 orf_map, orf_by_prod = {}, {}
             def _orf_dep(d):
@@ -4790,31 +6113,7 @@ elif section == "Task":
 elif section == "Schedules":
     st.markdown('<div class="title-bar">Schedules – SCHs / SERVICES / SCH KMS</div>', unsafe_allow_html=True)
 
-    SCHEDULE_PARQUET = r"SMASTER.parquet"
-
-    @st.cache_data(ttl=300)
-    def load_smaster(path):
-        p = Path(path)
-        if not p.exists():
-            for alt in [
-                Path(r"SMASTER.parquet"),
-                Path(r"SMASTER.parquet"),
-                Path("SMASTER.parquet"),
-                Path(r"/home/workdir/attachments/SMASTER.parquet"),
-            ]:
-                if alt.exists():
-                    p = alt
-                    break
-            else:
-                return None, f"File not found: {path}"
-        try:
-            sdf = pd.read_parquet(p)
-            sdf.columns = [str(c).strip() for c in sdf.columns]
-            if "DATE" in sdf.columns and not pd.api.types.is_datetime64_any_dtype(sdf["DATE"]):
-                sdf["DATE"] = pd.to_datetime(sdf["DATE"], errors="coerce")
-            return sdf.dropna(axis=1, how="all"), None
-        except Exception as e:
-            return None, str(e)
+    SCHEDULE_PARQUET = r"D:\Dashboard\SMASTER.parquet"
 
     sched_raw, sched_err = load_smaster(SCHEDULE_PARQUET)
     if sched_err:
@@ -4934,376 +6233,10 @@ elif section == "Schedules":
             except Exception:
                 pass
 
-            st.caption(f"Table A filters: Depot={f_depot} | Month={f_month} | Compare={f_compare} ({ly_key or 'N/A'})")
+            st.caption(f"Filters: Depot={f_depot} | Month={f_month} | Compare={f_compare} ({ly_key or 'N/A'})")
 
 
-            st.markdown("#### Product-wise Summary")
-
-            # Labels for comparison columns
-            if f_compare == "PREVIOUS MONTH":
-                h_cy, h_ly, h_var = "CM", "PM", "VAR"
-            else:
-                h_cy, h_ly, h_var = "CY", "LY", "VAR"
-
-            # Ensure OT / muster cols exist on cy_sdf / ly_sdf
-            def ensure_ot_cols(data):
-                data = data.copy()
-                def parse_time_to_minutes(v):
-                    if v is None or (isinstance(v, float) and pd.isna(v)):
-                        return 0.0
-                    if isinstance(v, (int, float)):
-                        return float(v)
-                    try:
-                        import datetime as _dt
-                        if isinstance(v, _dt.time):
-                            return v.hour * 60 + v.minute + v.second / 60.0
-                        if isinstance(v, _dt.timedelta):
-                            return v.total_seconds() / 60.0
-                        if isinstance(v, _dt.datetime):
-                            return v.hour * 60 + v.minute
-                    except Exception:
-                        pass
-                    s = str(v).strip()
-                    if not s or s.lower() in ("nan", "nat", "none", "null"):
-                        return 0.0
-                    if ":" in s:
-                        parts = s.split(":")
-                        try:
-                            h = int(parts[0]); m = int(parts[1]) if len(parts) > 1 else 0
-                            return h * 60 + m
-                        except Exception:
-                            return 0.0
-                    try:
-                        return float(s)
-                    except Exception:
-                        return 0.0
-
-                c_cond = find_col(["COND MUSTERS", "CONDMUSTERS", "COND MUSTER"])
-                c_dri = find_col(["DRI MUS", "DRIMUS", "DRI MUSTER", "DRI MUSTERS"])
-                c_cnd_ot = find_col(["CND OT", "CNDOT"])
-                c_drv_ot = find_col(["DRV OT", "DRVOT"])
-                if c_cnd_ot is None:
-                    for c in data.columns:
-                        if str(c).strip().upper().replace(" ", "") == "CNDOT":
-                            c_cnd_ot = c; break
-                if c_drv_ot is None:
-                    for c in data.columns:
-                        if str(c).strip().upper().replace(" ", "") == "DRVOT":
-                            c_drv_ot = c; break
-                data["_COND_MUS"] = pd.to_numeric(data[c_cond], errors="coerce").fillna(0) if c_cond else 0
-                data["_DRI_MUS"] = pd.to_numeric(data[c_dri], errors="coerce").fillna(0) if c_dri else 0
-                data["_CND_OT"] = data[c_cnd_ot].map(parse_time_to_minutes) if c_cnd_ot else 0
-                data["_DRV_OT"] = data[c_drv_ot].map(parse_time_to_minutes) if c_drv_ot else 0
-                return data
-
-            cy_p = ensure_ot_cols(cy_sdf)
-            ly_p = ensure_ot_cols(ly_sdf) if len(ly_sdf) else ly_sdf
-
-
-            PRODUCT_ORDER = [
-                "AC-SLP", "AC-HBD", "e-GRD", "RJD", "N-HBD R", "SLX", "DLX",
-                "EXP-H", "ME", "PVG-R", "PVG-H", "EXP-R", "GRD+", "N-HBD", "PVG",
-            ]
-
-            def agg_product(data):
-                metric_keys = []
-                for side in ["RTC", "HIRE"]:
-                    metric_keys += [f"SCH_{side}", f"SVC_{side}", f"KMS_{side}",
-                                   f"CREW_COND_{side}", f"CREW_DRI_{side}",
-                                   f"OT_COND_{side}", f"OT_DRI_{side}"]
-                metric_keys += ["SCH_TOTAL", "SVC_TOTAL", "KMS_TOTAL"]
-                base_cols = ["DEPOT", "PRODUCT", "MHL_NMHL"]
-                if data is None or len(data) == 0:
-                    return pd.DataFrame(columns=base_cols + metric_keys)
-                rows = []
-                if f_depot == "REGION":
-                    group_keys = ["_PRODUCT", "_MHL"]
-                else:
-                    group_keys = ["_DEPOT", "_PRODUCT", "_MHL"]
-                for keys, grp in data.groupby(group_keys):
-                    if f_depot == "REGION":
-                        if isinstance(keys, tuple):
-                            prod, mhl = keys[0], keys[1]
-                        else:
-                            prod, mhl = keys, ""
-                        dep = "REGION"
-                    else:
-                        dep, prod, mhl = keys
-                    rec = {"DEPOT": dep, "PRODUCT": prod, "MHL_NMHL": mhl}
-                    for side in ["RTC", "HIRE"]:
-                        sub = grp[grp["_RTC"] == side]
-                        rec[f"SCH_{side}"] = sub["_SCH"].sum()
-                        rec[f"SVC_{side}"] = sub[col_svc].nunique()
-                        rec[f"KMS_{side}"] = sub["_KMS"].sum()
-                        rec[f"CREW_COND_{side}"] = sub["_COND_MUS"].sum() * 1.3
-                        rec[f"CREW_DRI_{side}"] = sub["_DRI_MUS"].sum() * 1.3
-                        rec[f"OT_COND_{side}"] = sub["_CND_OT"].sum()
-                        rec[f"OT_DRI_{side}"] = sub["_DRV_OT"].sum()
-                    rec["SCH_TOTAL"] = rec["SCH_RTC"] + rec["SCH_HIRE"]
-                    rec["SVC_TOTAL"] = rec["SVC_RTC"] + rec["SVC_HIRE"]
-                    rec["KMS_TOTAL"] = rec["KMS_RTC"] + rec["KMS_HIRE"]
-                    rec["FLEET"] = 0.0
-                    rows.append(rec)
-                return pd.DataFrame(rows)
-
-            def sort_products(df):
-                if len(df) == 0:
-                    return df
-                order_map = {p: i for i, p in enumerate(PRODUCT_ORDER)}
-                df = df.copy()
-                df["_ord"] = df["PRODUCT"].map(lambda x: order_map.get(str(x).strip(), 500))
-                df = df.sort_values(["DEPOT", "_ord", "PRODUCT"]).drop(columns=["_ord"])
-                return df.reset_index(drop=True)
-
-
-            cy_agg = agg_product(cy_p)
-            ly_agg = agg_product(ly_p)
-
-            _fmap, _ferr = load_fleet_map()
-            def _attach_fleet(adf, mon_key):
-                if adf is None or len(adf) == 0:
-                    return adf
-                adf = adf.copy()
-                if "FLEET" not in adf.columns:
-                    adf["FLEET"] = 0.0
-                if _ferr or not _fmap:
-                    return adf
-                keys_try = [str(mon_key)]
-                try:
-                    dt = pd.to_datetime(str(mon_key), errors="coerce")
-                    if pd.notna(dt):
-                        keys_try += [dt.strftime("%b-%Y"), dt.strftime("%b-%y"), f"{dt.strftime('%b')}-{dt.year}"]
-                except Exception:
-                    pass
-                for idx, row in adf.iterrows():
-                    dep = str(row.get("DEPOT", "")).strip().upper()
-                    prod = str(row.get("PRODUCT", "")).strip().upper()
-                    val = 0.0
-                    for k in keys_try:
-                        if prod not in ("TOTAL", "MHL", "NMHL", ""):
-                            val = _fmap.get("by_dpm", {}).get((dep, prod, k), 0) or val
-                        if not val and dep not in ("REGION", "TOTAL", ""):
-                            val = _fmap.get("by_dm", {}).get((dep, k), 0) or val
-                        if not val:
-                            val = _fmap.get("by_m", {}).get(k, 0) or val
-                    adf.at[idx, "FLEET"] = float(val or 0)
-                return adf
-            cy_agg = _attach_fleet(cy_agg, f_month)
-            ly_agg = _attach_fleet(ly_agg, ly_key if ly_key else f_month)
-            metrics = [
-                "FLEET",
-                "SCH_RTC", "SCH_HIRE", "SCH_TOTAL",
-                "SVC_RTC", "SVC_HIRE", "SVC_TOTAL",
-                "KMS_RTC", "KMS_HIRE", "KMS_TOTAL",
-                "CREW_COND_RTC", "CREW_DRI_RTC", "CREW_COND_HIRE",
-                "OT_COND_RTC", "OT_DRI_RTC", "OT_COND_HIRE",
-            ]
-
-            def minutes_to_hhmm(mins):
-                if mins is None:
-                    return ""
-                try:
-                    mins = float(mins)
-                except Exception:
-                    return ""
-                if mins == 0:
-                    return ""
-                mins = int(round(mins))
-                h, m = divmod(abs(mins), 60)
-                sign = "-" if mins < 0 else ""
-                return f"{sign}{h}:{m:02d}"
-
-            if len(cy_agg) == 0 and len(ly_agg) == 0:
-                st.warning("No product-wise data for selection.")
-            else:
-                cy_agg = sort_products(cy_agg)
-                ly_agg = sort_products(ly_agg)
-                merged = cy_agg.merge(ly_agg, on=["DEPOT", "PRODUCT", "MHL_NMHL"], how="outer", suffixes=("_CY", "_LY"))
-                if "MHL_NMHL" not in merged.columns:
-                    merged["MHL_NMHL"] = ""
-                merged["MHL_NMHL"] = merged["MHL_NMHL"].fillna("")
-                for m in metrics:
-                    for s in ("_CY", "_LY"):
-                        c = f"{m}{s}"
-                        if c not in merged.columns:
-                            merged[c] = 0
-                        merged[c] = pd.to_numeric(merged[c], errors="coerce").fillna(0)
-                    merged[f"{m}_VAR"] = merged[f"{m}_CY"] - merged[f"{m}_LY"]
-                merged = sort_products(merged)
-
-                extra_rows = []
-                dep_label = "REGION" if f_depot in ("ALL", "REGION") else (str(merged["DEPOT"].iloc[0]) if len(merged) else str(f_depot))
-                # Only detail product rows (exclude any prior totals)
-                detail = merged[~merged["PRODUCT"].astype(str).str.upper().isin(["TOTAL", "MHL", "NMHL"])].copy()
-                # TOTAL = all products
-                tot = {"DEPOT": dep_label, "PRODUCT": "TOTAL", "MHL_NMHL": ""}
-                for m in metrics:
-                    tot[f"{m}_CY"] = detail[f"{m}_CY"].sum()
-                    tot[f"{m}_LY"] = detail[f"{m}_LY"].sum()
-                    tot[f"{m}_VAR"] = tot[f"{m}_CY"] - tot[f"{m}_LY"]
-                extra_rows.append(tot)
-                # MHL = sum where MHL_NMHL is exactly MHL (not NMHL)
-                # NMHL = sum where MHL_NMHL is exactly NMHL
-                for label in ["MHL", "NMHL"]:
-                    mask = detail["MHL_NMHL"].astype(str).str.strip().str.upper() == label
-                    sub = detail[mask]
-                    row = {"DEPOT": dep_label, "PRODUCT": label, "MHL_NMHL": label}
-                    for m in metrics:
-                        row[f"{m}_CY"] = sub[f"{m}_CY"].sum() if len(sub) else 0
-                        row[f"{m}_LY"] = sub[f"{m}_LY"].sum() if len(sub) else 0
-                        row[f"{m}_VAR"] = row[f"{m}_CY"] - row[f"{m}_LY"]
-                    extra_rows.append(row)
-                merged = pd.concat([detail, pd.DataFrame(extra_rows)], ignore_index=True)
-
-                def cell_num(v, is_var=False, is_ot=False):
-                    try:
-                        fv = float(v)
-                    except Exception:
-                        return "<td style='padding:4px 5px;font-size:12px;'></td>"
-                    if fv == 0:
-                        return "<td style='padding:4px 5px;font-size:12px;'></td>"
-                    if is_ot:
-                        s = minutes_to_hhmm(fv)
-                    else:
-                        s = f"{fv:,.0f}" if abs(fv - round(fv)) < 1e-6 else f"{fv:,.1f}"
-                    if is_var:
-                        cls = "pos" if fv > 0 else "neg"
-                        return f"<td class='{cls}' style='padding:4px 5px;font-size:12px;'>{s}</td>"
-                    return f"<td style='padding:4px 5px;font-size:12px;'>{s}</td>"
-
-                # No freeze - normal scroll, larger font & row height
-                
-                # ---- Build clean 3-row header + body ----
-                # Column plan (after DEPOT, PRODUCT):
-                # SCH: RTC×3, HIRE×3, TOTAL×3 = 9
-                # SVC: 9
-                # KMS: 9
-                # CREW: RTC COND×3, RTC DRI×3, HIRE COND×3, HIRE DRI×3 = 12
-                # OT: same 12
-                # Total data cols = 9+9+9+12+12 = 51
-
-                def th(text, colspan=1, rowspan=1, bg="#334155", extra=""):
-                    return (
-                        f'<th colspan="{colspan}" rowspan="{rowspan}" '
-                        f'style="background:{bg};color:#fff;padding:6px 4px;font-size:11px;'
-                        f'text-align:center;border:1px solid #94a3b8;{extra}">{text}</th>'
-                    )
-
-                def th_sub(text):
-                    return (
-                        f'<th style="background:#e2e8f0;color:#0f172a;padding:5px 4px;font-size:10px;'
-                        f'text-align:center;border:1px solid #94a3b8;">{text}</th>'
-                    )
-
-                html = ['<div class="freeze-wrap"><table class="freeze-table"><thead>']
-
-                # Row 1 – group titles
-                html.append("<tr>")
-                html.append(th("DEPOT", rowspan=3, bg="#0369a1", extra="position:sticky;left:0;z-index:6;min-width:70px;"))
-                html.append(th("PRODUCT", rowspan=3, bg="#0369a1", extra="position:sticky;left:70px;z-index:6;min-width:80px;"))
-                html.append(th("MHL/NMHL", rowspan=3, bg="#0369a1", extra="position:sticky;left:150px;z-index:6;min-width:60px;"))
-                html.append(th("FLEET", colspan=3, bg="#0f766e"))
-                html.append(th("SCHs", colspan=9, bg="#b91c1c"))
-                html.append(th("SERVICES", colspan=9, bg="#a21caf"))
-                html.append(th("SCH KMS", colspan=9, bg="#15803d"))
-                html.append(th("CREW REQUIREMENT", colspan=9, bg="#1d4ed8"))
-                html.append(th("SCH OVER TIME", colspan=9, bg="#c2410c"))
-                html.append("</tr>")
-
-                # Row 2 – RTC / HIRE / TOTAL (and COND/DRI under crew & OT)
-                html.append("<tr>")
-                html.append(th("TOTAL", colspan=3, bg="#0f766e"))  # FLEET
-                for _ in range(3):  # SCH, SVC, KMS
-                    html.append(th("RTC", colspan=3, bg="#475569"))
-                    html.append(th("HIRE", colspan=3, bg="#475569"))
-                    html.append(th("TOTAL", colspan=3, bg="#475569"))
-                # CREW: RTC-COND, RTC-DRI, HIRE-COND (no HIRE DRI)
-                html.append(th("RTC COND", colspan=3, bg="#1e40af"))
-                html.append(th("RTC DRI", colspan=3, bg="#1e40af"))
-                html.append(th("HIRE COND", colspan=3, bg="#1e40af"))
-                # OT: RTC-COND, RTC-DRI, HIRE-COND (no HIRE DRI)
-                html.append(th("RTC COND", colspan=3, bg="#9a3412"))
-                html.append(th("RTC DRI", colspan=3, bg="#9a3412"))
-                html.append(th("HIRE COND", colspan=3, bg="#9a3412"))
-                html.append("</tr>")
-
-                # Row 3 – CM/PM/VAR or CY/LY/VAR
-                html.append("<tr>")
-                for _ in range(16):  # 1 fleet + 9 (sch/svc/kms) + 3 crew + 3 ot
-                    for h in (h_cy, h_ly, h_var):
-                        html.append(th_sub(h))
-                html.append("</tr>")
-                html.append("</thead><tbody>")
-
-                ot_metrics = {"OT_COND_RTC", "OT_DRI_RTC", "OT_COND_HIRE"}
-                for _, row in merged.iterrows():
-                    prod = str(row.get("PRODUCT", ""))
-                    is_tot = prod in ("TOTAL", "MHL", "NMHL")
-                    style = "font-weight:bold;background:#e2efda;" if is_tot else ""
-                    html.append(f'<tr style="{style}">')
-                    html.append(
-                        f'<td style="position:sticky;left:0;z-index:2;background:#e0f2fe;'
-                        f'padding:5px 6px;font-size:12px;font-weight:600;min-width:70px;">{row["DEPOT"]}</td>'
-                    )
-                    html.append(
-                        f'<td style="position:sticky;left:70px;z-index:2;background:#f0f9ff;'
-                        f'padding:5px 6px;font-size:12px;min-width:80px;">{row["PRODUCT"]}</td>'
-                    )
-                    html.append(
-                        f'<td style="position:sticky;left:150px;z-index:2;background:#f8fafc;'
-                        f'padding:5px 6px;font-size:11px;min-width:60px;">{row.get("MHL_NMHL", "")}</td>'
-                    )
-                    for m in metrics:
-                        is_ot = m in ot_metrics
-                        if m.startswith("SCH"):
-                            bg = "#fef2f2"
-                        elif m.startswith("SVC"):
-                            bg = "#f5f3ff"
-                        elif m.startswith("KMS"):
-                            bg = "#f0fdf4"
-                        elif m.startswith("CREW"):
-                            bg = "#eff6ff"
-                        elif m.startswith("OT"):
-                            bg = "#fff7ed"
-                        else:
-                            bg = "#fff"
-                        def cell_bg(v, is_var=False, is_ot=False, bg="#fff"):
-                            try:
-                                fv = float(v)
-                            except Exception:
-                                return f"<td style='padding:4px 5px;font-size:12px;background:{bg};'></td>"
-                            if fv == 0:
-                                return f"<td style='padding:4px 5px;font-size:12px;background:{bg};'></td>"
-                            if is_ot:
-                                s = minutes_to_hhmm(fv)
-                            else:
-                                s = f"{fv:,.0f}" if abs(fv - round(fv)) < 1e-6 else f"{fv:,.1f}"
-                            if is_var:
-                                cls = "pos" if fv > 0 else "neg"
-                                return f"<td class='{cls}' style='padding:4px 5px;font-size:12px;background:{bg};'>{s}</td>"
-                            return f"<td style='padding:4px 5px;font-size:12px;background:{bg};'>{s}</td>"
-                        html.append(cell_bg(row[f"{m}_CY"], is_ot=is_ot, bg=bg))
-                        html.append(cell_bg(row[f"{m}_LY"], is_ot=is_ot, bg=bg))
-                        html.append(cell_bg(row[f"{m}_VAR"], is_var=True, is_ot=is_ot, bg=bg))
-                    html.append("</tr>")
-                html.append("</tbody></table></div>")
-
-                st.markdown("".join(html), unsafe_allow_html=True)
-                st.caption(
-                    f"Headings: {h_cy}/{h_ly}/{h_var} | Crew REQ = MUSTERS×1.3 | OT = sum of CND OT / DRV OT (HH:MM)"
-                )
-                st.download_button(
-                    "Download Product-wise CSV",
-                    merged.to_csv(index=False).encode("utf-8"),
-                    f"Schedules_Product_{f_month}.csv",
-                    "text/csv",
-                    key="dl9a",
-                )
-
-
-            # ========== TABLE 2: Depot-wise RTC/HIRE Summary (like your image TOTAL section) ==========
-            
-            # ========== TABLE 2: Depot-wise full summary (DO/SC/SO/NO) ==========
+            # ========== TABLE 1: Depot-wise full summary (DO/SC/SO/NO) ==========
             st.markdown('<hr style="margin:4px 0;border:none;border-top:1px solid #e2e8f0;">', unsafe_allow_html=True)
             st.markdown(f"#### Depot Wise Summary of SCHs and Services — {f_month}")
 
@@ -5618,6 +6551,407 @@ elif section == "Schedules":
                 )
 
 
+            st.markdown('<hr style="margin:4px 0;border:none;border-top:1px solid #e2e8f0;">', unsafe_allow_html=True)
+            # ========== TABLE 2: Product-wise Summary ==========
+            st.markdown("#### Product-wise Summary")
+
+            # Labels for comparison columns
+            if f_compare == "PREVIOUS MONTH":
+                h_cy, h_ly, h_var = "CM", "PM", "VAR"
+            else:
+                h_cy, h_ly, h_var = "CY", "LY", "VAR"
+
+            # Ensure OT / muster cols exist on cy_sdf / ly_sdf
+            def ensure_ot_cols(data):
+                data = data.copy()
+                def parse_time_to_minutes(v):
+                    if v is None or (isinstance(v, float) and pd.isna(v)):
+                        return 0.0
+                    if isinstance(v, (int, float)):
+                        return float(v)
+                    try:
+                        import datetime as _dt
+                        if isinstance(v, _dt.time):
+                            return v.hour * 60 + v.minute + v.second / 60.0
+                        if isinstance(v, _dt.timedelta):
+                            return v.total_seconds() / 60.0
+                        if isinstance(v, _dt.datetime):
+                            return v.hour * 60 + v.minute
+                    except Exception:
+                        pass
+                    s = str(v).strip()
+                    if not s or s.lower() in ("nan", "nat", "none", "null"):
+                        return 0.0
+                    if ":" in s:
+                        parts = s.split(":")
+                        try:
+                            h = int(parts[0]); m = int(parts[1]) if len(parts) > 1 else 0
+                            return h * 60 + m
+                        except Exception:
+                            return 0.0
+                    try:
+                        return float(s)
+                    except Exception:
+                        return 0.0
+
+                c_cond = find_col(["COND MUSTERS", "CONDMUSTERS", "COND MUSTER"])
+                c_dri = find_col(["DRI MUS", "DRIMUS", "DRI MUSTER", "DRI MUSTERS"])
+                c_cnd_ot = find_col(["CND OT", "CNDOT"])
+                c_drv_ot = find_col(["DRV OT", "DRVOT"])
+                if c_cnd_ot is None:
+                    for c in data.columns:
+                        if str(c).strip().upper().replace(" ", "") == "CNDOT":
+                            c_cnd_ot = c; break
+                if c_drv_ot is None:
+                    for c in data.columns:
+                        if str(c).strip().upper().replace(" ", "") == "DRVOT":
+                            c_drv_ot = c; break
+                data["_COND_MUS"] = pd.to_numeric(data[c_cond], errors="coerce").fillna(0) if c_cond else 0
+                data["_DRI_MUS"] = pd.to_numeric(data[c_dri], errors="coerce").fillna(0) if c_dri else 0
+                data["_CND_OT"] = data[c_cnd_ot].map(parse_time_to_minutes) if c_cnd_ot else 0
+                data["_DRV_OT"] = data[c_drv_ot].map(parse_time_to_minutes) if c_drv_ot else 0
+                return data
+
+            cy_p = ensure_ot_cols(cy_sdf)
+            ly_p = ensure_ot_cols(ly_sdf) if len(ly_sdf) else ly_sdf
+
+
+            PRODUCT_ORDER = [
+                "AC-SLP", "AC-HBD", "GRD+", "RJD", "e-GRD",
+                "N-HBD H", "N-HBD R", "SLX", "DLX",
+                "EXP-R", "ME", "EXP-H", "PVG-R", "PVG-H",
+            ]
+
+            def agg_product(data):
+                metric_keys = []
+                for side in ["RTC", "HIRE"]:
+                    metric_keys += [f"SCH_{side}", f"SVC_{side}", f"KMS_{side}",
+                                   f"CREW_COND_{side}", f"CREW_DRI_{side}",
+                                   f"OT_COND_{side}", f"OT_DRI_{side}"]
+                metric_keys += ["SCH_TOTAL", "SVC_TOTAL", "KMS_TOTAL"]
+                base_cols = ["DEPOT", "PRODUCT", "MHL_NMHL"]
+                if data is None or len(data) == 0:
+                    return pd.DataFrame(columns=base_cols + metric_keys)
+                rows = []
+                if f_depot == "REGION":
+                    group_keys = ["_PRODUCT", "_MHL"]
+                else:
+                    group_keys = ["_DEPOT", "_PRODUCT", "_MHL"]
+                for keys, grp in data.groupby(group_keys):
+                    if f_depot == "REGION":
+                        if isinstance(keys, tuple):
+                            prod, mhl = keys[0], keys[1]
+                        else:
+                            prod, mhl = keys, ""
+                        dep = "REGION"
+                    else:
+                        dep, prod, mhl = keys
+                    rec = {"DEPOT": dep, "PRODUCT": prod, "MHL_NMHL": mhl}
+                    for side in ["RTC", "HIRE"]:
+                        sub = grp[grp["_RTC"] == side]
+                        rec[f"SCH_{side}"] = sub["_SCH"].sum()
+                        rec[f"SVC_{side}"] = sub[col_svc].nunique()
+                        rec[f"KMS_{side}"] = sub["_KMS"].sum()
+                        rec[f"CREW_COND_{side}"] = sub["_COND_MUS"].sum() * 1.3
+                        rec[f"CREW_DRI_{side}"] = sub["_DRI_MUS"].sum() * 1.3
+                        rec[f"OT_COND_{side}"] = sub["_CND_OT"].sum()
+                        rec[f"OT_DRI_{side}"] = sub["_DRV_OT"].sum()
+                    rec["SCH_TOTAL"] = rec["SCH_RTC"] + rec["SCH_HIRE"]
+                    rec["SVC_TOTAL"] = rec["SVC_RTC"] + rec["SVC_HIRE"]
+                    rec["KMS_TOTAL"] = rec["KMS_RTC"] + rec["KMS_HIRE"]
+                    rec["FLEET"] = 0.0
+                    rows.append(rec)
+                return pd.DataFrame(rows)
+
+            def sort_products(df):
+                if len(df) == 0:
+                    return df
+                order_map = {p: i for i, p in enumerate(PRODUCT_ORDER)}
+                df = df.copy()
+                df["_ord"] = df["PRODUCT"].map(lambda x: order_map.get(str(x).strip(), 500))
+                df = df.sort_values(["DEPOT", "_ord", "PRODUCT"]).drop(columns=["_ord"])
+                return df.reset_index(drop=True)
+
+
+            cy_agg = agg_product(cy_p)
+            ly_agg = agg_product(ly_p)
+
+            _fmap, _ferr = load_fleet_map()
+
+            def _month_key_list(mon_key):
+                keys = []
+                if mon_key:
+                    keys.append(str(mon_key).strip())
+                try:
+                    dt = pd.to_datetime(str(mon_key), errors="coerce")
+                    if pd.notna(dt):
+                        keys += [
+                            dt.strftime("%b-%Y"),
+                            dt.strftime("%b-%y"),
+                            f"{dt.strftime('%b')}-{dt.year}",
+                        ]
+                        prev = dt - pd.DateOffset(months=1)
+                        keys += [prev.strftime("%b-%Y"), prev.strftime("%b-%y")]
+                except Exception:
+                    pass
+                seen, out = set(), []
+                for k in keys:
+                    if k and k not in seen:
+                        seen.add(k)
+                        out.append(k)
+                return out
+
+            def _fleet_one(dep, prod, mon_key):
+                """Per product fleet. REGION = sum across depots. Fallback previous month."""
+                if _ferr or not _fmap:
+                    return 0.0
+                dep = str(dep).strip().upper()
+                prod = str(prod).strip().upper()
+                if prod in ("TOTAL", "MHL", "NMHL", ""):
+                    return 0.0
+                keys_try = _month_key_list(mon_key)
+                by_dpm = _fmap.get("by_dpm", {})
+                for k in keys_try:
+                    if dep in ("REGION", "ALL", ""):
+                        val = 0.0
+                        for (d, pr, mk), v in by_dpm.items():
+                            if str(pr).upper() == prod and str(mk) == k and str(d).upper() not in ("REGION", "TOTAL", ""):
+                                val += float(v or 0)
+                        if val:
+                            return val
+                    else:
+                        val = by_dpm.get((dep, prod, k), 0) or 0
+                        if val:
+                            return float(val)
+                return 0.0
+
+            def _attach_fleet(adf, mon_key):
+                if adf is None or len(adf) == 0:
+                    return adf
+                adf = adf.copy()
+                if "FLEET" not in adf.columns:
+                    adf["FLEET"] = 0.0
+                for idx, row in adf.iterrows():
+                    adf.at[idx, "FLEET"] = _fleet_one(
+                        row.get("DEPOT", ""),
+                        row.get("PRODUCT", ""),
+                        mon_key,
+                    )
+                return adf
+
+            cy_agg = _attach_fleet(cy_agg, f_month)
+            ly_agg = _attach_fleet(ly_agg, ly_key if ly_key else "")
+            metrics = [
+                "FLEET",
+                "SCH_RTC", "SCH_HIRE", "SCH_TOTAL",
+                "SVC_RTC", "SVC_HIRE", "SVC_TOTAL",
+                "KMS_RTC", "KMS_HIRE", "KMS_TOTAL",
+                "CREW_COND_RTC", "CREW_DRI_RTC", "CREW_COND_HIRE",
+                "OT_COND_RTC", "OT_DRI_RTC", "OT_COND_HIRE",
+            ]
+
+            def minutes_to_hhmm(mins):
+                if mins is None:
+                    return ""
+                try:
+                    mins = float(mins)
+                except Exception:
+                    return ""
+                if mins == 0:
+                    return ""
+                mins = int(round(mins))
+                h, m = divmod(abs(mins), 60)
+                sign = "-" if mins < 0 else ""
+                return f"{sign}{h}:{m:02d}"
+
+            if len(cy_agg) == 0 and len(ly_agg) == 0:
+                st.warning("No product-wise data for selection.")
+            else:
+                cy_agg = sort_products(cy_agg)
+                ly_agg = sort_products(ly_agg)
+                merged = cy_agg.merge(ly_agg, on=["DEPOT", "PRODUCT", "MHL_NMHL"], how="outer", suffixes=("_CY", "_LY"))
+                if "MHL_NMHL" not in merged.columns:
+                    merged["MHL_NMHL"] = ""
+                merged["MHL_NMHL"] = merged["MHL_NMHL"].fillna("")
+                for m in metrics:
+                    for s in ("_CY", "_LY"):
+                        c = f"{m}{s}"
+                        if c not in merged.columns:
+                            merged[c] = 0
+                        merged[c] = pd.to_numeric(merged[c], errors="coerce").fillna(0)
+                    merged[f"{m}_VAR"] = merged[f"{m}_CY"] - merged[f"{m}_LY"]
+                merged = sort_products(merged)
+
+                extra_rows = []
+                dep_label = "REGION" if f_depot in ("ALL", "REGION") else (str(merged["DEPOT"].iloc[0]) if len(merged) else str(f_depot))
+                # Only detail product rows (exclude any prior totals)
+                detail = merged[~merged["PRODUCT"].astype(str).str.upper().isin(["TOTAL", "MHL", "NMHL"])].copy()
+                # TOTAL = all products
+                tot = {"DEPOT": dep_label, "PRODUCT": "TOTAL", "MHL_NMHL": ""}
+                for m in metrics:
+                    tot[f"{m}_CY"] = detail[f"{m}_CY"].sum()
+                    tot[f"{m}_LY"] = detail[f"{m}_LY"].sum()
+                    tot[f"{m}_VAR"] = tot[f"{m}_CY"] - tot[f"{m}_LY"]
+                extra_rows.append(tot)
+                # MHL = sum where MHL_NMHL is exactly MHL (not NMHL)
+                # NMHL = sum where MHL_NMHL is exactly NMHL
+                for label in ["MHL", "NMHL"]:
+                    mask = detail["MHL_NMHL"].astype(str).str.strip().str.upper() == label
+                    sub = detail[mask]
+                    row = {"DEPOT": dep_label, "PRODUCT": label, "MHL_NMHL": label}
+                    for m in metrics:
+                        row[f"{m}_CY"] = sub[f"{m}_CY"].sum() if len(sub) else 0
+                        row[f"{m}_LY"] = sub[f"{m}_LY"].sum() if len(sub) else 0
+                        row[f"{m}_VAR"] = row[f"{m}_CY"] - row[f"{m}_LY"]
+                    extra_rows.append(row)
+                merged = pd.concat([detail, pd.DataFrame(extra_rows)], ignore_index=True)
+
+                def cell_num(v, is_var=False, is_ot=False):
+                    try:
+                        fv = float(v)
+                    except Exception:
+                        return "<td style='padding:4px 5px;font-size:12px;'></td>"
+                    if fv == 0:
+                        return "<td style='padding:4px 5px;font-size:12px;'></td>"
+                    if is_ot:
+                        s = minutes_to_hhmm(fv)
+                    else:
+                        s = f"{fv:,.0f}" if abs(fv - round(fv)) < 1e-6 else f"{fv:,.1f}"
+                    if is_var:
+                        cls = "pos" if fv > 0 else "neg"
+                        return f"<td class='{cls}' style='padding:4px 5px;font-size:12px;'>{s}</td>"
+                    return f"<td style='padding:4px 5px;font-size:12px;'>{s}</td>"
+
+                # No freeze - normal scroll, larger font & row height
+                
+                # ---- Build clean 3-row header + body ----
+                # Column plan (after DEPOT, PRODUCT):
+                # SCH: RTC×3, HIRE×3, TOTAL×3 = 9
+                # SVC: 9
+                # KMS: 9
+                # CREW: RTC COND×3, RTC DRI×3, HIRE COND×3, HIRE DRI×3 = 12
+                # OT: same 12
+                # Total data cols = 9+9+9+12+12 = 51
+
+                def th(text, colspan=1, rowspan=1, bg="#334155", extra=""):
+                    return (
+                        f'<th colspan="{colspan}" rowspan="{rowspan}" '
+                        f'style="background:{bg};color:#fff;padding:6px 4px;font-size:11px;'
+                        f'text-align:center;border:1px solid #94a3b8;{extra}">{text}</th>'
+                    )
+
+                def th_sub(text):
+                    return (
+                        f'<th style="background:#e2e8f0;color:#0f172a;padding:5px 4px;font-size:10px;'
+                        f'text-align:center;border:1px solid #94a3b8;">{text}</th>'
+                    )
+
+                html = ['<div class="freeze-wrap"><table class="freeze-table"><thead>']
+
+                # Row 1 – group titles
+                html.append("<tr>")
+                html.append(th("DEPOT", rowspan=3, bg="#0369a1", extra="position:sticky;left:0;z-index:6;min-width:70px;"))
+                html.append(th("PRODUCT", rowspan=3, bg="#0369a1", extra="position:sticky;left:70px;z-index:6;min-width:80px;"))
+                html.append(th("MHL/NMHL", rowspan=3, bg="#0369a1", extra="position:sticky;left:150px;z-index:6;min-width:60px;"))
+                html.append(th("FLEET", colspan=3, bg="#0f766e"))
+                html.append(th("SCHs", colspan=9, bg="#b91c1c"))
+                html.append(th("SERVICES", colspan=9, bg="#a21caf"))
+                html.append(th("SCH KMS", colspan=9, bg="#15803d"))
+                html.append(th("CREW REQUIREMENT", colspan=9, bg="#1d4ed8"))
+                html.append(th("SCH OVER TIME", colspan=9, bg="#c2410c"))
+                html.append("</tr>")
+
+                # Row 2 – RTC / HIRE / TOTAL (and COND/DRI under crew & OT)
+                html.append("<tr>")
+                html.append(th("TOTAL", colspan=3, bg="#0f766e"))  # FLEET
+                for _ in range(3):  # SCH, SVC, KMS
+                    html.append(th("RTC", colspan=3, bg="#475569"))
+                    html.append(th("HIRE", colspan=3, bg="#475569"))
+                    html.append(th("TOTAL", colspan=3, bg="#475569"))
+                # CREW: RTC-COND, RTC-DRI, HIRE-COND (no HIRE DRI)
+                html.append(th("RTC COND", colspan=3, bg="#1e40af"))
+                html.append(th("RTC DRI", colspan=3, bg="#1e40af"))
+                html.append(th("HIRE COND", colspan=3, bg="#1e40af"))
+                # OT: RTC-COND, RTC-DRI, HIRE-COND (no HIRE DRI)
+                html.append(th("RTC COND", colspan=3, bg="#9a3412"))
+                html.append(th("RTC DRI", colspan=3, bg="#9a3412"))
+                html.append(th("HIRE COND", colspan=3, bg="#9a3412"))
+                html.append("</tr>")
+
+                # Row 3 – CM/PM/VAR or CY/LY/VAR
+                html.append("<tr>")
+                for _ in range(16):  # 1 fleet + 9 (sch/svc/kms) + 3 crew + 3 ot
+                    for h in (h_cy, h_ly, h_var):
+                        html.append(th_sub(h))
+                html.append("</tr>")
+                html.append("</thead><tbody>")
+
+                ot_metrics = {"OT_COND_RTC", "OT_DRI_RTC", "OT_COND_HIRE"}
+                for _, row in merged.iterrows():
+                    prod = str(row.get("PRODUCT", ""))
+                    is_tot = prod in ("TOTAL", "MHL", "NMHL")
+                    style = "font-weight:bold;background:#e2efda;" if is_tot else ""
+                    html.append(f'<tr style="{style}">')
+                    html.append(
+                        f'<td style="position:sticky;left:0;z-index:2;background:#e0f2fe;'
+                        f'padding:5px 6px;font-size:12px;font-weight:600;min-width:70px;">{row["DEPOT"]}</td>'
+                    )
+                    html.append(
+                        f'<td style="position:sticky;left:70px;z-index:2;background:#f0f9ff;'
+                        f'padding:5px 6px;font-size:12px;min-width:80px;">{row["PRODUCT"]}</td>'
+                    )
+                    html.append(
+                        f'<td style="position:sticky;left:150px;z-index:2;background:#f8fafc;'
+                        f'padding:5px 6px;font-size:11px;min-width:60px;">{row.get("MHL_NMHL", "")}</td>'
+                    )
+                    for m in metrics:
+                        is_ot = m in ot_metrics
+                        if m.startswith("SCH"):
+                            bg = "#fef2f2"
+                        elif m.startswith("SVC"):
+                            bg = "#f5f3ff"
+                        elif m.startswith("KMS"):
+                            bg = "#f0fdf4"
+                        elif m.startswith("CREW"):
+                            bg = "#eff6ff"
+                        elif m.startswith("OT"):
+                            bg = "#fff7ed"
+                        else:
+                            bg = "#fff"
+                        def cell_bg(v, is_var=False, is_ot=False, bg="#fff"):
+                            try:
+                                fv = float(v)
+                            except Exception:
+                                return f"<td style='padding:4px 5px;font-size:12px;background:{bg};'></td>"
+                            if fv == 0:
+                                return f"<td style='padding:4px 5px;font-size:12px;background:{bg};'></td>"
+                            if is_ot:
+                                s = minutes_to_hhmm(fv)
+                            else:
+                                s = f"{fv:,.0f}" if abs(fv - round(fv)) < 1e-6 else f"{fv:,.1f}"
+                            if is_var:
+                                cls = "pos" if fv > 0 else "neg"
+                                return f"<td class='{cls}' style='padding:4px 5px;font-size:12px;background:{bg};'>{s}</td>"
+                            return f"<td style='padding:4px 5px;font-size:12px;background:{bg};'>{s}</td>"
+                        html.append(cell_bg(row[f"{m}_CY"], is_ot=is_ot, bg=bg))
+                        html.append(cell_bg(row[f"{m}_LY"], is_ot=is_ot, bg=bg))
+                        html.append(cell_bg(row[f"{m}_VAR"], is_var=True, is_ot=is_ot, bg=bg))
+                    html.append("</tr>")
+                html.append("</tbody></table></div>")
+
+                st.markdown("".join(html), unsafe_allow_html=True)
+                st.caption(
+                    f"Headings: {h_cy}/{h_ly}/{h_var} | Crew REQ = MUSTERS×1.3 | OT = sum of CND OT / DRV OT (HH:MM)"
+                )
+                st.download_button(
+                    "Download Product-wise CSV",
+                    merged.to_csv(index=False).encode("utf-8"),
+                    f"Schedules_Product_{f_month}.csv",
+                    "text/csv",
+                    key="dl9a",
+                )
+
+
             # ========== TABLE 3: Summary of Operation ==========
             st.markdown('<hr style="margin:4px 0;border:none;border-top:1px solid #e2e8f0;">', unsafe_allow_html=True)
             st.markdown(f"#### Summary of Operation — {f_month}")
@@ -5818,14 +7152,718 @@ elif section == "Schedules":
                     html3.append("</tr>")
                 html3.append("</tbody></table></div>")
                 st.markdown("".join(html3), unsafe_allow_html=True)
+
+                def summary_operation_excel(mdf, mon):
+                    """Excel matching on-screen Summary of Operation board."""
+                    from openpyxl import Workbook
+                    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+                    from openpyxl.utils import get_column_letter
+                    wb = Workbook()
+                    ws = wb.active
+                    ws.title = "Summary of Operation"
+                    thin = Border(
+                        left=Side(style="thin", color="94A3B8"),
+                        right=Side(style="thin", color="94A3B8"),
+                        top=Side(style="thin", color="94A3B8"),
+                        bottom=Side(style="thin", color="94A3B8"),
+                    )
+                    center = Alignment(horizontal="center", vertical="center", wrap_text=True)
+                    left_al = Alignment(horizontal="left", vertical="center", wrap_text=True)
+                    white = Font(bold=True, color="FFFFFF", size=11)
+                    dark = Font(bold=True, color="0F172A", size=10)
+                    fills = {
+                        "left": PatternFill("solid", fgColor="0F172A"),
+                        "sch": PatternFill("solid", fgColor="B91C1C"),
+                        "ser": PatternFill("solid", fgColor="7C3AED"),
+                        "kms": PatternFill("solid", fgColor="15803D"),
+                        "crew": PatternFill("solid", fgColor="1D4ED8"),
+                        "ot": PatternFill("solid", fgColor="C2410C"),
+                        "sch_sub": PatternFill("solid", fgColor="FECACA"),
+                        "ser_sub": PatternFill("solid", fgColor="DDD6FE"),
+                        "kms_sub": PatternFill("solid", fgColor="BBF7D0"),
+                        "crew_sub": PatternFill("solid", fgColor="DBEAFE"),
+                        "ot_sub": PatternFill("solid", fgColor="FFEDD5"),
+                        "tot": PatternFill("solid", fgColor="E2EFDA"),
+                        "sch_bg": PatternFill("solid", fgColor="FEF2F2"),
+                        "ser_bg": PatternFill("solid", fgColor="F5F3FF"),
+                        "kms_bg": PatternFill("solid", fgColor="F0FDF4"),
+                        "crew_bg": PatternFill("solid", fgColor="EFF6FF"),
+                        "ot_bg": PatternFill("solid", fgColor="FFF7ED"),
+                    }
+
+                    # Title
+                    ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=24)
+                    tcell = ws.cell(1, 1, f"Summary of Operation | {mon}")
+                    tcell.font = Font(bold=True, size=13, color="1E3A8A")
+                    tcell.alignment = Alignment(horizontal="left", vertical="center")
+                    ws.row_dimensions[1].height = 22
+
+                    def th(r, c, text, fill, rowspan=1, colspan=1, font=None):
+                        cell = ws.cell(r, c, text)
+                        cell.fill = fill
+                        cell.font = font or white
+                        cell.alignment = center
+                        cell.border = thin
+                        if rowspan > 1 or colspan > 1:
+                            ws.merge_cells(
+                                start_row=r, start_column=c,
+                                end_row=r + rowspan - 1, end_column=c + colspan - 1,
+                            )
+                        for rr in range(r, r + rowspan):
+                            for cc in range(c, c + colspan):
+                                ws.cell(rr, cc).fill = fill
+                                ws.cell(rr, cc).border = thin
+                                ws.cell(rr, cc).alignment = center
+
+                    # Header row 2 – groups
+                    th(2, 1, "S.No", fills["left"], rowspan=2)
+                    th(2, 2, "DEPOT", fills["left"], rowspan=2)
+                    th(2, 3, "ROUTE NO.", fills["left"], rowspan=2)
+                    th(2, 4, "PRODUCT", fills["left"], rowspan=2)
+                    th(2, 5, "SERVICE NUMBERS", fills["left"], rowspan=2)
+                    th(2, 6, "NO OF SCHEDULES", fills["sch"], colspan=5)
+                    th(2, 11, "SERVICES", fills["ser"], colspan=5)
+                    th(2, 16, "SCHEDULE KILOMETERS", fills["kms"], colspan=5)
+                    th(2, 21, "CREW REQUIREMENT", fills["crew"], colspan=2)
+                    th(2, 23, "SCH OVER TIME", fills["ot"], colspan=2)
+
+                    # Header row 3 – sub
+                    for i, h in enumerate(["DO", "NO", "SC", "SO", "TOTAL"]):
+                        th(3, 6 + i, h, fills["sch_sub"], font=dark)
+                    for i, h in enumerate(["DO", "NO", "SC", "SO", "TOTAL"]):
+                        th(3, 11 + i, h, fills["ser_sub"], font=dark)
+                    for i, h in enumerate(["DO", "NO", "SC", "SO", "TOTAL"]):
+                        th(3, 16 + i, h, fills["kms_sub"], font=dark)
+                    th(3, 21, "COND", fills["crew_sub"], font=dark)
+                    th(3, 22, "DRI", fills["crew_sub"], font=dark)
+                    th(3, 23, "COND", fills["ot_sub"], font=dark)
+                    th(3, 24, "DRI", fills["ot_sub"], font=dark)
+
+                    def put_num(cell, v, is_ot=False):
+                        try:
+                            fv = float(v or 0)
+                        except Exception:
+                            fv = 0.0
+                        if abs(fv) < 1e-9:
+                            cell.value = None
+                            return
+                        if is_ot:
+                            cell.value = _min_to_hhmm(fv)
+                        else:
+                            cell.value = int(round(fv)) if abs(fv - round(fv)) < 1e-6 else round(fv, 1)
+                        cell.alignment = center
+
+                    data_r = 4
+                    for _, r in mdf.iterrows():
+                        is_tot = str(r.get("DEPOT", "")) == "TOTAL"
+                        row_fill = fills["tot"] if is_tot else None
+                        bold = Font(bold=True, size=10) if is_tot else Font(size=10)
+
+                        vals_left = [
+                            r.get("SNo", ""),
+                            r.get("DEPOT", ""),
+                            r.get("ROUTE", ""),
+                            r.get("PRODUCT", ""),
+                            r.get("SERVICE_NUMBERS", ""),
+                        ]
+                        for c, v in enumerate(vals_left, 1):
+                            cell = ws.cell(data_r, c, "" if (v is None or str(v) == "nan") else v)
+                            cell.border = thin
+                            cell.font = bold
+                            cell.alignment = left_al if c == 5 else center
+                            if row_fill:
+                                cell.fill = row_fill
+                            elif c <= 5:
+                                cell.fill = PatternFill("solid", fgColor="E0F2FE")
+
+                        # SCH DO NO SC SO TOTAL
+                        for i, dt in enumerate(DTYPES3):
+                            cell = ws.cell(data_r, 6 + i)
+                            cell.border = thin
+                            cell.fill = row_fill or fills["sch_bg"]
+                            cell.font = bold
+                            put_num(cell, r.get(f"SCH_{dt}", 0))
+                        cell = ws.cell(data_r, 10)
+                        cell.border = thin
+                        cell.fill = row_fill or PatternFill("solid", fgColor="FEE2E2")
+                        cell.font = Font(bold=True, size=10)
+                        put_num(cell, r.get("SCH_TOTAL", 0))
+
+                        # SER
+                        for i, dt in enumerate(DTYPES3):
+                            cell = ws.cell(data_r, 11 + i)
+                            cell.border = thin
+                            cell.fill = row_fill or fills["ser_bg"]
+                            cell.font = bold
+                            put_num(cell, r.get(f"SER_{dt}", 0))
+                        cell = ws.cell(data_r, 15)
+                        cell.border = thin
+                        cell.fill = row_fill or PatternFill("solid", fgColor="EDE9FE")
+                        cell.font = Font(bold=True, size=10)
+                        put_num(cell, r.get("SER_TOTAL", 0))
+
+                        # KMS
+                        for i, dt in enumerate(DTYPES3):
+                            cell = ws.cell(data_r, 16 + i)
+                            cell.border = thin
+                            cell.fill = row_fill or fills["kms_bg"]
+                            cell.font = bold
+                            put_num(cell, r.get(f"KMS_{dt}", 0))
+                        cell = ws.cell(data_r, 20)
+                        cell.border = thin
+                        cell.fill = row_fill or PatternFill("solid", fgColor="DCFCE7")
+                        cell.font = Font(bold=True, size=10)
+                        put_num(cell, r.get("KMS_TOTAL", 0))
+
+                        # CREW
+                        for c, key in ((21, "CREW_COND"), (22, "CREW_DRI")):
+                            cell = ws.cell(data_r, c)
+                            cell.border = thin
+                            cell.fill = row_fill or fills["crew_bg"]
+                            cell.font = bold
+                            put_num(cell, r.get(key, 0))
+                        # OT
+                        for c, key in ((23, "OT_COND"), (24, "OT_DRI")):
+                            cell = ws.cell(data_r, c)
+                            cell.border = thin
+                            cell.fill = row_fill or fills["ot_bg"]
+                            cell.font = bold
+                            put_num(cell, r.get(key, 0), is_ot=True)
+
+                        data_r += 1
+
+                    widths = {
+                        "A": 6, "B": 10, "C": 12, "D": 10, "E": 28,
+                    }
+                    for col in range(6, 25):
+                        widths[get_column_letter(col)] = 9
+                    for letter, w in widths.items():
+                        ws.column_dimensions[letter].width = w
+                    ws.row_dimensions[2].height = 20
+                    ws.row_dimensions[3].height = 18
+                    ws.freeze_panes = "F4"
+                    bio = BytesIO()
+                    wb.save(bio)
+                    bio.seek(0)
+                    return bio.getvalue()
+
                 st.download_button(
-                    "Download Summary of Operation CSV",
-                    df3.to_csv(index=False).encode("utf-8"),
-                    f"Summary_Operation_{f_month}.csv",
-                    "text/csv",
+                    "Download Summary of Operation Excel",
+                    summary_operation_excel(df3, f_month),
+                    f"Summary_Operation_{f_month}.xlsx",
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     key="dl9c",
                 )
 
+
+# ============================================================================
+# MISSION RR — modification schedules (upload master list + metrics from ser_wise)
+# Fixed periods: 01.04.2026–31.07.2026  |  01.08.2026–till date
+# Filters: Depot / Product / Route only
+# ============================================================================
+elif section == "MISSION RR":
+    st.markdown(
+        '<div class="title-bar">MISSION RR — Modification Schedules</div>',
+        unsafe_allow_html=True,
+    )
+    _src = df_ser_wise if (df_ser_wise is not None and len(df_ser_wise)) else df
+    if _src is None or len(_src) == 0:
+        st.error("ser_wise.parquet not available.")
+        st.stop()
+    mrr = _src.copy()
+    mrr["Date"] = pd.to_datetime(mrr["Date"], errors="coerce")
+    mrr = mrr.dropna(subset=["Date"])
+
+    for std, alts in {
+        "GE_TOT": ["Gross Total", "GE_TOT"],
+        "NE_TOT": ["Net Total", "NE_TOT"],
+        "Optd_KMs": ["OPD_KMS", "Optd_KMs"],
+        "DEPOT": ["DEPOT"],
+        "SER_NO": ["SER_NO", "ServiceNo"],
+        "PRODUCT": ["PRODUCT"],
+        "ROUTEE": ["ROUTEE", "ROUTE"],
+    }.items():
+        if std not in mrr.columns:
+            src = next((a for a in alts if a in mrr.columns), None)
+            if src is not None:
+                mrr[std] = pd.to_numeric(mrr[src], errors="coerce").fillna(0) if std in ("GE_TOT", "NE_TOT", "Optd_KMs") else mrr[src]
+            else:
+                mrr[std] = 0 if std in ("GE_TOT", "NE_TOT", "Optd_KMs") else ""
+    if "ROUTEE" not in mrr.columns and "ROUTE" in mrr.columns:
+        mrr["ROUTEE"] = mrr["ROUTE"]
+
+    # Fixed periods
+    _p1_start, _p1_end = pd.Timestamp("2026-04-01"), pd.Timestamp("2026-07-31")
+    _p2_start = pd.Timestamp("2026-08-01")
+    _till = mrr["Date"].max()
+    _p2_end = _till if pd.notna(_till) and _till >= _p2_start else pd.Timestamp("2026-08-31")
+    _p1_label = "01.04.2026 TO 31.07.2026"
+    _p2_label = f"01.08.2026 to TILL DATE ({_p2_end.strftime('%d.%m.%Y')})"
+    title = "DETAILS OF THE RR REGION MODIFICATION SCHEDULES FOR AUG - 2026"
+
+    def _norm_svc(v):
+        if v is None or (isinstance(v, float) and np.isnan(v)):
+            return ""
+        s = str(v).strip()
+        if not s or s.lower() in ("nan", "none"):
+            return ""
+        try:
+            return str(int(float(s)))
+        except Exception:
+            return s
+
+    def _clean_str(v):
+        if v is None or (isinstance(v, float) and np.isnan(v)):
+            return ""
+        s = str(v).strip()
+        return "" if s.lower() in ("nan", "none", "") else s
+
+    # ---- Robust Excel reader ----
+    def _read_mod_excel(uploaded):
+        """Return DataFrame of services with standardized columns.
+        Handles multi-row headers, merged titles, and varied column names.
+        """
+        raw = uploaded.read()
+        uploaded.seek(0)
+        bio = BytesIO(raw)
+        # Try every sheet
+        try:
+            xl = pd.ExcelFile(bio)
+            sheet_names = xl.sheet_names
+        except Exception:
+            sheet_names = [0]
+            bio = BytesIO(raw)
+
+        best = None
+        best_score = -1
+        debug_cols = []
+
+        for sheet in sheet_names:
+            for hdr in range(0, 8):
+                try:
+                    bio.seek(0)
+                    df_try = pd.read_excel(bio, sheet_name=sheet, header=hdr)
+                except Exception:
+                    continue
+                if df_try is None or len(df_try) == 0:
+                    continue
+                # Drop fully empty columns
+                df_try = df_try.dropna(axis=1, how="all")
+                cols_raw = [str(c).strip() for c in df_try.columns]
+                debug_cols.append((sheet, hdr, cols_raw[:20]))
+
+                # Normalize column names for matching
+                def _nk(c):
+                    return (
+                        str(c).strip().lower()
+                        .replace(" ", "").replace("_", "").replace(".", "")
+                        .replace("/", "").replace("\n", "").replace("\r", "")
+                    )
+
+                colmap = {_nk(c): c for c in df_try.columns}
+
+                def find(*cands):
+                    for cand in cands:
+                        k = _nk(cand)
+                        if k in colmap:
+                            return colmap[k]
+                        # partial contains
+                        for nk, orig in colmap.items():
+                            if k and (k in nk or nk in k):
+                                return orig
+                    return None
+
+                c_dep = find("DEPOT", "Depot", "depot")
+                c_ser = find("SER NO", "SER_NO", "SERNO", "ServiceNo", "SERVICE NO", "SERVICENO", "SER.NO", "SNO", "Service")
+                c_route = find("ROUTE", "ROUTEE", "Route")
+                c_prod = find("PRODUCT", "PRODUCT T", "PRODUCTT", "Product", "PROD")
+                c_bef = find("BEFORE", "BEF", "BEFORE E", "Before")
+                c_aft = find("AFTER", "AFT", "AFTER R", "After")
+                c_sers = find("NO. OF SERS", "NO_OF_SERS", "NO.OFSERS", "NOOFSERS", "SERS", "No of Sers")
+
+                score = sum(1 for x in [c_dep, c_ser, c_route, c_prod] if x is not None)
+                if score > best_score:
+                    best_score = score
+                    best = (df_try, c_dep, c_ser, c_route, c_prod, c_bef, c_aft, c_sers, cols_raw, sheet, hdr)
+
+                if score >= 3:
+                    break
+            if best_score >= 3:
+                break
+
+        if best is None or best_score < 1:
+            # Positional fallback: assume image layout
+            # SL NO | DEPOT | SER NO | ROUTE | PRODUCT | BEFORE | AFTER | NO. OF SERS
+            bio.seek(0)
+            try:
+                df_pos = pd.read_excel(bio, header=None)
+            except Exception:
+                return None, debug_cols, "Could not read Excel"
+            # Find first row that looks like a header or data
+            start = 0
+            for i in range(min(15, len(df_pos))):
+                row_vals = [str(x).strip().upper() for x in df_pos.iloc[i].tolist()]
+                joined = " ".join(row_vals)
+                if "DEPOT" in joined and ("SER" in joined or "SERVICE" in joined):
+                    start = i + 1
+                    # remap using this header row
+                    hdr_vals = [str(x).strip() for x in df_pos.iloc[i].tolist()]
+                    df_pos2 = df_pos.iloc[start:].copy()
+                    df_pos2.columns = [f"C{j}" if not h or h.lower() == "nan" else h for j, h in enumerate(hdr_vals)]
+                    return _read_mod_excel_from_df(df_pos2), debug_cols, f"positional-header-row-{i}"
+                # data row: depot-like short code + service number
+                if len(row_vals) >= 5 and row_vals[1] and row_vals[2]:
+                    start = i
+                    break
+            df_pos = df_pos.iloc[start:].copy()
+            ncols = df_pos.shape[1]
+            rows_out = []
+            for _, r in df_pos.iterrows():
+                vals = [r.iloc[j] if j < ncols else "" for j in range(ncols)]
+                # skip blank
+                if all(_clean_str(v) == "" for v in vals[:5]):
+                    continue
+                # if first col is SL number, shift
+                offset = 0
+                try:
+                    int(float(vals[0]))
+                    offset = 1
+                except Exception:
+                    offset = 0
+                rows_out.append({
+                    "DEPOT": _clean_str(vals[offset]).upper() if offset < ncols else "",
+                    "SER NO": _norm_svc(vals[offset + 1]) if offset + 1 < ncols else "",
+                    "ROUTE": _clean_str(vals[offset + 2]) if offset + 2 < ncols else "",
+                    "PRODUCT": _clean_str(vals[offset + 3]) if offset + 3 < ncols else "",
+                    "BEFORE": _clean_str(vals[offset + 4]).upper() if offset + 4 < ncols else "",
+                    "AFTER": _clean_str(vals[offset + 5]).upper() if offset + 5 < ncols else "",
+                    "NO. OF SERS": 1,
+                })
+            if rows_out:
+                return pd.DataFrame(rows_out), debug_cols, "positional"
+            return None, debug_cols, "no data parsed"
+
+        df_try, c_dep, c_ser, c_route, c_prod, c_bef, c_aft, c_sers, cols_raw, sheet, hdr = best
+        rows_out = []
+        for _, r in df_try.iterrows():
+            dep = _clean_str(r[c_dep]).upper() if c_dep else ""
+            ser = _norm_svc(r[c_ser]) if c_ser else ""
+            if not dep and not ser:
+                continue
+            rows_out.append({
+                "DEPOT": dep,
+                "SER NO": ser,
+                "ROUTE": _clean_str(r[c_route]) if c_route else "",
+                "PRODUCT": _clean_str(r[c_prod]) if c_prod else "",
+                "BEFORE": _clean_str(r[c_bef]).upper() if c_bef else "",
+                "AFTER": _clean_str(r[c_aft]).upper() if c_aft else "",
+                "NO. OF SERS": int(float(r[c_sers])) if c_sers and pd.notna(r.get(c_sers)) else 1,
+            })
+        return pd.DataFrame(rows_out), debug_cols, f"sheet={sheet} header={hdr} score={best_score} cols={cols_raw[:12]}"
+
+    def _read_mod_excel_from_df(df_try):
+        def _nk(c):
+            return str(c).strip().lower().replace(" ", "").replace("_", "").replace(".", "").replace("/", "").replace("\n", "")
+        colmap = {_nk(c): c for c in df_try.columns}
+        def find(*cands):
+            for cand in cands:
+                k = _nk(cand)
+                if k in colmap:
+                    return colmap[k]
+                for nk, orig in colmap.items():
+                    if k and (k in nk or nk in k):
+                        return orig
+            return None
+        c_dep = find("DEPOT")
+        c_ser = find("SER NO", "SER_NO", "SERNO", "ServiceNo", "SERVICE")
+        c_route = find("ROUTE", "ROUTEE")
+        c_prod = find("PRODUCT", "PROD")
+        c_bef = find("BEFORE", "BEF")
+        c_aft = find("AFTER", "AFT")
+        rows_out = []
+        for _, r in df_try.iterrows():
+            dep = _clean_str(r[c_dep]).upper() if c_dep else ""
+            ser = _norm_svc(r[c_ser]) if c_ser else ""
+            if not dep and not ser:
+                continue
+            rows_out.append({
+                "DEPOT": dep, "SER NO": ser,
+                "ROUTE": _clean_str(r[c_route]) if c_route else "",
+                "PRODUCT": _clean_str(r[c_prod]) if c_prod else "",
+                "BEFORE": _clean_str(r[c_bef]).upper() if c_bef else "",
+                "AFTER": _clean_str(r[c_aft]).upper() if c_aft else "",
+                "NO. OF SERS": 1,
+            })
+        return pd.DataFrame(rows_out)
+
+    # ---- Upload ----
+    st.caption("Upload the modification services Excel (DEPOT, SER NO, ROUTE, PRODUCT, BEFORE, AFTER).")
+    _up = st.file_uploader("Modification services list", type=["xlsx", "xls", "csv"], key="mrr_upload")
+
+    master = pd.DataFrame()
+    if _up is not None:
+        if _up.name.lower().endswith(".csv"):
+            try:
+                _ul = pd.read_csv(_up)
+                master = _read_mod_excel_from_df(_ul)
+                st.success(f"Loaded {len(master)} services from CSV.")
+            except Exception as e:
+                st.error(f"CSV read failed: {e}")
+        else:
+            master, debug_cols, info = _read_mod_excel(_up)
+            if master is not None and len(master):
+                st.success(f"Loaded {len(master)} services from upload. ({info})")
+                # show sample so user can verify
+                st.caption("Sample of parsed rows:")
+                st.dataframe(master.head(5), use_container_width=True)
+            else:
+                st.error("Could not parse service columns from the Excel.")
+                with st.expander("Detected column headers (debug)"):
+                    for sheet, hdr, cols in (debug_cols or [])[:12]:
+                        st.write(f"Sheet={sheet} header_row={hdr}: {cols}")
+                st.stop()
+    else:
+        st.info("Upload the MODIFICATION services Excel to load the 253/257 service list.")
+        st.stop()
+
+    if len(master) == 0:
+        st.warning("No services parsed from file.")
+        st.stop()
+
+    # Filters: Depot / Product / Route only
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        _deps = ["ALL"] + sorted({x for x in master["DEPOT"].dropna().unique() if str(x).strip()})
+        mrr_depot = st.selectbox("Depot", _deps, index=0, key="mrr_depot")
+    with c2:
+        _prods = ["ALL"] + sorted({x for x in master["PRODUCT"].dropna().unique() if str(x).strip()})
+        mrr_product = st.selectbox("Product", _prods, index=0, key="mrr_product")
+    with c3:
+        _routes = ["ALL"] + sorted({x for x in master["ROUTE"].dropna().unique() if str(x).strip()})
+        mrr_route = st.selectbox("Route", _routes, index=0, key="mrr_route")
+
+    if mrr_depot != "ALL":
+        master = master[master["DEPOT"].astype(str).str.strip().str.upper() == mrr_depot.strip().upper()]
+    if mrr_product != "ALL":
+        master = master[master["PRODUCT"].astype(str).str.strip().str.upper() == mrr_product.strip().upper()]
+    if mrr_route != "ALL":
+        master = master[master["ROUTE"].astype(str).str.strip().str.upper() == mrr_route.strip().upper()]
+    if len(master) == 0:
+        st.info("No services match filters.")
+        st.stop()
+
+    # Metrics from ser_wise
+    base = mrr.copy()
+    base["SER_NO"] = base["SER_NO"].map(_norm_svc)
+    base["DEPOT"] = base["DEPOT"].astype(str).str.strip().str.upper()
+    p1 = base[(base["Date"] >= _p1_start) & (base["Date"] <= _p1_end)]
+    p2 = base[(base["Date"] >= _p2_start) & (base["Date"] <= _p2_end)]
+
+    def _agg(data):
+        if len(data) == 0:
+            return pd.DataFrame(columns=["DEPOT", "SER_NO", "kms", "ge", "ne"])
+        return data.groupby(["DEPOT", "SER_NO"], dropna=False).agg(
+            kms=("Optd_KMs", "sum"), ge=("GE_TOT", "sum"), ne=("NE_TOT", "sum"),
+        ).reset_index()
+
+    a1, a2 = _agg(p1), _agg(p2)
+    orf_map, _, orf_err = load_orf_map(r"D:\\dashboard\\ORF.xlsx")
+
+    def _orf(dep):
+        d = str(dep).strip().upper()
+        if orf_map and d in orf_map:
+            try:
+                return float(orf_map[d].get("cy", np.nan))
+            except Exception:
+                return np.nan
+        if orf_map and "REGION" in orf_map:
+            try:
+                return float(orf_map["REGION"].get("cy", np.nan))
+            except Exception:
+                return np.nan
+        return np.nan
+
+    def _epk(e, k):
+        try:
+            e, k = float(e), float(k)
+            return e / k if k > 0 else np.nan
+        except Exception:
+            return np.nan
+
+    def _or(epk, orf):
+        if pd.isna(epk) or pd.isna(orf) or not orf:
+            return np.nan
+        return epk * 10000 / orf
+
+    rows = []
+    for i, r in master.reset_index(drop=True).iterrows():
+        dep, ser = str(r["DEPOT"]).strip().upper(), _norm_svc(r["SER NO"])
+        r1 = a1[(a1["DEPOT"] == dep) & (a1["SER_NO"] == ser)]
+        r2 = a2[(a2["DEPOT"] == dep) & (a2["SER_NO"] == ser)]
+        kms1 = float(r1["kms"].sum()) if len(r1) else 0.0
+        kms2 = float(r2["kms"].sum()) if len(r2) else 0.0
+        ge1 = float(r1["ge"].sum()) if len(r1) else 0.0
+        ge2 = float(r2["ge"].sum()) if len(r2) else 0.0
+        ne1 = float(r1["ne"].sum()) if len(r1) else 0.0
+        ne2 = float(r2["ne"].sum()) if len(r2) else 0.0
+        orf_v = _orf(dep)
+        ne1e, ge1e = _epk(ne1, kms1), _epk(ge1, kms1)
+        ne2e, ge2e = _epk(ne2, kms2), _epk(ge2, kms2)
+        no1, go1 = _or(ne1e, orf_v), _or(ge1e, orf_v)
+        no2, go2 = _or(ne2e, orf_v), _or(ge2e, orf_v)
+
+        def _v(a, b):
+            if pd.isna(a) or pd.isna(b):
+                return np.nan
+            return float(b) - float(a)
+
+        rows.append({
+            "SL NO": i + 1,
+            "DEPOT": dep,
+            "SER NO": ser,
+            "ROUTE": r["ROUTE"],
+            "PRODUCT": r["PRODUCT"],
+            "BEFORE": r["BEFORE"],
+            "AFTER": r["AFTER"],
+            "NO. OF SERS": r["NO. OF SERS"],
+            "P1 NET EPK": round(ne1e, 2) if pd.notna(ne1e) else None,
+            "P1 NET OR": round(no1, 0) if pd.notna(no1) else None,
+            "P1 GROSS EPK": round(ge1e, 2) if pd.notna(ge1e) else None,
+            "P1 GROSS OR": round(go1, 0) if pd.notna(go1) else None,
+            "P2 NET EPK": round(ne2e, 2) if pd.notna(ne2e) else None,
+            "P2 NET OR": round(no2, 0) if pd.notna(no2) else None,
+            "P2 GROSS EPK": round(ge2e, 2) if pd.notna(ge2e) else None,
+            "P2 GROSS OR": round(go2, 0) if pd.notna(go2) else None,
+            "VAR NET EPK": round(_v(ne1e, ne2e), 2) if pd.notna(_v(ne1e, ne2e)) else None,
+            "VAR NET OR": round(_v(no1, no2), 0) if pd.notna(_v(no1, no2)) else None,
+            "VAR GROSS EPK": round(_v(ge1e, ge2e), 2) if pd.notna(_v(ge1e, ge2e)) else None,
+            "VAR GROSS OR": round(_v(go1, go2), 0) if pd.notna(_v(go1, go2)) else None,
+        })
+
+    out = pd.DataFrame(rows)
+
+    def _th_m(txt, rowspan=1, colspan=1, bg="#1e3a8a", color="#fff", top=0):
+        return (
+            f'<th rowspan="{rowspan}" colspan="{colspan}" style="background:{bg};color:{color};'
+            f'position:sticky;top:{top}px;z-index:3;padding:6px 8px;border:1px solid #cbd5e1;'
+            f'font-size:11px;text-align:center;white-space:nowrap;">{txt}</th>'
+        )
+
+    def _td_m(v, is_var=False):
+        if v is None or (isinstance(v, float) and np.isnan(v)) or v == "":
+            return '<td style="padding:4px 8px;border:1px solid #e2e8f0;text-align:center;"></td>'
+        style = "padding:4px 8px;border:1px solid #e2e8f0;text-align:center;font-size:12px;"
+        if is_var:
+            try:
+                fv = float(v)
+                if fv > 0:
+                    style += "color:#15803d;font-weight:700;background:#dcfce7;"
+                elif fv < 0:
+                    style += "color:#b91c1c;font-weight:700;background:#fee2e2;"
+            except Exception:
+                pass
+        return f'<td style="{style}">{v}</td>'
+
+    thead = (
+        "<tr>"
+        + _th_m("SL<br>NO", rowspan=3, bg="#0f172a")
+        + _th_m("DEPOT", rowspan=3, bg="#0f172a")
+        + _th_m("SER NO", rowspan=3, bg="#0f172a")
+        + _th_m("ROUTE", rowspan=3, bg="#0f172a")
+        + _th_m("PRODUCT", rowspan=3, bg="#0f172a")
+        + _th_m("BEFORE", rowspan=3, bg="#7c3aed")
+        + _th_m("AFTER", rowspan=3, bg="#7c3aed")
+        + _th_m("NO.<br>OF<br>SERS", rowspan=3, bg="#0f172a")
+        + _th_m(_p1_label, colspan=4, bg="#0e7490")
+        + _th_m(_p2_label, colspan=4, bg="#0369a1")
+        + _th_m("VARIANCE", colspan=4, bg="#9f1239")
+        + "</tr><tr>"
+        + _th_m("NET", colspan=2, bg="#14b8a6", top=28)
+        + _th_m("GROSS", colspan=2, bg="#22c55e", top=28)
+        + _th_m("NET", colspan=2, bg="#38bdf8", top=28)
+        + _th_m("GROSS", colspan=2, bg="#4ade80", top=28)
+        + _th_m("NET", colspan=2, bg="#fb7185", top=28)
+        + _th_m("GROSS", colspan=2, bg="#f87171", top=28)
+        + "</tr><tr>"
+    )
+    for _ in range(3):
+        thead += _th_m("EPK", bg="#f1f5f9", color="#334155", top=56) + _th_m("OR", bg="#f1f5f9", color="#334155", top=56)
+        thead += _th_m("EPK", bg="#f1f5f9", color="#334155", top=56) + _th_m("OR", bg="#f1f5f9", color="#334155", top=56)
+    thead += "</tr>"
+
+    body = []
+    cols = [
+        "SL NO", "DEPOT", "SER NO", "ROUTE", "PRODUCT", "BEFORE", "AFTER", "NO. OF SERS",
+        "P1 NET EPK", "P1 NET OR", "P1 GROSS EPK", "P1 GROSS OR",
+        "P2 NET EPK", "P2 NET OR", "P2 GROSS EPK", "P2 GROSS OR",
+        "VAR NET EPK", "VAR NET OR", "VAR GROSS EPK", "VAR GROSS OR",
+    ]
+    var_cols = {"VAR NET EPK", "VAR NET OR", "VAR GROSS EPK", "VAR GROSS OR"}
+    for _, r in out.iterrows():
+        body.append("<tr>")
+        for c in cols:
+            body.append(_td_m(r.get(c), is_var=(c in var_cols)))
+        body.append("</tr>")
+
+    html = (
+        f'<div style="font-weight:700;font-size:15px;text-align:center;padding:8px;'
+        f'background:linear-gradient(90deg,#0f172a,#1e3a8a);color:#fff;border-radius:6px 6px 0 0;">{title}</div>'
+        f'<div style="overflow:auto;max-height:70vh;border:1px solid #cbd5e1;border-radius:0 0 6px 6px;">'
+        f'<table style="border-collapse:collapse;width:100%;min-width:1400px;">'
+        f'<thead>{thead}</thead><tbody>{"".join(body)}</tbody></table></div>'
+    )
+    st.markdown(html, unsafe_allow_html=True)
+    st.caption(f"Services: {len(out)} · P1={_p1_label} · P2={_p2_label} · Variance = P2−P1 (green ↑ / red ↓)")
+
+    try:
+        from openpyxl import Workbook
+        from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "MISSION RR"
+        thin = Border(
+            left=Side(style="thin", color="CBD5E1"), right=Side(style="thin", color="CBD5E1"),
+            top=Side(style="thin", color="CBD5E1"), bottom=Side(style="thin", color="CBD5E1"),
+        )
+        ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=20)
+        ws.cell(1, 1, title).font = Font(bold=True, color="FFFFFF", size=12)
+        ws.cell(1, 1).fill = PatternFill("solid", fgColor="0F172A")
+        ws.cell(1, 1).alignment = Alignment(horizontal="center")
+        headers = cols
+        for i, h in enumerate(headers, 1):
+            cell = ws.cell(2, i, h)
+            cell.font = Font(bold=True, color="FFFFFF", size=9)
+            cell.fill = PatternFill("solid", fgColor="1E3A8A")
+            cell.alignment = Alignment(horizontal="center", wrap_text=True)
+            cell.border = thin
+        gf, rf = PatternFill("solid", fgColor="DCFCE7"), PatternFill("solid", fgColor="FEE2E2")
+        gfont, rfont = Font(color="15803D", bold=True), Font(color="B91C1C", bold=True)
+        for ri, row in enumerate(out.itertuples(index=False), 3):
+            for ci, val in enumerate(row, 1):
+                cell = ws.cell(ri, ci, val if val is not None and not (isinstance(val, float) and np.isnan(val)) else "")
+                cell.border = thin
+                cell.alignment = Alignment(horizontal="center")
+                if ci >= 17:
+                    try:
+                        fv = float(val)
+                        if fv > 0:
+                            cell.fill, cell.font = gf, gfont
+                        elif fv < 0:
+                            cell.fill, cell.font = rf, rfont
+                    except Exception:
+                        pass
+        bio = BytesIO()
+        wb.save(bio)
+        bio.seek(0)
+        st.download_button(
+            "Download MISSION RR Excel",
+            bio.getvalue(),
+            "MISSION_RR_Aug2026.xlsx",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            key="mrr_dl",
+        )
+    except Exception as _ex:
+        st.caption(f"Excel export unavailable: {_ex}")
 
 
 st.caption("Cascading filters • Weighted EPK • Self-hosted on your PC")
