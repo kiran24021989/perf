@@ -679,11 +679,14 @@ st.markdown(
     unsafe_allow_html=True,
 )
 # ========== PATH ==========
-PARQUET_FILE = r"ser_wise.parquet"
-SERVICE_MONTHLY_FILE = r"ser_monthly.parquet"
+PARQUET_FILE = r"D:\dashboard\ser_wise.parquet"
+SERVICE_MONTHLY_FILE = r"D:\dashboard\ser_wise.parquet"
+# These tabs load from ser_wise.parquet (same folder as ser_wise)
 SERVICE_MONTHLY_TABS = {
     "ACT VS ACT",
     "ACT vs ACT TRENDS",
+    "Product wise",
+    "Service-wise (SROS)",
     "Trends from 2024",
 }
 
@@ -707,7 +710,7 @@ def _resolve_parquet(primary, extra_alts=None):
     return None
 
 
-@st.cache_data(ttl=300)
+@st.cache_data(ttl=300, show_spinner=False)
 def load_data(parquet_path=None, required=True):
     """Load performance parquet; normalize columns to app-standard names.
 
@@ -720,8 +723,8 @@ def load_data(parquet_path=None, required=True):
         path = _resolve_parquet(
             PARQUET_FILE,
             [
-                Path(r"ser_wise.parquet"),
-                Path(r"ser_wise.parquet"),
+                Path(r"D:\Dashboard\ser_wise.parquet"),
+                Path(r"D:\MONTHLY\ser_wise.parquet"),
                 Path("ser_wise.parquet"),
                 Path(r"/home/workdir/attachments/ser_wise.parquet"),
             ],
@@ -747,7 +750,7 @@ def load_data(parquet_path=None, required=True):
         "productname": "PRODUCT_NAME",
         "product_name": "PRODUCT_NAME",
         "routee": "ROUTEE",
-        "route": "ROUTEE",
+        "route": "ROUTE",
         "routeold": "ROUTE_OLD",
         "mhl/nmhl": "MHL_NMHL",
         "mhlnmhl": "MHL_NMHL",
@@ -822,6 +825,7 @@ def load_data(parquet_path=None, required=True):
         "SER_NO": "SER_NO",
         "DEPOT": "DEPOT",
         "PRODUCT": "PRODUCT",
+        "ROUTE": "ROUTE",
         "ROUTEE": "ROUTEE",
         "Date": "Date",
         "Weekday": "Weekday",
@@ -844,17 +848,19 @@ def load_data(parquet_path=None, required=True):
     ]
     missing = [c for c in required if c not in df.columns]
     if missing:
+        # soft-create empty columns so app does not crash
         for c in missing:
             df[c] = np.nan if c not in ("Month_Name", "DEPOT", "PRODUCT", "ROUTEE", "SER_NO", "Weekday", "MHL_NMHL", "RTC_HIRE") else ""
+        # show once
+        try:
+            st.warning(f"Parquet missing columns (filled blank): {missing}")
+        except Exception:
+            pass
 
-    # Month_Name aliases (ser_monthly often uses "Month Name")
-    if "Month_Name" not in df.columns or df["Month_Name"].astype(str).str.strip().isin(["", "nan", "None"]).all():
-        for alt in ["Month Name", "MONTH_NAME", "Month", "MONTH"]:
-            if alt in df.columns:
-                df["Month_Name"] = df[alt].astype(str).str.strip()
-                break
+    if "Date" in df.columns and not pd.api.types.is_datetime64_any_dtype(df["Date"]):
+        df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
 
-    # numeric coercions
+    # numeric coercions (only if Series, not duplicate DataFrame)
     for c in ["Optd_KMs", "GE_TOT", "GE_FPD", "GE_MHL", "NE_TOT", "NE_FPD", "NE_MHL",
               "PSNGR_TOT", "PSNGR_FPD", "PSNGR_MHL"]:
         if c in df.columns:
@@ -863,6 +869,7 @@ def load_data(parquet_path=None, required=True):
                 s = s.iloc[:, 0]
             df[c] = pd.to_numeric(s, errors="coerce").fillna(0)
 
+    # string clean
     for c in ["DEPOT", "PRODUCT", "ROUTEE", "Month_Name", "MHL_NMHL", "RTC_HIRE", "SER_NO", "Weekday"]:
         if c in df.columns:
             s = df[c]
@@ -870,34 +877,12 @@ def load_data(parquet_path=None, required=True):
                 s = s.iloc[:, 0]
             df[c] = s.astype(str).str.strip().replace({"nan": "", "None": "", "<NA>": ""})
 
-    # Date: parse existing, or synthesize from Month_Name (ser_monthly has no Date)
+    # Date clean
     if "Date" in df.columns:
         s = df["Date"]
         if isinstance(s, pd.DataFrame):
             s = s.iloc[:, 0]
         df["Date"] = pd.to_datetime(s, errors="coerce")
-    else:
-        df["Date"] = pd.NaT
-
-    if df["Date"].isna().all() and "Month_Name" in df.columns:
-        def _month_to_date(m):
-            m = str(m).strip()
-            if not m or m.lower() in ("nan", "none", ""):
-                return pd.NaT
-            for fmt in ("%b-%Y", "%b-%y", "%B-%Y", "%Y-%m"):
-                try:
-                    return pd.to_datetime(m, format=fmt)
-                except Exception:
-                    continue
-            return pd.to_datetime(m, errors="coerce")
-        df["Date"] = df["Month_Name"].map(_month_to_date)
-
-    if "Weekday" not in df.columns or df["Weekday"].astype(str).str.strip().isin(["", "nan", "None"]).all():
-        try:
-            df["Weekday"] = pd.to_datetime(df["Date"], errors="coerce").dt.day_name().fillna("")
-        except Exception:
-            if "Weekday" not in df.columns:
-                df["Weekday"] = ""
 
     return df
 
@@ -907,8 +892,8 @@ df_service_monthly = load_data(SERVICE_MONTHLY_FILE, required=False)
 df = df_ser_wise
 
 
-@st.cache_data(ttl=300)
-def load_fleet_map(path: str = r"FLEET.parquet"):
+@st.cache_data(ttl=300, show_spinner=False)
+def load_fleet_map(path: str = r"D:\Dashboard\FLEET.parquet"):
     """FLEET counts by (DEPOT, PRODUCT, MONTH).
 
     FLEET.parquet layout:
@@ -923,9 +908,9 @@ def load_fleet_map(path: str = r"FLEET.parquet"):
     p = Path(path)
     if not p.exists():
         for alt in [
-            Path(r"FLEET.parquet"),
-            Path(r"FLEET.parquet"),
-            Path(r"FLEET.parquet"),
+            Path(r"D:\Dashboard\FLEET.parquet"),
+            Path(r"D:\dashboard\FLEET.parquet"),
+            Path(r"D:\MONTHLY\FLEET.parquet"),
             Path("FLEET.parquet"),
             Path(r"/home/workdir/attachments/FLEET.parquet"),
         ]:
@@ -1045,8 +1030,8 @@ except Exception:
 
 
 
-@st.cache_data(ttl=300)
-def load_orf_map(path: str = r"ORF.xlsx"):
+@st.cache_data(ttl=300, show_spinner=False)
+def load_orf_map(path: str = r"D:\dashboard\ORF.xlsx"):
     """
     ORF.xlsx: DEPOT, PRODUCT, CY ORF, LY ORF
     Depot ORF = row where PRODUCT == TOTAL (e.g. BHEL + TOTAL = 7374.33)
@@ -1054,7 +1039,7 @@ def load_orf_map(path: str = r"ORF.xlsx"):
     """
     p = Path(path)
     if not p.exists():
-        for alt in [Path(r"ORF.xlsx"), Path(r"ORF.xlsx"), Path("ORF.xlsx")]:
+        for alt in [Path(r"D:\Dashboard\ORF.xlsx"), Path(r"D:\MONTHLY\ORF.xlsx"), Path("ORF.xlsx")]:
             if alt.exists():
                 p = alt
                 break
@@ -1133,15 +1118,15 @@ def load_orf_map(path: str = r"ORF.xlsx"):
 
 
 
-def _resolve_smaster_path(primary=r"SMASTER.parquet"):
+def _resolve_smaster_path(primary=r"D:\Dashboard\SMASTER.parquet"):
     """Resolve SMASTER.parquet from known locations."""
     p = Path(primary)
     if p.exists():
         return p
     for alt in [
-        Path(r"SMASTER.parquet"),
-        Path(r"SMASTER.parquet"),
-        Path(r"SMASTER.parquet"),
+        Path(r"D:\Dashboard\SMASTER.parquet"),
+        Path(r"D:\dashboard\SMASTER.parquet"),
+        Path(r"D:\MONTHLY\SMASTER.parquet"),
         Path("SMASTER.parquet"),
         Path(r"/home/workdir/attachments/SMASTER.parquet"),
     ]:
@@ -1150,7 +1135,7 @@ def _resolve_smaster_path(primary=r"SMASTER.parquet"):
     return p
 
 
-@st.cache_data(ttl=300)
+@st.cache_data(ttl=300, show_spinner=False)
 def load_smaster(path):
     """Load SMASTER schedule master parquet."""
     p = Path(path)
@@ -1170,7 +1155,7 @@ def load_smaster(path):
         return None, str(e)
 
 
-@st.cache_data(ttl=300)
+@st.cache_data(ttl=300, show_spinner=False)
 def _load_sros_sch_map_pw(smaster_path: str, month_key: str, depot_key: str = "ALL"):
     """Product-wise schedule counts from SMASTER for a month (CY + LY pair)."""
     s = pd.read_parquet(smaster_path)
@@ -1215,7 +1200,7 @@ def _load_sros_sch_map_pw(smaster_path: str, month_key: str, depot_key: str = "A
     return out
 
 
-@st.cache_data(ttl=300)
+@st.cache_data(ttl=300, show_spinner=False)
 def _load_sros_services_full(smaster_path: str, depot_key: str, month_key: str):
     """Service-level rows from SMASTER for Service-wise (SROS) tab."""
     s = pd.read_parquet(smaster_path)
@@ -1232,7 +1217,7 @@ def _load_sros_services_full(smaster_path: str, depot_key: str, month_key: str):
     c_svc = fc(["ServiceNo", "SER_NO", "SERVICE_NO"])
     c_dep = fc(["DEPOT"])
     c_prod = fc(["PRODUCT"])
-    c_route = fc(["ROUTEE", "ROUTE", "RouteName", "Route"])
+    c_route = fc(["ROUTEE", "Routee", "routee"]) or fc(["ROUTEE"])
     c_sch = fc(["NoOfSchedules", "NoOfSchedule"])
     c_mon = fc(["MONTH"])
     c_year = fc(["YEAR"])
@@ -1815,7 +1800,7 @@ if section in SERVICE_MONTHLY_TABS:
 else:
     df = df_ser_wise
 
-if section not in ("Schedules", "Home", "DOR", "MISSION RR"):
+if section not in ("Schedules", "Home", "DOR", "MISSION RR", "Monthly files"):
     st.markdown("<div style='font-size:13px;font-weight:600;color:#334155;margin-bottom:2px;'>Filters</div>", unsafe_allow_html=True)
 
     def _find_col(frame, *cands):
@@ -1845,14 +1830,17 @@ if section not in ("Schedules", "Home", "DOR", "MISSION RR"):
     col_mhl = _exact_or_find(df, ["MHL_NMHL", "MHL/NMHL"], "MHL_NMHL", "MHL/NMHL", "MHLNMHL", "MHL")
     col_rtc = _exact_or_find(df, ["RTC_HIRE", "RTC/HIRE"], "RTC_HIRE", "RTC/HIRE", "RTCHIRE", "RTC")
     col_product = _exact_or_find(df, ["PRODUCT", "Product"], "PRODUCT")
-    # Route MUST come from ROUTEE column (not a fuzzy ROUTE match that picks wrong col)
+    # Cascading Route filter + all boards: ROUTEE column only
     col_route = None
     for rn in ("ROUTEE", "Routee", "routee"):
         if rn in df.columns:
             col_route = rn
             break
     if col_route is None:
-        col_route = _find_col(df, "ROUTEE", "ROUTE", "RouteName", "Route")
+        # create ROUTEE from ROUTE only if ROUTEE truly absent
+        if "ROUTE" in df.columns:
+            df["ROUTEE"] = df["ROUTE"].astype(str).str.strip()
+            col_route = "ROUTEE"
     col_month = _exact_or_find(df, ["Month_Name", "MONTH_NAME", "Month"], "Month_Name", "MONTH_NAME", "Month", "MONTH")
     col_date = _exact_or_find(df, ["Date", "DATE"], "Date", "DATE", "TravelDate", "TripDate")
 
@@ -1966,7 +1954,7 @@ if section not in ("Schedules", "Home", "DOR", "MISSION RR"):
             )
         else:
             route_opts = ["ALL"]
-        route = st.selectbox("ROUTE", route_opts, index=0)
+        route = st.selectbox("ROUTE (ROUTEE)", route_opts, index=0)
     if col_route and route != "ALL":
         temp = temp[temp[col_route].astype(str).str.strip().str.upper() == str(route).strip().upper()]
 
@@ -1997,118 +1985,149 @@ if section not in ("Schedules", "Home", "DOR", "MISSION RR"):
     st.markdown("<div style='margin-top:2px;margin-bottom:2px;'></div>", unsafe_allow_html=True)
 
     # ========== GLOBAL FILTERING LOGIC ==========
-# ========== GLOBAL FILTERING LOGIC ==========
+    # Memoize CY/LY frames in session_state so switching tabs with the same
+    # filters does not re-scan the full parquet (logic & calculations unchanged).
+    _src_tag = "svc_monthly" if section in SERVICE_MONTHLY_TABS else "ser_wise"
+    _filter_key = (
+        _src_tag,
+        str(depot), str(mhl), str(rtc), str(product), str(route),
+        str(ac_type), str(month), str(for_upto), str(passengers), str(net_gross),
+        len(df),
+    )
+    _reuse = (
+        st.session_state.get("_cy_ly_filter_key") == _filter_key
+        and "cy_data" in st.session_state
+        and "ly_data" in st.session_state
+        and "base_mask" in st.session_state
+    )
 
-    base_mask = pd.Series(True, index=df.index)
-
-    if depot not in ("ALL", "REGION") and col_depot:
-        base_mask &= df[col_depot].astype(str).str.strip().str.upper() == str(depot).strip().upper()
-
-    if mhl != "ALL" and col_mhl:
-        base_mask &= df[col_mhl].astype(str).str.strip().str.upper() == str(mhl).strip().upper()
-
-    if route != "ALL" and col_route:
-        base_mask &= df[col_route].astype(str).str.strip().str.upper() == str(route).strip().upper()
-
-    if product != "ALL" and col_product:
-        base_mask &= df[col_product].astype(str).str.strip().str.upper() == str(product).strip().upper()
-
-    if rtc != "ALL" and col_rtc:
-        base_mask &= _rtc_match_mask(df[col_rtc], rtc)
-
-    if ac_type != "ALL" and col_product:
-        _ac_full = df[col_product].map(_is_ac_product)
-        if ac_type == "AC":
-            base_mask &= _ac_full
-        else:
-            base_mask &= ~_ac_full
-
-    # Resolve month / date columns safely
+    # Resolve month / date columns safely (cheap; needed for aliases either way)
     _mcol = col_month if col_month else _find_col(df, "Month_Name", "MONTH_NAME", "Month", "MONTH")
     _dcol = col_date if col_date else _find_col(df, "Date", "DATE", "TravelDate")
-
-    if _mcol and _dcol:
-        selected_max_date = pd.to_datetime(df.loc[df[_mcol].astype(str).str.strip() == str(month).strip(), _dcol], errors="coerce").max()
-    elif _dcol:
-        selected_max_date = pd.to_datetime(df[_dcol], errors="coerce").max()
-    else:
-        selected_max_date = pd.NaT
 
     def _month_match(series, mval):
         return series.astype(str).str.strip() == str(mval).strip()
 
-    if pd.isna(selected_max_date):
-        if _mcol:
-            cy_mask = base_mask & _month_match(df[_mcol], month)
-        else:
-            cy_mask = base_mask.copy()
-        ly_mask = pd.Series(False, index=df.index)
+    if _reuse:
+        cy_data = st.session_state["cy_data"]
+        ly_data = st.session_state["ly_data"]
+        base_mask = st.session_state["base_mask"]
+        selected_max_date = st.session_state.get("selected_max_date", pd.NaT)
+        # Keep Month_Name / Date aliases in place for downstream tabs
+        if _mcol and "Month_Name" not in df.columns:
+            df["Month_Name"] = df[_mcol]
+        if _dcol and "Date" not in df.columns:
+            df["Date"] = pd.to_datetime(df[_dcol], errors="coerce")
     else:
-        cy_year = selected_max_date.year
-        cy_month_num = selected_max_date.month
-        fy_start_year = cy_year if cy_month_num >= 4 else cy_year - 1
-        fy_start_date = pd.Timestamp(year=fy_start_year, month=4, day=1)
+        base_mask = pd.Series(True, index=df.index)
 
-        if for_upto == "FOR":
+        if depot not in ("ALL", "REGION") and col_depot:
+            base_mask &= df[col_depot].astype(str).str.strip().str.upper() == str(depot).strip().upper()
+
+        if mhl != "ALL" and col_mhl:
+            base_mask &= df[col_mhl].astype(str).str.strip().str.upper() == str(mhl).strip().upper()
+
+        if route != "ALL" and col_route:
+            base_mask &= df[col_route].astype(str).str.strip().str.upper() == str(route).strip().upper()
+
+        if product != "ALL" and col_product:
+            base_mask &= df[col_product].astype(str).str.strip().str.upper() == str(product).strip().upper()
+
+        if rtc != "ALL" and col_rtc:
+            base_mask &= _rtc_match_mask(df[col_rtc], rtc)
+
+        if ac_type != "ALL" and col_product:
+            _ac_full = df[col_product].map(_is_ac_product)
+            if ac_type == "AC":
+                base_mask &= _ac_full
+            else:
+                base_mask &= ~_ac_full
+
+        if _mcol and _dcol:
+            selected_max_date = pd.to_datetime(df.loc[df[_mcol].astype(str).str.strip() == str(month).strip(), _dcol], errors="coerce").max()
+        elif _dcol:
+            selected_max_date = pd.to_datetime(df[_dcol], errors="coerce").max()
+        else:
+            selected_max_date = pd.NaT
+
+        if pd.isna(selected_max_date):
             if _mcol:
                 cy_mask = base_mask & _month_match(df[_mcol], month)
             else:
                 cy_mask = base_mask.copy()
+            ly_mask = pd.Series(False, index=df.index)
         else:
-            if _dcol:
-                _dt = pd.to_datetime(df[_dcol], errors="coerce")
-                cy_mask = base_mask & (_dt >= fy_start_date) & (_dt <= selected_max_date)
-            elif _mcol:
-                cy_mask = base_mask & _month_match(df[_mcol], month)
-            else:
-                cy_mask = base_mask.copy()
+            cy_year = selected_max_date.year
+            cy_month_num = selected_max_date.month
+            fy_start_year = cy_year if cy_month_num >= 4 else cy_year - 1
+            fy_start_date = pd.Timestamp(year=fy_start_year, month=4, day=1)
 
-        ly_max_date = selected_max_date - pd.DateOffset(years=1)
-        ly_fy_start_date = fy_start_date - pd.DateOffset(years=1)
-
-        if for_upto == "FOR":
-            try:
-                mon_name, yr = str(month).split("-")[0], int(str(month).split("-")[1])
-                candidates = [f"{mon_name}-{yr-1}", f"{mon_name}-{str(yr-1)[-2:]}"]
-                if len(str(yr)) == 2:
-                    candidates.append(f"{mon_name}-{2000+yr-1}")
+            if for_upto == "FOR":
                 if _mcol:
+                    cy_mask = base_mask & _month_match(df[_mcol], month)
+                else:
+                    cy_mask = base_mask.copy()
+            else:
+                if _dcol:
+                    _dt = pd.to_datetime(df[_dcol], errors="coerce")
+                    cy_mask = base_mask & (_dt >= fy_start_date) & (_dt <= selected_max_date)
+                elif _mcol:
+                    cy_mask = base_mask & _month_match(df[_mcol], month)
+                else:
+                    cy_mask = base_mask.copy()
+
+            ly_max_date = selected_max_date - pd.DateOffset(years=1)
+            ly_fy_start_date = fy_start_date - pd.DateOffset(years=1)
+
+            if for_upto == "FOR":
+                try:
+                    mon_name, yr = str(month).split("-")[0], int(str(month).split("-")[1])
+                    candidates = [f"{mon_name}-{yr-1}", f"{mon_name}-{str(yr-1)[-2:]}"]
+                    if len(str(yr)) == 2:
+                        candidates.append(f"{mon_name}-{2000+yr-1}")
+                    if _mcol:
+                        ly_mask = pd.Series(False, index=df.index)
+                        for cand in candidates:
+                            ly_mask = ly_mask | _month_match(df[_mcol], cand)
+                        ly_mask = base_mask & ly_mask
+                    else:
+                        ly_mask = pd.Series(False, index=df.index)
+                    # Cap LY at same day-of-month as available CY data (e.g. CY to 22-08-2026 → LY to 22-08-2025)
+                    if _dcol and pd.notna(ly_max_date):
+                        _dt_ly = pd.to_datetime(df[_dcol], errors="coerce")
+                        ly_mask = ly_mask & (_dt_ly <= ly_max_date)
+                    # Also cap CY to selected_max_date so average is consistent
+                    if _dcol and pd.notna(selected_max_date):
+                        _dt_cy = pd.to_datetime(df[_dcol], errors="coerce")
+                        cy_mask = cy_mask & (_dt_cy <= selected_max_date)
+                except Exception:
                     ly_mask = pd.Series(False, index=df.index)
-                    for cand in candidates:
-                        ly_mask = ly_mask | _month_match(df[_mcol], cand)
-                    ly_mask = base_mask & ly_mask
+            else:
+                if _dcol:
+                    _dt = pd.to_datetime(df[_dcol], errors="coerce")
+                    ly_mask = base_mask & (_dt >= ly_fy_start_date) & (_dt <= ly_max_date)
                 else:
                     ly_mask = pd.Series(False, index=df.index)
-                # Cap LY at same day-of-month as available CY data (e.g. CY to 22-08-2026 → LY to 22-08-2025)
-                if _dcol and pd.notna(ly_max_date):
-                    _dt_ly = pd.to_datetime(df[_dcol], errors="coerce")
-                    ly_mask = ly_mask & (_dt_ly <= ly_max_date)
-                # Also cap CY to selected_max_date so average is consistent
-                if _dcol and pd.notna(selected_max_date):
-                    _dt_cy = pd.to_datetime(df[_dcol], errors="coerce")
-                    cy_mask = cy_mask & (_dt_cy <= selected_max_date)
-            except Exception:
-                ly_mask = pd.Series(False, index=df.index)
-        else:
-            if _dcol:
-                _dt = pd.to_datetime(df[_dcol], errors="coerce")
-                ly_mask = base_mask & (_dt >= ly_fy_start_date) & (_dt <= ly_max_date)
-            else:
-                ly_mask = pd.Series(False, index=df.index)
 
-    cy_data = df[cy_mask].copy() if cy_mask is not None else df.iloc[0:0].copy()
-    ly_data = df[ly_mask].copy() if ly_mask is not None else df.iloc[0:0].copy()
+        cy_data = df[cy_mask].copy() if cy_mask is not None else df.iloc[0:0].copy()
+        ly_data = df[ly_mask].copy() if ly_mask is not None else df.iloc[0:0].copy()
 
-    # Convenience: ensure Month_Name alias exists for downstream tabs
-    if _mcol and "Month_Name" not in df.columns:
-        df["Month_Name"] = df[_mcol]
-        if _mcol in cy_data.columns or True:
+        # Convenience: ensure Month_Name alias exists for downstream tabs
+        if _mcol and "Month_Name" not in df.columns:
+            df["Month_Name"] = df[_mcol]
+            if _mcol in cy_data.columns or True:
+                cy_data = df[cy_mask].copy()
+                ly_data = df[ly_mask].copy()
+        if _dcol and "Date" not in df.columns:
+            df["Date"] = pd.to_datetime(df[_dcol], errors="coerce")
             cy_data = df[cy_mask].copy()
             ly_data = df[ly_mask].copy()
-    if _dcol and "Date" not in df.columns:
-        df["Date"] = pd.to_datetime(df[_dcol], errors="coerce")
-        cy_data = df[cy_mask].copy()
-        ly_data = df[ly_mask].copy()
+
+        st.session_state["_cy_ly_filter_key"] = _filter_key
+        st.session_state["cy_data"] = cy_data
+        st.session_state["ly_data"] = ly_data
+        st.session_state["base_mask"] = base_mask
+        st.session_state["selected_max_date"] = selected_max_date
 
     if net_gross == "Gross":
 
@@ -2595,29 +2614,40 @@ elif section == "Monthly files":
         except Exception:
             return pd.to_datetime(str(m), errors="coerce")
     months = sorted([str(x).strip() for x in mf["Month_Name"].dropna().unique() if str(x).strip()], key=_pm, reverse=True)
-    c1, c2, c3, c4 = st.columns(4)
-    with c1:
-        mf_month = st.selectbox("Month (FOR / Current)", months, index=0, key="mf_month")
-    with c2:
-        dep_opts = ["ALL"] + sorted({str(x).strip() for x in mf["DEPOT"].dropna().unique() if str(x).strip()})
-        mf_depot = st.selectbox("Depot", dep_opts, index=0, key="mf_depot")
-    with c3:
-        mf_board = st.selectbox(
-            "Report board",
-            [
-                "1. Depot Route Wise",
-                "2. Product Wise Trend",
-                "3. Low EPK Service Wise (<25 FPD)",
-                "4. Range Wise EPK (Gross)",
-                "5. Range Wise EPK (Net)",
-                "6. Inter State Sector Wise",
-                "7. Service Wise Performance",
-                "8. Trend Service Wise (Gross)",
-            ],
-            key="mf_board",
+    dep_opts = ["ALL"] + sorted({str(x).strip() for x in mf["DEPOT"].dropna().unique() if str(x).strip()})
+    _route_col_mf = "ROUTEE" if "ROUTEE" in mf.columns else ("ROUTE" if "ROUTE" in mf.columns else None)
+    if _route_col_mf:
+        route_opts_mf = ["ALL"] + sorted(
+            {str(x).strip() for x in mf[_route_col_mf].dropna().unique() if str(x).strip() and str(x).strip().lower() not in ("nan", "none", "")},
+            key=lambda z: str(z).upper(),
         )
-    with c4:
-        mf_ng = st.selectbox("Default basis", ["Gross", "Net"], index=0, key="mf_ng")
+    else:
+        route_opts_mf = ["ALL"]
+    prod_opts_mf = ["ALL"] + sorted(
+        {str(x).strip() for x in mf["PRODUCT"].dropna().unique() if str(x).strip() and str(x).strip().lower() not in ("nan", "none", "")},
+        key=lambda z: str(z).upper(),
+    )
+    board_opts = [
+        "1. Depot Route Wise",
+        "2. Product Wise Trend",
+        "6. Inter State Sector Wise",
+        "7. Service Wise Performance",
+        "8. Trend Service Wise (Gross)",
+    ]
+    # One filter row only (no global cascading row). Report board first.
+    f1, f2, f3, f4, f5, f6 = st.columns(6)
+    with f1:
+        mf_board = st.selectbox("Report board", board_opts, key="mf_board")
+    with f2:
+        mf_month = st.selectbox("Month (FOR / Current)", months, index=0, key="mf_month")
+    with f3:
+        mf_depot = st.selectbox("Depot", dep_opts, index=0, key="mf_depot")
+    with f4:
+        mf_route = st.selectbox("Route", route_opts_mf, index=0, key="mf_route")
+    with f5:
+        mf_product = st.selectbox("Product", prod_opts_mf, index=0, key="mf_product")
+    with f6:
+        mf_ng = st.selectbox("Gross / Net", ["Gross", "Net"], index=0, key="mf_ng")
 
     # Parse selected month → FY window
     try:
@@ -2820,26 +2850,98 @@ elif section == "Monthly files":
 
     # ========== BOARD 1: Depot Route Wise ==========
     if mf_board.startswith("1."):
-        title = f"GROSS - DEPOT ROUTE WISE PERFORMANCE FOR AND UPTO {mf_month}"
+        # Filters from single top row: depot, route, product, gross/net
+        b1_depot = mf_depot
+        b1_route = mf_route
+        b1_product = mf_product
+        b1_ng = mf_ng
+        _route_col = _route_col_mf
+
+        b1_prefix = "GROSS" if b1_ng == "Gross" else "NET"
+        if b1_ng == "Gross":
+            _et, _em, _ef = "GE_TOT", "GE_MHL", "GE_FPD"
+        else:
+            _et, _em, _ef = "NE_TOT", "NE_MHL", "NE_FPD"
+
+        # Period slices from full mf (month window only)
+        _cm_full = mf[mf["Month_Name"].astype(str).str.strip() == str(mf_month).strip()].copy()
+        _cy_full = mf[(mf["Date"] >= fy_start) & (mf["Date"] <= cy_end)].copy()
+        _ly_full = mf[(mf["Date"] >= ly_start) & (mf["Date"] <= ly_end)].copy()
+
+        def _b1_filter(data):
+            out_d = data
+            if b1_depot != "ALL" and "DEPOT" in out_d.columns:
+                out_d = out_d[out_d["DEPOT"].astype(str).str.strip().str.upper() == str(b1_depot).strip().upper()]
+            if b1_route != "ALL" and _route_col and _route_col in out_d.columns:
+                out_d = out_d[out_d[_route_col].astype(str).str.strip().str.upper() == str(b1_route).strip().upper()]
+            if b1_product != "ALL" and "PRODUCT" in out_d.columns:
+                out_d = out_d[out_d["PRODUCT"].astype(str).str.strip().str.upper() == str(b1_product).strip().upper()]
+            return out_d
+
+        cm_b1 = _b1_filter(_cm_full)
+        cy_um_b1 = _b1_filter(_cy_full)
+        ly_um_b1 = _b1_filter(_ly_full)
+
+        title = f"{b1_prefix} - DEPOT ROUTE WISE PERFORMANCE FOR AND UPTO {mf_month}"
+        if b1_depot != "ALL":
+            title += f" | Depot: {b1_depot}"
+        if b1_route != "ALL":
+            title += f" | Route: {b1_route}"
+        if b1_product != "ALL":
+            title += f" | Product: {b1_product}"
+
         keys = ["DEPOT", "ROUTEE", "PRODUCT", "RTC_HIRE"]
+
         def _agg_side(data):
+            """Schs / Sch Kms: max per SER_NO then sum (avoid inflating daily rows).
+            Ser: nunique SER_NO. Kms / earnings: sum as before.
+            """
             if len(data) == 0:
                 return pd.DataFrame(columns=keys + ["schs", "sers", "rl", "sch_kms", "kms", "earn_tot", "earn_mhl", "earn_fpd"])
-            g = data.groupby(keys, dropna=False).agg(
-                schs=("NO_OF_SCHS", "sum"),
-                sers=("SER_NO", "nunique"),
-                rl=("R_L", "max"),
-                sch_kms=("SCH_KMS", "sum"),
-                kms=("Optd_KMs", "sum"),
-                earn_tot=("GE_TOT", "sum"),
-                earn_mhl=("GE_MHL", "sum"),
-                earn_fpd=("GE_FPD", "sum"),
-            ).reset_index()
+            d = data.copy()
+            if "SER_NO" not in d.columns:
+                d["SER_NO"] = ""
+            # Per service: schedule count = max(NO_OF_SCHS); sch kms = max(SCH_KMS) (not summed over days)
+            ser_keys = keys + ["SER_NO"]
+            per = (
+                d.groupby(ser_keys, dropna=False)
+                .agg(
+                    schs=("NO_OF_SCHS", "max"),
+                    sch_kms=("SCH_KMS", "max"),
+                    rl=("R_L", "max"),
+                    kms=("Optd_KMs", "sum"),
+                    earn_tot=(_et, "sum"),
+                    earn_mhl=(_em, "sum"),
+                    earn_fpd=(_ef, "sum"),
+                )
+                .reset_index()
+            )
+            g = (
+                per.groupby(keys, dropna=False)
+                .agg(
+                    schs=("schs", "sum"),
+                    sers=("SER_NO", "nunique"),
+                    rl=("rl", "max"),
+                    sch_kms=("sch_kms", "sum"),
+                    kms=("kms", "sum"),
+                    earn_tot=("earn_tot", "sum"),
+                    earn_mhl=("earn_mhl", "sum"),
+                    earn_fpd=("earn_fpd", "sum"),
+                )
+                .reset_index()
+            )
+            # If SCH_KMS blank but R/L and schs present → Sch Kms = R/L × No of Schs
+            for i, row in g.iterrows():
+                sk = float(row.get("sch_kms", 0) or 0)
+                rl = float(row.get("rl", 0) or 0)
+                sc = float(row.get("schs", 0) or 0)
+                if sk == 0 and rl > 0 and sc > 0:
+                    g.at[i, "sch_kms"] = rl * sc
             return g
-        a_cm, a_cy, a_ly = _agg_side(cm), _agg_side(cy_um), _agg_side(ly_um)
+
+        a_cm, a_cy, a_ly = _agg_side(cm_b1), _agg_side(cy_um_b1), _agg_side(ly_um_b1)
         merged = a_cm.merge(a_cy, on=keys, how="outer", suffixes=("_cm", "_cy"))
         merged = merged.merge(a_ly, on=keys, how="outer")
-        # rename LY cols
         for c in ["schs", "sers", "rl", "sch_kms", "kms", "earn_tot", "earn_mhl", "earn_fpd"]:
             if c in merged.columns:
                 merged.rename(columns={c: f"{c}_ly"}, inplace=True)
@@ -2886,7 +2988,139 @@ elif section == "Monthly files":
                 "LY UM FPD OR": round(of_ly, 0) if pd.notna(of_ly) else None,
             })
         out = pd.DataFrame(rows)
-        # Multi-level headers matching image: GROSS EPK | GROSS OR
+
+        def _b1_excel_bytes(df_out, report_title, prefix_label):
+            """Excel matching on-screen multi-level headers (not flat raw column names)."""
+            from openpyxl import Workbook
+            from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+            from openpyxl.utils import get_column_letter
+            wb = Workbook()
+            ws = wb.active
+            ws.title = "DepotRoute"[:31]
+            thin = Border(
+                left=Side(style="thin", color="94A3B8"),
+                right=Side(style="thin", color="94A3B8"),
+                top=Side(style="thin", color="94A3B8"),
+                bottom=Side(style="thin", color="94A3B8"),
+            )
+            center = Alignment(horizontal="center", vertical="center", wrap_text=True)
+            white = Font(bold=True, color="FFFFFF", size=9)
+            dark = Font(bold=True, color="14532D", size=9)
+            fills = {
+                "left": PatternFill("solid", fgColor="1E3A8A"),
+                "epk": PatternFill("solid", fgColor="DCFCE7"),
+                "or": PatternFill("solid", fgColor="DBEAFE"),
+                "cm": PatternFill("solid", fgColor="BBF7D0"),
+                "cy": PatternFill("solid", fgColor="86EFAC"),
+                "ly": PatternFill("solid", fgColor="BBF7D0"),
+                "orc": PatternFill("solid", fgColor="BFDBFE"),
+                "orcy": PatternFill("solid", fgColor="93C5FD"),
+                "orly": PatternFill("solid", fgColor="BFDBFE"),
+                "sub": PatternFill("solid", fgColor="FEF3C7"),
+            }
+
+            # Title
+            ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=27)
+            tcell = ws.cell(1, 1, report_title)
+            tcell.font = Font(bold=True, size=12, color="1E3A8A")
+            tcell.alignment = Alignment(horizontal="center", vertical="center")
+
+            fixed = ["SL.NO.", "DEPOT", "ROUTE", "Product", "RTC/HIRE", "No. of Schs", "No. of Ser", "R/L", "Sch Kms"]
+            for c, h in enumerate(fixed, 1):
+                cell = ws.cell(2, c, h)
+                cell.fill = fills["left"]
+                cell.font = white
+                cell.alignment = center
+                cell.border = thin
+                ws.merge_cells(start_row=2, start_column=c, end_row=4, end_column=c)
+                for rr in range(2, 5):
+                    ws.cell(rr, c).fill = fills["left"]
+                    ws.cell(rr, c).border = thin
+                    ws.cell(rr, c).font = white
+                    ws.cell(rr, c).alignment = center
+
+            # Row 2: GROSS/NET EPK | GROSS/NET OR
+            ws.merge_cells(start_row=2, start_column=10, end_row=2, end_column=18)
+            c = ws.cell(2, 10, f"{prefix_label} E P K")
+            c.fill = fills["epk"]
+            c.font = Font(bold=True, color="14532D", size=10)
+            c.alignment = center
+            for cc in range(10, 19):
+                ws.cell(2, cc).fill = fills["epk"]
+                ws.cell(2, cc).border = thin
+            ws.merge_cells(start_row=2, start_column=19, end_row=2, end_column=27)
+            c = ws.cell(2, 19, f"{prefix_label} OR")
+            c.fill = fills["or"]
+            c.font = Font(bold=True, color="1E3A8A", size=10)
+            c.alignment = center
+            for cc in range(19, 28):
+                ws.cell(2, cc).fill = fills["or"]
+                ws.cell(2, cc).border = thin
+
+            # Row 3: Current Month / CY UM / LY UM × 2
+            periods = [
+                (10, "Current Month", fills["cm"]),
+                (13, "CY Upto The Month", fills["cy"]),
+                (16, "LY Upto The Month", fills["ly"]),
+                (19, "Current Month", fills["orc"]),
+                (22, "CY Upto The Month", fills["orcy"]),
+                (25, "LY Upto The Month", fills["orly"]),
+            ]
+            for start, lab, fl in periods:
+                ws.merge_cells(start_row=3, start_column=start, end_row=3, end_column=start + 2)
+                cell = ws.cell(3, start, lab)
+                cell.fill = fl
+                cell.font = dark
+                cell.alignment = center
+                for cc in range(start, start + 3):
+                    ws.cell(3, cc).fill = fl
+                    ws.cell(3, cc).border = thin
+
+            # Row 4: TOT MHL FPD
+            for start in (10, 13, 16, 19, 22, 25):
+                for i, lab in enumerate(["TOT", "MHL", "FPD"]):
+                    cell = ws.cell(4, start + i, lab)
+                    cell.fill = fills["sub"]
+                    cell.font = Font(bold=True, color="92400E", size=9)
+                    cell.alignment = center
+                    cell.border = thin
+
+            data_cols = [
+                "SL.NO.", "DEPOT", "ROUTE", "Product", "RTC/HIRE", "No. of Schs", "No. of Ser", "R/L", "Sch Kms",
+                "CM TOT EPK", "CM MHL EPK", "CM FPD EPK", "CY UM TOT EPK", "CY UM MHL EPK", "CY UM FPD EPK",
+                "LY UM TOT EPK", "LY UM MHL EPK", "LY UM FPD EPK",
+                "CM TOT OR", "CM MHL OR", "CM FPD OR", "CY UM TOT OR", "CY UM MHL OR", "CY UM FPD OR",
+                "LY UM TOT OR", "LY UM MHL OR", "LY UM FPD OR",
+            ]
+            for ri, row in enumerate(df_out.itertuples(index=False), 5):
+                rec = dict(zip(df_out.columns, row))
+                for ci, col in enumerate(data_cols, 1):
+                    val = rec.get(col, "")
+                    if val is None or (isinstance(val, float) and (pd.isna(val) or abs(val) < 1e-12)):
+                        val = None
+                    elif isinstance(val, float) and abs(val - round(val)) < 1e-6 and col in (
+                        "SL.NO.", "No. of Schs", "No. of Ser", "CM TOT OR", "CM MHL OR", "CM FPD OR",
+                        "CY UM TOT OR", "CY UM MHL OR", "CY UM FPD OR", "LY UM TOT OR", "LY UM MHL OR", "LY UM FPD OR",
+                    ):
+                        val = int(round(val))
+                    cell = ws.cell(ri, ci, val if val != "" else None)
+                    cell.alignment = center
+                    cell.border = thin
+
+            widths = {1: 6, 2: 10, 3: 10, 4: 10, 5: 9, 6: 8, 7: 8, 8: 8, 9: 10}
+            for i in range(1, 28):
+                ws.column_dimensions[get_column_letter(i)].width = widths.get(i, 9)
+            ws.row_dimensions[1].height = 20
+            ws.row_dimensions[2].height = 18
+            ws.row_dimensions[3].height = 18
+            ws.row_dimensions[4].height = 16
+            ws.freeze_panes = "J5"
+            bio = BytesIO()
+            wb.save(bio)
+            bio.seek(0)
+            return bio.getvalue()
+
+        # Multi-level headers: {GROSS|NET} EPK | {GROSS|NET} OR
         thead = (
             "<tr>"
             + _th("SL.<br>NO.", rowspan=3, top=0)
@@ -2898,8 +3132,8 @@ elif section == "Monthly files":
             + _th("No.<br>of<br>Ser", rowspan=3, top=0)
             + _th("R/L", rowspan=3, top=0)
             + _th("Sch<br>Kms", rowspan=3, top=0)
-            + _th("GROSS E P K", bg="#dcfce7", color="#14532d", colspan=9, top=0)
-            + _th("GROSS OR", bg="#dbeafe", color="#1e3a8a", colspan=9, top=0)
+            + _th(f"{b1_prefix} E P K", bg="#dcfce7", color="#14532d", colspan=9, top=0)
+            + _th(f"{b1_prefix} OR", bg="#dbeafe", color="#1e3a8a", colspan=9, top=0)
             + "</tr><tr>"
             + _th("Current Month", bg="#bbf7d0", color="#14532d", colspan=3, top=28)
             + _th("CY Upto The Month", bg="#86efac", color="#14532d", colspan=3, top=28)
@@ -2925,7 +3159,23 @@ elif section == "Monthly files":
             for c in data_cols:
                 body.append(_cell(r.get(c)))
             body.append("</tr>")
-        _render_board(title, thead, "".join(body), out, "DepotRoute")
+        st.markdown(f'<div class="title-bar">{title}</div>', unsafe_allow_html=True)
+        if not body:
+            st.warning("No rows for this board.")
+        else:
+            html = [
+                '<div class="table-scroll-fixable"><table class="excel-table" style="border-collapse:collapse;width:max-content;">',
+                "<thead>", thead, "</thead><tbody>",
+                "".join(body), "</tbody></table></div>",
+            ]
+            st.markdown("".join(html), unsafe_allow_html=True)
+            st.download_button(
+                "Download Excel (as on screen)",
+                _b1_excel_bytes(out, title, b1_prefix),
+                f"Monthly_{mf_month}_DepotRoute.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                key="mf_dl_DepotRoute",
+            )
         if orf_err:
             st.caption(f"OR blank without ORF.xlsx ({orf_err})")
 
@@ -3016,230 +3266,138 @@ elif section == "Monthly files":
             body.append("</tr>")
         _render_board(title, thead, "".join(body), out, "ProductTrend")
 
-    # ========== BOARD 3: Low EPK Service Wise ==========
-    elif mf_board.startswith("3."):
-        title = f"GROSS LESS THAN 25.00 EPK FARE PAID SERVICE WISE PERFORMANCE UPTO {mf_month}"
-        # service-level FPD EPK on CY UM; filter < 25
-        keys = ["DEPOT", "SER_NO"]
-        g_cy = cy_um.groupby(keys, dropna=False).agg(
-            kms=("Optd_KMs", "sum"), earn_fpd=("GE_FPD", "sum"), earn_tot=("GE_TOT", "sum"),
-            earn_mhl=("GE_MHL", "sum"), days=("Date", "nunique"),
-            route=("ROUTEE", "first"), rtc=("RTC_HIRE", "first"),
-            typ=("TYPE", "first"), nature=("NATURE", "first"),
-            schs=("NO_OF_SCHS", "sum"), sch_kms=("SCH_KMS", "sum"),
-            sch_dep=("SCH_DEP", "first"), rl=("R_L", "max"),
-            prod=("PRODUCT", "first"),
-        ).reset_index()
-        g_cy["fpd_epk"] = np.where(g_cy["kms"] > 0, g_cy["earn_fpd"] / g_cy["kms"], np.nan)
-        low = g_cy[(g_cy["fpd_epk"].notna()) & (g_cy["fpd_epk"] < 25)].copy()
-        g_cm = cm.groupby(keys, dropna=False).agg(
-            kms=("Optd_KMs", "sum"), earn_fpd=("GE_FPD", "sum"), earn_tot=("GE_TOT", "sum"),
-            earn_mhl=("GE_MHL", "sum"), days=("Date", "nunique"),
-        ).reset_index()
-        g_ly = ly_um.groupby(keys, dropna=False).agg(
-            kms=("Optd_KMs", "sum"), earn_fpd=("GE_FPD", "sum"), earn_tot=("GE_TOT", "sum"),
-            earn_mhl=("GE_MHL", "sum"),
-        ).reset_index()
-        low = low.merge(g_cm, on=keys, how="left", suffixes=("", "_cm"))
-        low = low.merge(g_ly, on=keys, how="left", suffixes=("", "_ly"))
-        rows = []
-        for i, r in low.iterrows():
-            dep = str(r.get("DEPOT", ""))
-            orf_c, orf_l = _orf(dep, side="cy"), _orf(dep, side="ly")
-            def trio(et, em, ef, kms, orf):
-                a, b, c = _epk(et, kms), _epk(em, kms), _epk(ef, kms)
-                return a, b, c, _or(a, orf), _or(b, orf), _or(c, orf)
-            et_cm, em_cm, ef_cm, ot_cm, om_cm, of_cm = trio(
-                r.get("earn_tot_cm", 0), r.get("earn_mhl_cm", 0), r.get("earn_fpd_cm", 0),
-                r.get("kms_cm", 0), orf_c)
-            et_um, em_um, ef_um, ot_um, om_um, of_um = trio(
-                r.get("earn_tot", 0), r.get("earn_mhl", 0), r.get("earn_fpd", 0),
-                r.get("kms", 0), orf_c)
-            et_ly, em_ly, ef_ly, ot_ly, om_ly, of_ly = trio(
-                r.get("earn_tot_ly", 0), r.get("earn_mhl_ly", 0), r.get("earn_fpd_ly", 0),
-                r.get("kms_ly", 0), orf_l)
-            rows.append({
-                "SL NO": len(rows) + 1,
-                "Depot": dep,
-                "Ser No": r.get("SER_NO", ""),
-                "Sch Dep": r.get("sch_dep", ""),
-                "Route": r.get("route", ""),
-                "RTC/HIRE": r.get("rtc", ""),
-                "TP": r.get("typ", ""),
-                "Type": r.get("prod", ""),
-                "D/N": r.get("nature", ""),
-                "No.of Schs": int(round(float(r.get("schs", 0) or 0))) or "",
-                "No. of Sers": 1,
-                "Sch. Kms": _f0(r.get("sch_kms", 0)),
-                "Optd Days CM": int(r.get("days_cm", 0) or 0) or "",
-                "Optd Days UM": int(r.get("days", 0) or 0) or "",
-                "CM TOT EPK": round(et_cm, 2) if pd.notna(et_cm) else None,
-                "CM MHL EPK": round(em_cm, 2) if pd.notna(em_cm) else None,
-                "CM FP EPK": round(ef_cm, 2) if pd.notna(ef_cm) else None,
-                "UM TOT EPK": round(et_um, 2) if pd.notna(et_um) else None,
-                "UM MHL EPK": round(em_um, 2) if pd.notna(em_um) else None,
-                "UM FP EPK": round(ef_um, 2) if pd.notna(ef_um) else None,
-                "LY UM TOT EPK": round(et_ly, 2) if pd.notna(et_ly) else None,
-                "LY UM MHL EPK": round(em_ly, 2) if pd.notna(em_ly) else None,
-                "LY UM FP EPK": round(ef_ly, 2) if pd.notna(ef_ly) else None,
-                "CM TOT OR": round(ot_cm, 0) if pd.notna(ot_cm) else None,
-                "CM MHL OR": round(om_cm, 0) if pd.notna(om_cm) else None,
-                "CM FP OR": round(of_cm, 0) if pd.notna(of_cm) else None,
-                "UM TOT OR": round(ot_um, 0) if pd.notna(ot_um) else None,
-                "UM MHL OR": round(om_um, 0) if pd.notna(om_um) else None,
-                "UM FP OR": round(of_um, 0) if pd.notna(of_um) else None,
-                "LY UM TOT OR": round(ot_ly, 0) if pd.notna(ot_ly) else None,
-                "LY UM MHL OR": round(om_ly, 0) if pd.notna(om_ly) else None,
-                "LY UM FP OR": round(of_ly, 0) if pd.notna(of_ly) else None,
-            })
-        out = pd.DataFrame(rows)
-        thead = (
-            "<tr>"
-            + _th("SL<br>NO", rowspan=3, top=0) + _th("Depot", rowspan=3, top=0)
-            + _th("Ser<br>No", rowspan=3, top=0) + _th("Sch<br>Dep", rowspan=3, top=0)
-            + _th("Route", rowspan=3, top=0) + _th("RTC/<br>HIRE", rowspan=3, top=0)
-            + _th("TP", rowspan=3, top=0) + _th("Type", rowspan=3, top=0)
-            + _th("D/N", rowspan=3, top=0) + _th("No.of<br>Schs", rowspan=3, top=0)
-            + _th("No.<br>of<br>Sers", rowspan=3, top=0) + _th("Sch.<br>Kms", rowspan=3, top=0)
-            + _th("Optd<br>Days", bg="#0f766e", colspan=2, top=0)
-            + _th("GROSS EPK", bg="#dcfce7", color="#14532d", colspan=9, top=0)
-            + _th("GROSS OR", bg="#dbeafe", color="#1e3a8a", colspan=9, top=0)
-            + "</tr><tr>"
-            + _th("CM", bg="#14b8a6", top=28) + _th("UM", bg="#14b8a6", top=28)
-            + _th("CM", bg="#86efac", color="#14532d", colspan=3, top=28)
-            + _th("UM", bg="#4ade80", color="#14532d", colspan=3, top=28)
-            + _th("LY UM", bg="#86efac", color="#14532d", colspan=3, top=28)
-            + _th("CM", bg="#93c5fd", color="#1e3a8a", colspan=3, top=28)
-            + _th("UM", bg="#60a5fa", color="#1e3a8a", colspan=3, top=28)
-            + _th("LY UM", bg="#93c5fd", color="#1e3a8a", colspan=3, top=28)
-            + "</tr><tr>"
-        )
-        for _ in range(6):
-            thead += _th("TOT", bg="#fef3c7", color="#92400e", top=56) + _th("MHL", bg="#fef3c7", color="#92400e", top=56) + _th("FP", bg="#fef3c7", color="#92400e", top=56)
-        thead += "</tr>"
-        body = []
-        cols3 = [
-            "SL NO", "Depot", "Ser No", "Sch Dep", "Route", "RTC/HIRE", "TP", "Type", "D/N",
-            "No.of Schs", "No. of Sers", "Sch. Kms", "Optd Days CM", "Optd Days UM",
-            "CM TOT EPK", "CM MHL EPK", "CM FP EPK", "UM TOT EPK", "UM MHL EPK", "UM FP EPK",
-            "LY UM TOT EPK", "LY UM MHL EPK", "LY UM FP EPK",
-            "CM TOT OR", "CM MHL OR", "CM FP OR", "UM TOT OR", "UM MHL OR", "UM FP OR",
-            "LY UM TOT OR", "LY UM MHL OR", "LY UM FP OR",
-        ]
-        for _, r in out.iterrows():
-            body.append("<tr>")
-            for c in cols3:
-                body.append(_cell(r.get(c)))
-            body.append("</tr>")
-        _render_board(title, thead, "".join(body), out, "LowEPK")
-
-    # ========== BOARD 4 & 5: Range Wise EPK ==========
-    elif mf_board.startswith("4.") or mf_board.startswith("5."):
-        is_gross = mf_board.startswith("4.")
-        basis = "GROSS" if is_gross else "NET"
-        title = f"{basis} RANGE WISE FARE PAID MHL & NMHL EPK SERVICES OF RR REGION UPTO {mf_month}"
-        earn_col = "GE_FPD" if is_gross else "NE_FPD"
-        # service-level FPD EPK on CY UM
-        g = cy_um.groupby(["DEPOT", "SER_NO", "TYPE", "RTC_HIRE"], dropna=False).agg(
-            kms=("Optd_KMs", "sum"), earn=(earn_col, "sum"),
-        ).reset_index()
-        g["epk"] = np.where(g["kms"] > 0, g["earn"] / g["kms"], np.nan)
-        g = g[g["epk"].notna()]
-        ranges = [("01-15", 0, 15), ("15-20", 15, 20), ("21-30", 21, 30), ("31-40", 31, 40), ("41-50", 41, 50), (">51", 51, 1e9)]
-        rtc_types = ["AL", "MY", "IM", "AH", "HA", "MB", "IB", "HL", "HT", "IH", "SL", "IL", "EX", "IE", "ME", "OR", "IO"]
-        phb_types = ["EG", "LH", "PE", "EP", "PO", "OP"]
-        all_types = rtc_types + phb_types
-        depots = sorted(g["DEPOT"].astype(str).str.strip().unique())
-        rows = []
-        for dep in depots:
-            gd = g[g["DEPOT"].astype(str).str.strip() == dep]
-            for rlab, lo, hi in ranges:
-                rec = {"Depot": dep, "EPK RANGE": rlab}
-                total = 0
-                for t in all_types:
-                    sub = gd[(gd["TYPE"].astype(str).str.strip().str.upper() == t) & (gd["epk"] >= lo) & (gd["epk"] < hi if hi < 1e8 else gd["epk"] >= lo)]
-                    # for >51 use >= 51
-                    if rlab == ">51":
-                        sub = gd[(gd["TYPE"].astype(str).str.strip().str.upper() == t) & (gd["epk"] >= 51)]
-                    elif rlab == "01-15":
-                        sub = gd[(gd["TYPE"].astype(str).str.strip().str.upper() == t) & (gd["epk"] >= 0) & (gd["epk"] < 15)]
-                    elif rlab == "15-20":
-                        sub = gd[(gd["TYPE"].astype(str).str.strip().str.upper() == t) & (gd["epk"] >= 15) & (gd["epk"] < 20)]
-                    cnt = int(sub["SER_NO"].nunique())
-                    rec[t] = cnt if cnt else ""
-                    total += cnt
-                rec["Grand Total"] = total if total else ""
-                rows.append(rec)
-            # depot total row
-            tot = {"Depot": dep, "EPK RANGE": "Total"}
-            grand = 0
-            for t in all_types:
-                cnt = int(gd[gd["TYPE"].astype(str).str.strip().str.upper() == t]["SER_NO"].nunique())
-                tot[t] = cnt if cnt else ""
-                grand += cnt
-            tot["Grand Total"] = grand if grand else ""
-            rows.append(tot)
-        out = pd.DataFrame(rows)
-        # order columns
-        cols = ["Depot", "EPK RANGE"] + all_types + ["Grand Total"]
-        out = out.reindex(columns=[c for c in cols if c in out.columns])
-        thead = (
-            "<tr>"
-            + _th("Depot", rowspan=2, top=0) + _th("EPK<br>RANGE", rowspan=2, top=0)
-            + _th("RTC INTRA / INTER", bg="#1e40af", colspan=len(rtc_types), top=0)
-            + _th("PHB INTRA / INTER", bg="#9a3412", colspan=len(phb_types), top=0)
-            + _th("Grand<br>Total", rowspan=2, bg="#0f172a", top=0)
-            + "</tr><tr>"
-        )
-        for t in rtc_types:
-            thead += _th(t, bg="#3b82f6", top=28)
-        for t in phb_types:
-            thead += _th(t, bg="#ea580c", top=28)
-        thead += "</tr>"
-        body = []
-        for _, r in out.iterrows():
-            is_tot = str(r.get("EPK RANGE", "")) == "Total"
-            style = ' style="font-weight:700;background:#e2efda;"' if is_tot else ""
-            body.append(f"<tr{style}>")
-            body.append(_cell(r.get("Depot")))
-            body.append(_cell(r.get("EPK RANGE")))
-            for t in rtc_types + phb_types:
-                body.append(_cell(r.get(t), is_int=True))
-            body.append(_cell(r.get("Grand Total"), is_int=True))
-            body.append("</tr>")
-        _render_board(title, thead, "".join(body), out, "RangeEPK")
-        st.caption("RTC INTRA/INTER: " + ", ".join(rtc_types) + " | PHB: " + ", ".join(phb_types))
-
     # ========== BOARD 6: Inter State Sector Wise ==========
     elif mf_board.startswith("6."):
         title = f"INTER STATE SECTOR WISE PERFORMANCE FOR & UPTO {mf_month} (WITH MYP-1)"
-        # INTERSTATE flag or long routes
-        sec = base.copy()
-        if "INTERSTATE" in sec.columns:
-            sec = sec[sec["INTERSTATE"].astype(str).str.upper().str.contains("INTER", na=False)]
+        # ROUTEE → SECTOR → STATE (only these routes)
+        _sector_map_rows = [
+            ("ADONI", "KURNOOL", "AP"), ("AMP", "VIJAYAWADA", "AP"), ("ATP", "KURNOOL", "AP"),
+            ("AURAD", "BIDAR", "KA"), ("BLDL", "OTHER", "CS"), ("BNG", "BNG", "KA"),
+            ("CHN", "ONGOLE", "TN"), ("CHINCHOLI", "OTHER", "KA"), ("CHRL", "GUNTUR", "AP"),
+            ("DGLR", "OTHER", "KA"), ("ELR", "VIJAYAWADA", "AP"), ("GDV", "VIJAYAWADA", "AP"),
+            ("GLB", "BIDAR", "KA"), ("GNT", "GUNTUR", "AP"), ("GURMITKAL", "YADGIR", "KA"),
+            ("YDGR", "YADGIR", "KA"), ("JGDPR", "OTHER", "CS"), ("KDP", "KURNOOL", "AP"),
+            ("KKD", "VIJAYAWADA", "AP"), ("KUNTA", "OTHER", "CS"), ("KRNL", "KURNOOL", "AP"),
+            ("MCPTM", "VIJAYAWADA", "AP"), ("MTLM", "RAICHUR", "AP"), ("MRKP", "ONGOLE", "AP"),
+            ("AMVT", "NAGPUR", "MH"), ("NGP-KRNL", "NAGPUR", "MH"), ("NDNL", "KURNOOL", "AP"),
+            ("NLR", "ONGOLE", "AP"), ("ONG", "ONGOLE", "AP"), ("PUNE", "OTHER", "MH"),
+            ("RCR", "RAICHUR", "KA"), ("SEDAM", "YADGIR", "KA"), ("SHRD", "OTHER", "MH"),
+            ("SLPR", "OTHER", "MH"), ("SSLM", "SRISAILAM", "AP"), ("TDP", "KURNOOL", "AP"),
+            ("TNL", "VIJAYAWADA", "AP"), ("TPT", "ONGOLE", "AP"), ("UDGIR", "BIDAR", "MH"),
+            ("VJA", "VIJAYAWADA", "AP"), ("VSP", "VIJAYAWADA", "AP"), ("SUKMA", "OTHER", "CS"),
+            ("NAGPUR", "NAGPUR", "MH"), ("BLRY", "RAICHUR", "KA"), ("BDR", "BIDAR", "KA"),
+            ("GNPR", "BIDAR", "KA"), ("SINDHANUR", "RAICHUR", "KA"),
+        ]
+        _route_to_sec = {}
+        for _rt, _sec, _st in _sector_map_rows:
+            _k = str(_rt).strip().upper()
+            if _k not in _route_to_sec:
+                _route_to_sec[_k] = (str(_sec).strip().upper(), str(_st).strip().upper())
+
+        def _norm_route6(v):
+            s = str(v).strip().upper() if v is not None and not (isinstance(v, float) and pd.isna(v)) else ""
+            if s.endswith(".0"):
+                s = s[:-2]
+            return s
+
+        _route_col6 = "ROUTEE" if "ROUTEE" in mf.columns else ("ROUTE" if "ROUTE" in mf.columns else None)
+        if not _route_col6:
+            st.error("ROUTEE / ROUTE column not found.")
+            st.stop()
+
+        def _filter_sector_routes(data):
+            if len(data) == 0:
+                return data
+            d = data.copy()
+            d["_RK"] = d[_route_col6].map(_norm_route6)
+            d = d[d["_RK"].isin(_route_to_sec.keys())]
+            return d
+
+        # Apply depot / product / gross-net context from top filters already in cm/cy_um/ly_um via base
+        _cm6 = _filter_sector_routes(cm)
+        _cy6 = _filter_sector_routes(cy_um)
+        _ly6 = _filter_sector_routes(ly_um)
+        if mf_depot != "ALL":
+            for _name in ("_cm6", "_cy6", "_ly6"):
+                pass
+            if "DEPOT" in _cm6.columns:
+                _cm6 = _cm6[_cm6["DEPOT"].astype(str).str.strip().str.upper() == str(mf_depot).strip().upper()]
+            if "DEPOT" in _cy6.columns:
+                _cy6 = _cy6[_cy6["DEPOT"].astype(str).str.strip().str.upper() == str(mf_depot).strip().upper()]
+            if "DEPOT" in _ly6.columns:
+                _ly6 = _ly6[_ly6["DEPOT"].astype(str).str.strip().str.upper() == str(mf_depot).strip().upper()]
+        if mf_product != "ALL" and "PRODUCT" in mf.columns:
+            if "PRODUCT" in _cm6.columns:
+                _cm6 = _cm6[_cm6["PRODUCT"].astype(str).str.strip().str.upper() == str(mf_product).strip().upper()]
+            if "PRODUCT" in _cy6.columns:
+                _cy6 = _cy6[_cy6["PRODUCT"].astype(str).str.strip().str.upper() == str(mf_product).strip().upper()]
+            if "PRODUCT" in _ly6.columns:
+                _ly6 = _ly6[_ly6["PRODUCT"].astype(str).str.strip().str.upper() == str(mf_product).strip().upper()]
+
+        if len(_cy6) == 0 and len(_cm6) == 0:
+            st.warning("No rows for mapped inter-state routes with current filters.")
+            st.caption("Mapped routes: " + ", ".join(sorted(_route_to_sec.keys())))
+            st.stop()
+
         keys = ["ROUTEE", "DEPOT", "PRODUCT", "RTC_HIRE"]
-        def agg(data):
+
+        def agg6(data):
+            """Schs / Sch Kms: max per service then sum (same fix as Board 1)."""
             if len(data) == 0:
                 return pd.DataFrame()
-            return data.groupby(keys, dropna=False).agg(
-                schs=("NO_OF_SCHS", "sum"), sers=("SER_NO", "nunique"),
-                sch_kms=("SCH_KMS", "sum"), kms=("Optd_KMs", "sum"),
-                ge=("GE_TOT", "sum"), ne=("NE_TOT", "sum"),
+            d = data.copy()
+            if "ROUTEE" not in d.columns and _route_col6 != "ROUTEE":
+                d["ROUTEE"] = d[_route_col6]
+            d["ROUTEE"] = d["ROUTEE"].map(_norm_route6)
+            if "SER_NO" not in d.columns:
+                return d.groupby(keys, dropna=False).agg(
+                    schs=("NO_OF_SCHS", "max"),
+                    sers=("NO_OF_SCHS", "count"),
+                    sch_kms=("SCH_KMS", "max"),
+                    kms=("Optd_KMs", "sum"),
+                    ge=("GE_TOT", "sum"),
+                    ne=("NE_TOT", "sum"),
+                ).reset_index()
+            if "R_L" not in d.columns:
+                d["R_L"] = 0
+            ser_keys = keys + ["SER_NO"]
+            per = d.groupby(ser_keys, dropna=False).agg(
+                schs=("NO_OF_SCHS", "max"),
+                sch_kms=("SCH_KMS", "max"),
+                rl=("R_L", "max"),
+                kms=("Optd_KMs", "sum"),
+                ge=("GE_TOT", "sum"),
+                ne=("NE_TOT", "sum"),
             ).reset_index()
-        a_cm, a_cy, a_ly = agg(cm if "INTERSTATE" not in cm.columns else cm[cm["INTERSTATE"].astype(str).str.upper().str.contains("INTER", na=False)]), \
-            agg(cy_um if "INTERSTATE" not in cy_um.columns else cy_um[cy_um["INTERSTATE"].astype(str).str.upper().str.contains("INTER", na=False)]), \
-            agg(ly_um if "INTERSTATE" not in ly_um.columns else ly_um[ly_um["INTERSTATE"].astype(str).str.upper().str.contains("INTER", na=False)])
-        if len(a_cm) == 0 and len(a_cy) == 0:
-            st.warning("No INTERSTATE rows found — showing all long ROUTEE groups.")
-            a_cm, a_cy, a_ly = agg(cm), agg(cy_um), agg(ly_um)
+            for i, row in per.iterrows():
+                sk = float(row.get("sch_kms", 0) or 0)
+                rl = float(row.get("rl", 0) or 0)
+                sc = float(row.get("schs", 0) or 0)
+                if sk == 0 and rl > 0 and sc > 0:
+                    per.at[i, "sch_kms"] = rl * sc
+            return per.groupby(keys, dropna=False).agg(
+                schs=("schs", "sum"),
+                sers=("SER_NO", "nunique"),
+                sch_kms=("sch_kms", "sum"),
+                kms=("kms", "sum"),
+                ge=("ge", "sum"),
+                ne=("ne", "sum"),
+            ).reset_index()
+
+        a_cm, a_cy, a_ly = agg6(_cm6), agg6(_cy6), agg6(_ly6)
         merged = a_cy.merge(a_cm, on=keys, how="outer", suffixes=("_cy", "_cm"))
         merged = merged.merge(a_ly, on=keys, how="outer")
         for c in ["schs", "sers", "sch_kms", "kms", "ge", "ne"]:
             if c in merged.columns:
                 merged.rename(columns={c: f"{c}_ly"}, inplace=True)
+
         rows = []
         for _, r in merged.fillna(0).iterrows():
             dep = str(r.get("DEPOT", ""))
+            route = _norm_route6(r.get("ROUTEE", ""))
+            if route not in _route_to_sec:
+                continue
+            sector, state = _route_to_sec[route]
             orf_c, orf_l = _orf(dep, side="cy"), _orf(dep, side="ly")
             def side(ge, ne, kms, orf):
                 g, n = _epk(ge, kms), _epk(ne, kms)
@@ -3251,9 +3409,10 @@ elif section == "Monthly files":
             var_or = (og_cy - og_ly) if pd.notna(og_cy) and pd.notna(og_ly) else np.nan
             rows.append({
                 "SL NO.": len(rows) + 1,
-                "SECTOR": r.get("ROUTEE", ""),
+                "SECTOR": sector,
+                "STATE": state,
                 "DEPOT": dep,
-                "ROUTE": r.get("ROUTEE", ""),
+                "ROUTE": route,
                 "LONG_TP.": r.get("PRODUCT", ""),
                 "RTC/HIRE": r.get("RTC_HIRE", ""),
                 "No. of Schs": int(round(float(r.get("schs_cy", 0) or 0))) or "",
@@ -3275,9 +3434,13 @@ elif section == "Monthly files":
                 "VAR UM OR": round(var_or, 0) if pd.notna(var_or) else None,
             })
         out = pd.DataFrame(rows)
+        if len(out):
+            out = out.sort_values(["SECTOR", "STATE", "DEPOT", "ROUTE"]).reset_index(drop=True)
+            out["SL NO."] = range(1, len(out) + 1)
         thead = (
             "<tr>"
             + _th("SL<br>NO.", rowspan=2, top=0) + _th("SECTOR", rowspan=2, top=0)
+            + _th("STATE", rowspan=2, top=0)
             + _th("DEPOT", rowspan=2, top=0) + _th("ROUTE", rowspan=2, top=0)
             + _th("LONG_TP.", rowspan=2, top=0) + _th("RTC/<br>HIRE", rowspan=2, top=0)
             + _th("No.<br>of<br>Schs", rowspan=2, top=0) + _th("No.<br>of<br>Ser", rowspan=2, top=0)
@@ -3295,7 +3458,8 @@ elif section == "Monthly files":
         thead += "</tr>"
         body = []
         cols6 = [
-            "SL NO.", "SECTOR", "DEPOT", "ROUTE", "LONG_TP.", "RTC/HIRE", "No. of Schs", "No. of Ser", "Sch Kms",
+            "SL NO.", "SECTOR", "STATE", "DEPOT", "ROUTE", "LONG_TP.", "RTC/HIRE",
+            "No. of Schs", "No. of Ser", "Sch Kms",
             "GROSS EPK CM", "GROSS EPK UM", "GROSS EPK LYUM",
             "NET EPK CM", "NET EPK UM", "NET EPK LYUM",
             "GROSS OR CM", "GROSS OR UM", "GROSS OR LYUM",
@@ -3308,133 +3472,958 @@ elif section == "Monthly files":
                 body.append(_cell(r.get(c)))
             body.append("</tr>")
         _render_board(title, thead, "".join(body), out, "InterState")
+        st.caption(f"Routes limited to sector map ({len(_route_to_sec)} codes) · Schs/Sch Kms = max per service then sum")
 
     # ========== BOARD 7: Service Wise Performance ==========
+    # Master list = SMASTER only; table = identity + Optd + GROSS/NET EPK&OR (TOT/MHL/FPD × CM/UM/LUM)
     elif mf_board.startswith("7."):
         title = f"RR REGION SERVICE WISE PERFORMANCE FOR AND UPTO {mf_month}"
+        if mf_depot != "ALL":
+            title += f" | Depot: {mf_depot}"
+        if mf_route != "ALL":
+            title += f" | Route: {mf_route}"
+        if mf_product != "ALL":
+            title += f" | Product: {mf_product}"
+
+        def _norm_svc7(v):
+            if v is None or (isinstance(v, float) and pd.isna(v)):
+                return ""
+            s = str(v).strip()
+            if s.lower() in ("nan", "none", ""):
+                return ""
+            if s.endswith(".0"):
+                s = s[:-2]
+            try:
+                return str(int(float(s)))
+            except Exception:
+                return s
+
+        def _mode_or_first(series):
+            s = series.dropna().astype(str).str.strip()
+            s = s[~s.str.lower().isin(["", "nan", "none"])]
+            if len(s) == 0:
+                return ""
+            try:
+                return s.mode().iloc[0]
+            except Exception:
+                return s.iloc[0]
+
+        def _pick(*vals):
+            for v in vals:
+                if v is None or (isinstance(v, float) and pd.isna(v)):
+                    continue
+                s = str(v).strip()
+                if s and s.lower() not in ("nan", "none", "0", "0.0"):
+                    return v
+            return ""
+
+        # ---- Load SMASTER (required) ----
+        _sros_p = Path(r"D:\Dashboard\SMASTER.parquet")
+        if not _sros_p.exists():
+            for alt in [
+                Path(r"D:\dashboard\SMASTER.parquet"),
+                Path(r"D:\MONTHLY\SMASTER.parquet"),
+                Path("SMASTER.parquet"),
+                Path(r"/home/workdir/attachments/SMASTER.parquet"),
+            ]:
+                if alt.exists():
+                    _sros_p = alt
+                    break
+        if not _sros_p.exists():
+            st.error("SMASTER.parquet not found — Board 7 lists services from SMASTER only.")
+            st.stop()
+        try:
+            _sm_raw = pd.read_parquet(_sros_p)
+            _sm_raw.columns = [str(c).strip() for c in _sm_raw.columns]
+        except Exception as _e:
+            st.error(f"Could not read SMASTER: {_e}")
+            st.stop()
+
+        def _fc7(cands, frame=_sm_raw):
+            n = {
+                str(c).strip().lower().replace(" ", "").replace("_", "").replace("/", "").replace(".", ""): c
+                for c in frame.columns
+            }
+            for cand in cands:
+                k = cand.lower().replace(" ", "").replace("_", "").replace("/", "").replace(".", "")
+                if k in n:
+                    return n[k]
+            for c in frame.columns:
+                cl = str(c).strip().lower().replace(" ", "").replace("_", "").replace("/", "").replace(".", "")
+                for cand in cands:
+                    if cand.lower().replace(" ", "").replace("_", "").replace("/", "").replace(".", "") in cl:
+                        return c
+            return None
+
+        c_svc = _fc7(["ServiceNo", "SER_NO", "SERVICE_NO", "SERVICENO"])
+        c_dep = _fc7(["DEPOT"])
+        c_prod = _fc7(["PRODUCT"])
+        c_route = _fc7(["ROUTEE", "Routee", "ROUTE"])
+        c_sch = _fc7(["NoOfSchedules", "NoOfSchedule", "NO_OF_SCHS"])
+        c_kms = _fc7(["RevenueKms", "Revenue Kms", "SCH_KMS", "SchKms", "DAY_SCH_KMS"])
+        c_mon = _fc7(["MONTH", "Month"])
+        c_year = _fc7(["YEAR", "Year"])
+        c_rtc = _fc7(["RTC/HIRE", "RTC_HIRE", "RTCHIRE"])
+        c_rl = _fc7(["R/L", "R_L", "RL", "RouteLength"])
+        c_schdep = _fc7(["SCH_DEP", "SCH_DEP.", "SchDep", "SCHDEP", "ScheduleDepot"])
+        c_type = _fc7(["TYPE", "TYPE OF SERV.", "ServiceType", "TP"])
+        # D/N from D.TYPE (SMASTER) — DO/SC/SO/NO etc.
+        c_dtype = _fc7(["D.TYPE", "DTYPE", "D.Type", "DutyType", "DTYPE OF SERV"])
+        c_nature = _fc7(["NATURE", "NATURE OF SERV.", "D/N", "DN", "DayNight"])
+        if not c_svc:
+            st.error(f"SMASTER missing ServiceNo. Columns: {list(_sm_raw.columns)}")
+            st.stop()
+
+        sm = _sm_raw.copy()
+        sm["_SVC"] = sm[c_svc].map(_norm_svc7)
+        sm["_DEP"] = sm[c_dep].astype(str).str.strip().str.upper() if c_dep else ""
+        sm["_PROD"] = sm[c_prod].astype(str).str.strip() if c_prod else ""
+        sm["_ROUTE"] = sm[c_route].astype(str).str.strip() if c_route else ""
+        sm["_SCH"] = pd.to_numeric(sm[c_sch], errors="coerce").fillna(0) if c_sch else 0.0
+        sm["_SCH_KMS"] = pd.to_numeric(sm[c_kms], errors="coerce").fillna(0) if c_kms else 0.0
+        sm["_RL"] = pd.to_numeric(sm[c_rl], errors="coerce").fillna(0) if c_rl else 0.0
+        sm["_RTC"] = sm[c_rtc].astype(str).str.strip() if c_rtc else ""
+        sm["_SCH_DEP"] = sm[c_schdep].astype(str).str.strip() if c_schdep else ""
+        sm["_TYPE"] = sm[c_type].astype(str).str.strip() if c_type else ""
+        # Prefer D.TYPE for D/N column
+        if c_dtype:
+            sm["_DN"] = sm[c_dtype].astype(str).str.strip().str.upper()
+            sm["_DN"] = sm["_DN"].replace({
+                "DAY OUT": "DO", "DAYOUT": "DO", "DO": "DO",
+                "NIGHT OUT": "NO", "NIGHTOUT": "NO", "NO": "NO",
+                "SPECIAL": "SC", "SC": "SC", "SO": "SO",
+            })
+        elif c_nature:
+            sm["_DN"] = sm[c_nature].astype(str).str.strip()
+        else:
+            sm["_DN"] = ""
+        sm["_NATURE"] = sm["_DN"]
+        if c_mon and c_year:
+            def _mk7(row):
+                try:
+                    return f"{str(row[c_mon]).strip()[:3].title()}-{int(float(row[c_year]))}"
+                except Exception:
+                    return ""
+            sm["_MK"] = sm.apply(_mk7, axis=1)
+        else:
+            sm["_MK"] = "ALL"
+
+        if mf_depot not in ("ALL", "REGION", ""):
+            sm = sm[sm["_DEP"] == str(mf_depot).strip().upper()]
+        if mf_product != "ALL":
+            sm = sm[sm["_PROD"].astype(str).str.strip().str.upper() == str(mf_product).strip().upper()]
+        if mf_route != "ALL":
+            sm = sm[sm["_ROUTE"].astype(str).str.strip().str.upper() == str(mf_route).strip().upper()]
+        sm_mon = sm[sm["_MK"] == str(mf_month)].copy() if str(mf_month) else sm.copy()
+        if len(sm_mon) == 0:
+            st.warning(f"No SMASTER services for month {mf_month} with current Depot/Route/Product filters.")
+            st.stop()
+
+        # Service + Low EPK + Negative EPK filters
+        svc_vals = {_norm_svc7(x) for x in sm_mon["_SVC"].dropna().unique()}
+        svc_vals.discard("")
+        def _svc_sort(z):
+            try:
+                return (0, int(z))
+            except Exception:
+                return (1, str(z))
+        svc_opts7 = ["ALL"] + sorted(svc_vals, key=_svc_sort)
+        low_opts = [
+            "ALL",
+            "TOT EPK < 40",
+            "TOT EPK < 35",
+            "TOT EPK < 30",
+            "TOT EPK < 25",
+            "FPD EPK < 25",
+            "FPD EPK < 20",
+        ]
+        neg_opts = ["ALL", "NEG TOT EPK", "NEG FPD EPK"]
+        f7a, f7b, f7c = st.columns(3)
+        with f7a:
+            mf_svc = st.selectbox("Select Service (SER NO)", svc_opts7, index=0, key="mf_b7_service")
+        with f7b:
+            mf_low = st.selectbox("Low EPK Ser", low_opts, index=0, key="mf_b7_low")
+        with f7c:
+            mf_neg = st.selectbox("Negative EPK Ser", neg_opts, index=0, key="mf_b7_neg")
+        if mf_svc != "ALL":
+            sm_mon = sm_mon[sm_mon["_SVC"].map(_norm_svc7) == str(mf_svc).strip()]
+            title += f" | Service: {mf_svc}"
+        if mf_low != "ALL":
+            title += f" | {mf_low}"
+        if mf_neg != "ALL":
+            title += f" | {mf_neg}"
+
+        master = (
+            sm_mon.groupby(["_DEP", "_SVC"], dropna=False)
+            .agg(
+                route=("_ROUTE", _mode_or_first),
+                prod=("_PROD", _mode_or_first),
+                rtc=("_RTC", _mode_or_first),
+                sch_dep=("_SCH_DEP", _mode_or_first),
+                typ=("_TYPE", _mode_or_first),
+                nature=("_DN", _mode_or_first),
+                rl=("_RL", "max"),
+                schs=("_SCH", "sum"),
+                sch_kms=("_SCH_KMS", "sum"),
+            )
+            .reset_index()
+            .rename(columns={"_DEP": "DEPOT", "_SVC": "SER_NO"})
+        )
+        master["sers"] = 1
+        for i, row in master.iterrows():
+            sk = float(row.get("sch_kms", 0) or 0)
+            rl = float(row.get("rl", 0) or 0)
+            sc = float(row.get("schs", 0) or 0)
+            if sk == 0 and rl > 0 and sc > 0:
+                master.at[i, "sch_kms"] = rl * sc
+
+        allowed = set(zip(master["DEPOT"].astype(str).str.upper(), master["SER_NO"].map(_norm_svc7)))
+
+        def _b7_filter(data):
+            out_d = data.copy() if len(data) else data
+            if len(out_d) == 0:
+                return out_d
+            if mf_depot != "ALL" and "DEPOT" in out_d.columns:
+                out_d = out_d[out_d["DEPOT"].astype(str).str.strip().str.upper() == str(mf_depot).strip().upper()]
+            if mf_route != "ALL" and _route_col_mf and _route_col_mf in out_d.columns:
+                out_d = out_d[out_d[_route_col_mf].astype(str).str.strip().str.upper() == str(mf_route).strip().upper()]
+            if mf_product != "ALL" and "PRODUCT" in out_d.columns:
+                out_d = out_d[out_d["PRODUCT"].astype(str).str.strip().str.upper() == str(mf_product).strip().upper()]
+            if "SER_NO" in out_d.columns and "DEPOT" in out_d.columns:
+                mask = out_d.apply(
+                    lambda r: (str(r["DEPOT"]).strip().upper(), _norm_svc7(r["SER_NO"])) in allowed,
+                    axis=1,
+                )
+                out_d = out_d[mask]
+            if mf_svc != "ALL" and "SER_NO" in out_d.columns:
+                out_d = out_d[out_d["SER_NO"].map(_norm_svc7) == str(mf_svc).strip()]
+            return out_d
+
+        _cm7 = _b7_filter(mf[mf["Month_Name"].astype(str).str.strip() == str(mf_month).strip()].copy())
+        _cy7 = _b7_filter(mf[(mf["Date"] >= fy_start) & (mf["Date"] <= cy_end)].copy())
+        _ly7 = _b7_filter(mf[(mf["Date"] >= ly_start) & (mf["Date"] <= ly_end)].copy())
+
         keys = ["DEPOT", "SER_NO"]
-        def agg(data):
+
+        def agg7_perf(data):
             if len(data) == 0:
-                return pd.DataFrame()
-            return data.groupby(keys, dropna=False).agg(
-                route=("ROUTEE", "first"), rtc=("RTC_HIRE", "first"), typ=("TYPE", "first"),
-                nature=("NATURE", "first"), prod=("PRODUCT", "first"),
-                sch_dep=("SCH_DEP", "first"), rl=("R_L", "max"),
-                schs=("NO_OF_SCHS", "sum"), sers=("SER_NO", "nunique"),
-                sch_kms=("SCH_KMS", "sum"), kms=("Optd_KMs", "sum"),
-                ge=("GE_TOT", "sum"), ne=("NE_TOT", "sum"),
-                days=("Date", "nunique"),
-            ).reset_index()
-        a_cm, a_cy, a_ly = agg(cm), agg(cy_um), agg(ly_um)
-        merged = a_cy.merge(a_cm, on=keys, how="left", suffixes=("_cy", "_cm"))
+                return pd.DataFrame(columns=keys + [
+                    "kms", "ge_tot", "ge_mhl", "ge_fpd", "ne_tot", "ne_mhl", "ne_fpd", "days",
+                    "rl_p", "route_p", "rtc_p", "prod_p", "typ_p", "nature_p", "sch_dep_p",
+                ])
+            d = data.copy()
+            d["SER_NO"] = d["SER_NO"].map(_norm_svc7)
+            d["DEPOT"] = d["DEPOT"].astype(str).str.strip().str.upper()
+            rc = "ROUTEE" if "ROUTEE" in d.columns else ("ROUTE" if "ROUTE" in d.columns else None)
+            if rc and "ROUTEE" not in d.columns:
+                d["ROUTEE"] = d[rc]
+            return (
+                d.groupby(keys, dropna=False)
+                .agg(
+                    kms=("Optd_KMs", "sum"),
+                    ge_tot=("GE_TOT", "sum"),
+                    ge_mhl=("GE_MHL", "sum"),
+                    ge_fpd=("GE_FPD", "sum"),
+                    ne_tot=("NE_TOT", "sum"),
+                    ne_mhl=("NE_MHL", "sum"),
+                    ne_fpd=("NE_FPD", "sum"),
+                    days=("Date", "nunique"),
+                    rl_p=("R_L", "max"),
+                    route_p=("ROUTEE", _mode_or_first),
+                    rtc_p=("RTC_HIRE", _mode_or_first),
+                    prod_p=("PRODUCT", _mode_or_first),
+                    typ_p=("TYPE", _mode_or_first),
+                    nature_p=("NATURE", _mode_or_first),
+                    sch_dep_p=("SCH_DEP", _mode_or_first),
+                )
+                .reset_index()
+            )
+
+        a_cm, a_cy, a_ly = agg7_perf(_cm7), agg7_perf(_cy7), agg7_perf(_ly7)
+        merged = master.merge(a_cy, on=keys, how="left")
+        merged = merged.merge(a_cm, on=keys, how="left", suffixes=("_cy", "_cm"))
         merged = merged.merge(a_ly, on=keys, how="left")
-        for c in ["route", "rtc", "typ", "nature", "prod", "sch_dep", "rl", "schs", "sers", "sch_kms", "kms", "ge", "ne", "days"]:
+        for c in ["kms", "ge_tot", "ge_mhl", "ge_fpd", "ne_tot", "ne_mhl", "ne_fpd", "days",
+                  "rl_p", "route_p", "rtc_p", "prod_p", "typ_p", "nature_p", "sch_dep_p"]:
             if c in merged.columns:
                 merged.rename(columns={c: f"{c}_ly"}, inplace=True)
+
+        def _trio(et, em, ef, kms, orf):
+            a, b, c = _epk(et, kms), _epk(em, kms), _epk(ef, kms)
+            return a, b, c, _or(a, orf), _or(b, orf), _or(c, orf)
+
+        def _r2(v):
+            return round(v, 2) if pd.notna(v) else None
+
+        def _r0(v):
+            return round(v, 0) if pd.notna(v) else None
+
         rows = []
         for _, r in merged.fillna(0).iterrows():
-            dep = str(r.get("DEPOT", ""))
+            dep = str(r.get("DEPOT", "")).strip().upper()
+            ser = _norm_svc7(r.get("SER_NO", ""))
+            if not ser:
+                continue
             orf_c, orf_l = _orf(dep, side="cy"), _orf(dep, side="ly")
-            def side(ge, ne, kms, orf):
-                g, n = _epk(ge, kms), _epk(ne, kms)
-                return g, n, _or(g, orf), _or(n, orf)
-            g_cm, n_cm, og_cm, on_cm = side(r.get("ge_cm", 0), r.get("ne_cm", 0), r.get("kms_cm", 0), orf_c)
-            g_cy, n_cy, og_cy, on_cy = side(r.get("ge_cy", 0), r.get("ne_cy", 0), r.get("kms_cy", 0), orf_c)
-            g_ly, n_ly, og_ly, on_ly = side(r.get("ge_ly", 0), r.get("ne_ly", 0), r.get("kms_ly", 0), orf_l)
-            var_epk = (g_cy - g_ly) if pd.notna(g_cy) and pd.notna(g_ly) else np.nan
-            var_or = (og_cy - og_ly) if pd.notna(og_cy) and pd.notna(og_ly) else np.nan
+            k_cm = float(r.get("kms_cm", 0) or 0)
+            k_cy = float(r.get("kms_cy", 0) or 0)
+            k_ly = float(r.get("kms_ly", 0) or 0)
+            gt_cm, gm_cm, gf_cm, ot_cm, om_cm, of_cm = _trio(
+                r.get("ge_tot_cm", 0), r.get("ge_mhl_cm", 0), r.get("ge_fpd_cm", 0), k_cm, orf_c)
+            gt_um, gm_um, gf_um, ot_um, om_um, of_um = _trio(
+                r.get("ge_tot_cy", 0), r.get("ge_mhl_cy", 0), r.get("ge_fpd_cy", 0), k_cy, orf_c)
+            gt_lm, gm_lm, gf_lm, ot_lm, om_lm, of_lm = _trio(
+                r.get("ge_tot_ly", 0), r.get("ge_mhl_ly", 0), r.get("ge_fpd_ly", 0), k_ly, orf_l)
+            nt_cm, nm_cm, nf_cm, ont_cm, onm_cm, onf_cm = _trio(
+                r.get("ne_tot_cm", 0), r.get("ne_mhl_cm", 0), r.get("ne_fpd_cm", 0), k_cm, orf_c)
+            nt_um, nm_um, nf_um, ont_um, onm_um, onf_um = _trio(
+                r.get("ne_tot_cy", 0), r.get("ne_mhl_cy", 0), r.get("ne_fpd_cy", 0), k_cy, orf_c)
+            nt_lm, nm_lm, nf_lm, ont_lm, onm_lm, onf_lm = _trio(
+                r.get("ne_tot_ly", 0), r.get("ne_mhl_ly", 0), r.get("ne_fpd_ly", 0), k_ly, orf_l)
+
+            # Low EPK filter — based on UM (upto month) gross metrics
+            if mf_low != "ALL":
+                if mf_low == "TOT EPK < 40" and not (pd.notna(gt_um) and gt_um < 40):
+                    continue
+                if mf_low == "TOT EPK < 35" and not (pd.notna(gt_um) and gt_um < 35):
+                    continue
+                if mf_low == "TOT EPK < 30" and not (pd.notna(gt_um) and gt_um < 30):
+                    continue
+                if mf_low == "TOT EPK < 25" and not (pd.notna(gt_um) and gt_um < 25):
+                    continue
+                if mf_low == "FPD EPK < 25" and not (pd.notna(gf_um) and gf_um < 25):
+                    continue
+                if mf_low == "FPD EPK < 20" and not (pd.notna(gf_um) and gf_um < 20):
+                    continue
+
+            # Negative EPK: UM vs LUM (UM < LUM → decline)
+            neg_tot = pd.notna(gt_um) and pd.notna(gt_lm) and (gt_um - gt_lm) < 0
+            neg_fpd = pd.notna(gf_um) and pd.notna(gf_lm) and (gf_um - gf_lm) < 0
+            if mf_neg == "NEG TOT EPK" and not neg_tot:
+                continue
+            if mf_neg == "NEG FPD EPK" and not neg_fpd:
+                continue
+
+            schs_v = float(r.get("schs", 0) or 0)
+            sch_kms_v = float(r.get("sch_kms", 0) or 0)
+            rl_v = float(r.get("rl", 0) or 0) or float(r.get("rl_p_cy", 0) or 0) or float(r.get("rl_p_cm", 0) or 0)
+            if sch_kms_v == 0 and rl_v > 0 and schs_v > 0:
+                sch_kms_v = rl_v * schs_v
+
             rows.append({
                 "SL NO": len(rows) + 1,
                 "Depot": dep,
-                "Ser No": r.get("SER_NO", ""),
-                "Sch Dep": r.get("sch_dep_cy", r.get("sch_dep_cm", "")),
-                "Route": r.get("route_cy", r.get("route_cm", "")),
-                "RTC/HIRE": r.get("rtc_cy", r.get("rtc_cm", "")),
-                "R/L": _f0(r.get("rl_cy", 0)),
-                "TP": r.get("typ_cy", r.get("typ_cm", "")),
-                "Type": r.get("prod_cy", r.get("prod_cm", "")),
-                "D/N": r.get("nature_cy", r.get("nature_cm", "")),
-                "No.of Schs": int(round(float(r.get("schs_cy", 0) or 0))) or "",
-                "No.of Sers": int(round(float(r.get("sers_cy", 0) or 0))) or "",
-                "Sch. Kms": _f0(r.get("sch_kms_cy", 0)),
-                "Optd Days CM": int(r.get("days_cm", 0) or 0) or "",
-                "Optd Days UM": int(r.get("days_cy", 0) or 0) or "",
-                "GROSS EPK CM": round(g_cm, 2) if pd.notna(g_cm) else None,
-                "GROSS EPK UM": round(g_cy, 2) if pd.notna(g_cy) else None,
-                "GROSS EPK LYUM": round(g_ly, 2) if pd.notna(g_ly) else None,
-                "NET EPK CM": round(n_cm, 2) if pd.notna(n_cm) else None,
-                "NET EPK UM": round(n_cy, 2) if pd.notna(n_cy) else None,
-                "NET EPK LYUM": round(n_ly, 2) if pd.notna(n_ly) else None,
-                "GROSS OR CM": round(og_cm, 0) if pd.notna(og_cm) else None,
-                "GROSS OR UM": round(og_cy, 0) if pd.notna(og_cy) else None,
-                "GROSS OR LYUM": round(og_ly, 0) if pd.notna(og_ly) else None,
-                "NET OR CM": round(on_cm, 0) if pd.notna(on_cm) else None,
-                "NET OR UM": round(on_cy, 0) if pd.notna(on_cy) else None,
-                "NET OR LYUM": round(on_ly, 0) if pd.notna(on_ly) else None,
-                "VAR UM EPK": round(var_epk, 2) if pd.notna(var_epk) else None,
-                "VAR UM OR": round(var_or, 0) if pd.notna(var_or) else None,
+                "Ser No": ser,
+                "Sch Dep": _pick(r.get("sch_dep"), r.get("sch_dep_p_cy"), r.get("sch_dep_p_cm"), r.get("sch_dep_p_ly")),
+                "Route": _pick(r.get("route"), r.get("route_p_cy"), r.get("route_p_cm"), r.get("route_p_ly")),
+                "RTC/HIRE": _pick(r.get("rtc"), r.get("rtc_p_cy"), r.get("rtc_p_cm"), r.get("rtc_p_ly")),
+                "R/L": _f0(rl_v),
+                "Type": _pick(r.get("prod"), r.get("prod_p_cy"), r.get("prod_p_cm"), r.get("prod_p_ly")),
+                "D/N": _pick(r.get("nature"), r.get("nature_p_cy"), r.get("nature_p_cm"), r.get("nature_p_ly")),
+                "No.of Schs": int(round(schs_v)) if schs_v else "",
+                "No.of Sers": 1,
+                "Sch. Kms": _f0(sch_kms_v),
+                "Optd CM": int(r.get("days_cm", 0) or 0) or "",
+                "Optd UM": int(r.get("days_cy", 0) or 0) or "",
+                # GROSS EPK
+                "G EPK CM TOT": _r2(gt_cm), "G EPK CM MHL": _r2(gm_cm), "G EPK CM FPD": _r2(gf_cm),
+                "G EPK UM TOT": _r2(gt_um), "G EPK UM MHL": _r2(gm_um), "G EPK UM FPD": _r2(gf_um),
+                "G EPK LUM TOT": _r2(gt_lm), "G EPK LUM MHL": _r2(gm_lm), "G EPK LUM FPD": _r2(gf_lm),
+                # GROSS OR
+                "G OR CM TOT": _r0(ot_cm), "G OR CM MHL": _r0(om_cm), "G OR CM FPD": _r0(of_cm),
+                "G OR UM TOT": _r0(ot_um), "G OR UM MHL": _r0(om_um), "G OR UM FPD": _r0(of_um),
+                "G OR LUM TOT": _r0(ot_lm), "G OR LUM MHL": _r0(om_lm), "G OR LUM FPD": _r0(of_lm),
+                # NET EPK
+                "N EPK CM TOT": _r2(nt_cm), "N EPK CM MHL": _r2(nm_cm), "N EPK CM FPD": _r2(nf_cm),
+                "N EPK UM TOT": _r2(nt_um), "N EPK UM MHL": _r2(nm_um), "N EPK UM FPD": _r2(nf_um),
+                "N EPK LUM TOT": _r2(nt_lm), "N EPK LUM MHL": _r2(nm_lm), "N EPK LUM FPD": _r2(nf_lm),
+                # NET OR
+                "N OR CM TOT": _r0(ont_cm), "N OR CM MHL": _r0(onm_cm), "N OR CM FPD": _r0(onf_cm),
+                "N OR UM TOT": _r0(ont_um), "N OR UM MHL": _r0(onm_um), "N OR UM FPD": _r0(onf_um),
+                "N OR LUM TOT": _r0(ont_lm), "N OR LUM MHL": _r0(onm_lm), "N OR LUM FPD": _r0(onf_lm),
+                # flags for highlight: UM < LUM
+                "_neg_g_tot": 1 if (pd.notna(gt_um) and pd.notna(gt_lm) and gt_um < gt_lm) else 0,
+                "_neg_g_mhl": 1 if (pd.notna(gm_um) and pd.notna(gm_lm) and gm_um < gm_lm) else 0,
+                "_neg_g_fpd": 1 if (pd.notna(gf_um) and pd.notna(gf_lm) and gf_um < gf_lm) else 0,
+                "_neg_n_tot": 1 if (pd.notna(nt_um) and pd.notna(nt_lm) and nt_um < nt_lm) else 0,
+                "_neg_n_mhl": 1 if (pd.notna(nm_um) and pd.notna(nm_lm) and nm_um < nm_lm) else 0,
+                "_neg_n_fpd": 1 if (pd.notna(nf_um) and pd.notna(nf_lm) and nf_um < nf_lm) else 0,
+                "_neg_go_tot": 1 if (pd.notna(ot_um) and pd.notna(ot_lm) and ot_um < ot_lm) else 0,
+                "_neg_go_mhl": 1 if (pd.notna(om_um) and pd.notna(om_lm) and om_um < om_lm) else 0,
+                "_neg_go_fpd": 1 if (pd.notna(of_um) and pd.notna(of_lm) and of_um < of_lm) else 0,
+                "_neg_no_tot": 1 if (pd.notna(ont_um) and pd.notna(ont_lm) and ont_um < ont_lm) else 0,
+                "_neg_no_mhl": 1 if (pd.notna(onm_um) and pd.notna(onm_lm) and onm_um < onm_lm) else 0,
+                "_neg_no_fpd": 1 if (pd.notna(onf_um) and pd.notna(onf_lm) and onf_um < onf_lm) else 0,
             })
+
         out = pd.DataFrame(rows)
-        thead = (
-            "<tr>"
-            + _th("SL<br>NO", rowspan=2, top=0) + _th("Depot", rowspan=2, top=0)
-            + _th("Ser No", rowspan=2, top=0) + _th("Sch<br>Dep", rowspan=2, top=0)
-            + _th("Route", rowspan=2, top=0) + _th("RTC/<br>HIRE", rowspan=2, top=0)
-            + _th("R/L", rowspan=2, top=0) + _th("TP", rowspan=2, top=0)
-            + _th("Type", rowspan=2, top=0) + _th("D/N", rowspan=2, top=0)
-            + _th("No.of<br>Schs", rowspan=2, top=0) + _th("No.of<br>Sers", rowspan=2, top=0)
-            + _th("Sch.<br>Kms", rowspan=2, top=0)
-            + _th("Optd<br>Days", bg="#0f766e", colspan=2, top=0)
-            + _th("GROSS EPK", bg="#dcfce7", color="#14532d", colspan=3, top=0)
-            + _th("NET EPK", bg="#fef3c7", color="#92400e", colspan=3, top=0)
-            + _th("GROSS OR", bg="#dbeafe", color="#1e3a8a", colspan=3, top=0)
-            + _th("NET OR", bg="#ede9fe", color="#5b21b6", colspan=3, top=0)
-            + _th("VAR - GROSS", bg="#fee2e2", color="#991b1b", colspan=2, top=0)
-            + "</tr><tr>"
-            + _th("CM", bg="#14b8a6", top=28) + _th("UM", bg="#14b8a6", top=28)
-        )
-        for _ in range(4):
-            thead += _th("CM", bg="#f1f5f9", color="#334155", top=28) + _th("UM", bg="#f1f5f9", color="#334155", top=28) + _th("LY UM", bg="#f1f5f9", color="#334155", top=28)
-        thead += _th("UM EPK", bg="#fecaca", color="#991b1b", top=28) + _th("UM OR", bg="#fecaca", color="#991b1b", top=28)
-        thead += "</tr>"
-        body = []
-        cols7 = [
-            "SL NO", "Depot", "Ser No", "Sch Dep", "Route", "RTC/HIRE", "R/L", "TP", "Type", "D/N",
-            "No.of Schs", "No.of Sers", "Sch. Kms", "Optd Days CM", "Optd Days UM",
-            "GROSS EPK CM", "GROSS EPK UM", "GROSS EPK LYUM",
-            "NET EPK CM", "NET EPK UM", "NET EPK LYUM",
-            "GROSS OR CM", "GROSS OR UM", "GROSS OR LYUM",
-            "NET OR CM", "NET OR UM", "NET OR LYUM",
-            "VAR UM EPK", "VAR UM OR",
+        if len(out):
+            def _ser_ord(v):
+                s = str(v).strip()
+                try:
+                    return (0, int(s))
+                except Exception:
+                    return (1, s)
+            out["_ord"] = out["Ser No"].map(_ser_ord)
+            out = out.sort_values(["Depot", "_ord"]).drop(columns=["_ord"]).reset_index(drop=True)
+            out["SL NO"] = range(1, len(out) + 1)
+
+        def _cell_neg(v, is_neg=False, is_int=False):
+            if v is None or v == "" or (isinstance(v, float) and (pd.isna(v) or abs(v) < 1e-12)):
+                s = ""
+            elif isinstance(v, (int, float)):
+                try:
+                    fv = float(v)
+                    if is_int or abs(fv - round(fv)) < 1e-6:
+                        s = f"{int(round(fv))}" if abs(fv) > 1e-12 else ""
+                    else:
+                        s = f"{fv:.2f}"
+                except Exception:
+                    s = str(v)
+            else:
+                s = str(v)
+            style = "padding:3px 5px;text-align:center;border:1px solid #e2e8f0;font-size:11px;"
+            if is_neg and s:
+                style += "background:#fee2e2;color:#b91c1c;font-weight:700;"
+            return f'<td style="{style}">{s}</td>'
+
+        # Freeze left columns through Sch Kms (12 cols, TP removed)
+        def _fth(text, left, width, rowspan=3, top=0, bg="#1e3a8a", color="#fff"):
+            return (
+                f'<th rowspan="{rowspan}" style="position:sticky;left:{left}px;top:{top}px;z-index:6;'
+                f'background:{bg};color:{color};padding:5px 4px;font-size:10px;text-align:center;'
+                f'border:1px solid #94a3b8;min-width:{width}px;max-width:{width}px;">{text}</th>'
+            )
+        # widths: SL NO 36, Depot 64, Ser 56, SchDep 56, Route 64, RTC 56, R/L 44, Type 56, D/N 44, Schs 48, Sers 48, SchKms 56
+        _fw = [36, 64, 56, 56, 64, 56, 44, 56, 44, 48, 48, 56]
+        _fl = [0]
+        for w in _fw[:-1]:
+            _fl.append(_fl[-1] + w)
+        _flabels = [
+            "SL<br>NO", "Depot", "Ser No", "Sch<br>Dep", "Route", "RTC/<br>HIRE",
+            "R/L", "Type", "D/N", "No.of<br>Schs", "No.of<br>Sers", "Sch.<br>Kms",
         ]
+        # Header layout (matches screenshot):
+        # Row1: identity(rowspan3) | Optd(2) | GROSS EPK(9) | GROSS OR(9) | NET EPK(9) | NET OR(9)
+        # Row2: Optd CM/UM (rowspan2 — no TOT/MHL/FPD) | CM/UM/LUM (colspan3 each) × 4 groups
+        # Row3: TOT MHL FPD under each CM/UM/LUM only (starts under GROSS EPK)
+        thead = "<tr>"
+        for lab, left, width in zip(_flabels, _fl, _fw):
+            thead += _fth(lab, left, width, rowspan=3, top=0)
+        thead += (
+            _th("Optd", bg="#0f766e", color="#fff", colspan=2, top=0)
+            + _th("GROSS EPK", bg="#dcfce7", color="#14532d", colspan=9, top=0)
+            + _th("GROSS OR", bg="#dbeafe", color="#1e3a8a", colspan=9, top=0)
+            + _th("NET EPK", bg="#fef3c7", color="#92400e", colspan=9, top=0)
+            + _th("NET OR", bg="#ede9fe", color="#5b21b6", colspan=9, top=0)
+            + "</tr><tr>"
+        )
+        # Optd CM / UM — rowspan 2 so row 3 has no sub-headers under Optd
+        thead += (
+            _th("CM", bg="#fef08a", color="#854d0e", rowspan=2, top=28)
+            + _th("UM", bg="#fef08a", color="#854d0e", rowspan=2, top=28)
+        )
+        # Period labels under GROSS/NET groups only
+        period_hdrs = [
+            ("CM", "#86efac", "#14532d"), ("UM", "#4ade80", "#14532d"), ("LUM", "#bbf7d0", "#14532d"),
+            ("CM", "#93c5fd", "#1e3a8a"), ("UM", "#60a5fa", "#1e3a8a"), ("LUM", "#bfdbfe", "#1e3a8a"),
+            ("CM", "#fde68a", "#92400e"), ("UM", "#fbbf24", "#92400e"), ("LUM", "#fef3c7", "#92400e"),
+            ("CM", "#c4b5fd", "#5b21b6"), ("UM", "#a78bfa", "#5b21b6"), ("LUM", "#ede9fe", "#5b21b6"),
+        ]
+        for lab, bg, col in period_hdrs:
+            thead += _th(lab, bg=bg, color=col, colspan=3, top=28)
+        thead += "</tr><tr>"
+        # TOT MHL FPD only under GROSS EPK / GROSS OR / NET EPK / NET OR (12 periods × 3)
+        for _ in range(12):
+            thead += (
+                _th("TOT", bg="#f1f5f9", color="#334155", top=56)
+                + _th("MHL", bg="#f1f5f9", color="#334155", top=56)
+                + _th("FPD", bg="#f1f5f9", color="#334155", top=56)
+            )
+        thead += "</tr>"
+
+        um_epk_cols = {
+            "G EPK UM TOT": "_neg_g_tot", "G EPK UM MHL": "_neg_g_mhl", "G EPK UM FPD": "_neg_g_fpd",
+            "N EPK UM TOT": "_neg_n_tot", "N EPK UM MHL": "_neg_n_mhl", "N EPK UM FPD": "_neg_n_fpd",
+        }
+        um_or_cols = {
+            "G OR UM TOT": "_neg_go_tot", "G OR UM MHL": "_neg_go_mhl", "G OR UM FPD": "_neg_go_fpd",
+            "N OR UM TOT": "_neg_no_tot", "N OR UM MHL": "_neg_no_mhl", "N OR UM FPD": "_neg_no_fpd",
+        }
+        data_cols = [
+            "SL NO", "Depot", "Ser No", "Sch Dep", "Route", "RTC/HIRE", "R/L", "Type", "D/N",
+            "No.of Schs", "No.of Sers", "Sch. Kms", "Optd CM", "Optd UM",
+            "G EPK CM TOT", "G EPK CM MHL", "G EPK CM FPD",
+            "G EPK UM TOT", "G EPK UM MHL", "G EPK UM FPD",
+            "G EPK LUM TOT", "G EPK LUM MHL", "G EPK LUM FPD",
+            "G OR CM TOT", "G OR CM MHL", "G OR CM FPD",
+            "G OR UM TOT", "G OR UM MHL", "G OR UM FPD",
+            "G OR LUM TOT", "G OR LUM MHL", "G OR LUM FPD",
+            "N EPK CM TOT", "N EPK CM MHL", "N EPK CM FPD",
+            "N EPK UM TOT", "N EPK UM MHL", "N EPK UM FPD",
+            "N EPK LUM TOT", "N EPK LUM MHL", "N EPK LUM FPD",
+            "N OR CM TOT", "N OR CM MHL", "N OR CM FPD",
+            "N OR UM TOT", "N OR UM MHL", "N OR UM FPD",
+            "N OR LUM TOT", "N OR LUM MHL", "N OR LUM FPD",
+        ]
+        freeze_cols = {
+            "SL NO", "Depot", "Ser No", "Sch Dep", "Route", "RTC/HIRE", "R/L", "Type", "D/N",
+            "No.of Schs", "No.of Sers", "Sch. Kms",
+        }
+        body = []
         for _, r in out.iterrows():
             body.append("<tr>")
-            for c in cols7:
-                body.append(_cell(r.get(c)))
+            for ci, c in enumerate(data_cols):
+                is_neg = False
+                if c in um_epk_cols:
+                    is_neg = bool(r.get(um_epk_cols[c], 0))
+                elif c in um_or_cols:
+                    is_neg = bool(r.get(um_or_cols[c], 0))
+                is_int = c in ("SL NO", "No.of Schs", "No.of Sers", "Optd CM", "Optd UM") or " OR " in c or c.startswith("G OR") or c.startswith("N OR")
+                if c in freeze_cols:
+                    left = _fl[ci]
+                    width = _fw[ci]
+                    v = r.get(c)
+                    if v is None or v == "" or (isinstance(v, float) and (pd.isna(v) or abs(v) < 1e-12)):
+                        s = ""
+                    elif isinstance(v, (int, float)):
+                        fv = float(v)
+                        s = f"{int(round(fv))}" if is_int or abs(fv - round(fv)) < 1e-6 else f"{fv:.2f}"
+                        if abs(float(v)) < 1e-12:
+                            s = ""
+                    else:
+                        s = str(v)
+                    body.append(
+                        f'<td style="position:sticky;left:{left}px;z-index:2;background:#f8fafc;'
+                        f'padding:3px 5px;text-align:center;border:1px solid #e2e8f0;font-size:11px;'
+                        f'min-width:{width}px;max-width:{width}px;">{s}</td>'
+                    )
+                else:
+                    body.append(_cell_neg(r.get(c), is_neg=is_neg, is_int=is_int))
             body.append("</tr>")
-        _render_board(title, thead, "".join(body), out, "ServiceWise")
+
+        def _b7_excel(df_out, report_title):
+            from openpyxl import Workbook
+            from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+            from openpyxl.utils import get_column_letter
+            wb = Workbook()
+            ws = wb.active
+            ws.title = "ServiceWise"[:31]
+            thin = Border(
+                left=Side(style="thin", color="94A3B8"), right=Side(style="thin", color="94A3B8"),
+                top=Side(style="thin", color="94A3B8"), bottom=Side(style="thin", color="94A3B8"),
+            )
+            center = Alignment(horizontal="center", vertical="center", wrap_text=True)
+            white = Font(bold=True, color="FFFFFF", size=9)
+            red_fill = PatternFill("solid", fgColor="FEE2E2")
+            red_font = Font(color="B91C1C", bold=True, size=9)
+            left_fill = PatternFill("solid", fgColor="1E3A8A")
+            fills_top = {
+                "optd": PatternFill("solid", fgColor="0F766E"),
+                "gepk": PatternFill("solid", fgColor="DCFCE7"),
+                "gor": PatternFill("solid", fgColor="DBEAFE"),
+                "nepk": PatternFill("solid", fgColor="FEF3C7"),
+                "nor": PatternFill("solid", fgColor="EDE9FE"),
+            }
+            sub = PatternFill("solid", fgColor="F1F5F9")
+            dark = Font(bold=True, color="14532D", size=9)
+
+            ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=51)
+            t = ws.cell(1, 1, report_title)
+            t.font = Font(bold=True, size=12, color="1E3A8A")
+            t.alignment = Alignment(horizontal="center")
+
+            fixed = ["SL NO", "Depot", "Ser No", "Sch Dep", "Route", "RTC/HIRE", "R/L", "Type", "D/N",
+                     "No.of Schs", "No.of Sers", "Sch. Kms"]
+            for c, h in enumerate(fixed, 1):
+                cell = ws.cell(2, c, h)
+                cell.fill = left_fill
+                cell.font = white
+                cell.alignment = center
+                cell.border = thin
+                ws.merge_cells(start_row=2, start_column=c, end_row=4, end_column=c)
+                for rr in range(2, 5):
+                    ws.cell(rr, c).fill = left_fill
+                    ws.cell(rr, c).border = thin
+                    ws.cell(rr, c).font = white
+                    ws.cell(rr, c).alignment = center
+
+            # Row 2 groups (12 fixed cols → metrics start at col 13)
+            groups = [
+                (13, 14, "Optd", fills_top["optd"]),
+                (15, 23, "GROSS EPK", fills_top["gepk"]),
+                (24, 32, "GROSS OR", fills_top["gor"]),
+                (33, 41, "NET EPK", fills_top["nepk"]),
+                (42, 50, "NET OR", fills_top["nor"]),
+            ]
+            for a, b, lab, fl in groups:
+                ws.merge_cells(start_row=2, start_column=a, end_row=2, end_column=b)
+                cell = ws.cell(2, a, lab)
+                cell.fill = fl
+                cell.font = Font(bold=True, color="14532D" if "EPK" in lab or lab == "Optd" else "1E3A8A", size=10)
+                if "NET" in lab:
+                    cell.font = Font(bold=True, color="92400E" if "EPK" in lab else "5B21B6", size=10)
+                cell.alignment = center
+                for cc in range(a, b + 1):
+                    ws.cell(2, cc).fill = fl
+                    ws.cell(2, cc).border = thin
+
+            # Row 3–4: Optd CM / UM (no TOT/MHL/FPD under them — rowspan 2)
+            for cc, lab in ((13, "CM"), (14, "UM")):
+                ws.merge_cells(start_row=3, start_column=cc, end_row=4, end_column=cc)
+                cell = ws.cell(3, cc, lab)
+                cell.fill = PatternFill("solid", fgColor="FEF08A")
+                cell.font = Font(bold=True, color="854D0E", size=9)
+                cell.alignment = center
+                cell.border = thin
+                ws.cell(4, cc).fill = PatternFill("solid", fgColor="FEF08A")
+                ws.cell(4, cc).border = thin
+            period_starts = [15, 18, 21, 24, 27, 30, 33, 36, 39, 42, 45, 48]
+            period_labs = ["CM", "UM", "LUM"] * 4
+            period_colors = (
+                ["86EFAC", "4ADE80", "BBF7D0"]
+                + ["93C5FD", "60A5FA", "BFDBFE"]
+                + ["FDE68A", "FBBF24", "FEF3C7"]
+                + ["C4B5FD", "A78BFA", "EDE9FE"]
+            )
+            for start, lab, col in zip(period_starts, period_labs, period_colors):
+                ws.merge_cells(start_row=3, start_column=start, end_row=3, end_column=start + 2)
+                cell = ws.cell(3, start, lab)
+                cell.fill = PatternFill("solid", fgColor=col)
+                cell.font = dark
+                cell.alignment = center
+                for cc in range(start, start + 3):
+                    ws.cell(3, cc).fill = PatternFill("solid", fgColor=col)
+                    ws.cell(3, cc).border = thin
+
+            # Row 4 TOT MHL FPD under GROSS/NET only (not under Optd)
+            for start in period_starts:
+                for i, lab in enumerate(["TOT", "MHL", "FPD"]):
+                    cell = ws.cell(4, start + i, lab)
+                    cell.fill = sub
+                    cell.font = Font(bold=True, color="334155", size=8)
+                    cell.alignment = center
+                    cell.border = thin
+
+            export_cols = data_cols
+            neg_map = {**um_epk_cols, **um_or_cols}
+            for ri, row in enumerate(df_out.itertuples(index=False), 5):
+                rec = dict(zip(df_out.columns, row))
+                for ci, col in enumerate(export_cols, 1):
+                    val = rec.get(col, "")
+                    if val is None or (isinstance(val, float) and (pd.isna(val) or abs(val) < 1e-12)):
+                        val = None
+                    cell = ws.cell(ri, ci, val if val != "" else None)
+                    cell.alignment = center
+                    cell.border = thin
+                    if col in neg_map and rec.get(neg_map[col], 0):
+                        cell.fill = red_fill
+                        cell.font = red_font
+
+            for i in range(1, 51):
+                ws.column_dimensions[get_column_letter(i)].width = 8 if i > 12 else 9
+            ws.column_dimensions["A"].width = 6
+            ws.column_dimensions["B"].width = 10
+            ws.column_dimensions["C"].width = 9
+            ws.freeze_panes = "M5"  # freeze through Sch. Kms (col 12)
+            bio = BytesIO()
+            wb.save(bio)
+            bio.seek(0)
+            return bio.getvalue()
+
+        st.markdown(f'<div class="title-bar">{title}</div>', unsafe_allow_html=True)
+        if not body:
+            st.warning("No services match the selected filters.")
+        else:
+            html = [
+                '<div class="table-scroll-fixable"><table class="excel-table" style="border-collapse:collapse;width:max-content;">',
+                "<thead>", thead, "</thead><tbody>",
+                "".join(body), "</tbody></table></div>",
+            ]
+            st.markdown("".join(html), unsafe_allow_html=True)
+            st.download_button(
+                "Download Excel (as on screen)",
+                _b7_excel(out, title),
+                f"Monthly_{mf_month}_ServiceWise.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                key="mf_dl_ServiceWise",
+            )
+
+        # ========== Range-wise EPK services by PRODUCT (reacts to Gross/Net + TOT/MHL/FPD) ==========
+        st.markdown("---")
+        _basis = "GROSS" if str(mf_ng).upper().startswith("G") else "NET"
+        r1, r2 = st.columns([1, 3])
+        with r1:
+            mf_rng_metric = st.selectbox(
+                "Range metric (EPK)",
+                ["TOT", "MHL", "FPD"],
+                index=0,
+                key="mf_b7_range_metric",
+            )
+        rng_title = f"{_basis} RANGE WISE {mf_rng_metric} EPK SERVICES UPTO {mf_month} (by Product)"
+        st.markdown(f'<div class="title-bar">{rng_title}</div>', unsafe_allow_html=True)
+
+        # Build service-level UM EPK for the selected basis + metric, restricted to SMASTER services
+        if _basis == "GROSS":
+            _earn_map = {"TOT": "ge_tot_cy", "MHL": "ge_mhl_cy", "FPD": "ge_fpd_cy"}
+        else:
+            _earn_map = {"TOT": "ne_tot_cy", "MHL": "ne_mhl_cy", "FPD": "ne_fpd_cy"}
+        _ecol = _earn_map.get(mf_rng_metric, "ge_tot_cy")
+
+        # Use merged frame (SMASTER master + CY metrics) before low/neg row filters
+        _rng_src = merged.copy() if "merged" in dir() else pd.DataFrame()
+        # Prefer building from a_cy + master for full SMASTER list
+        try:
+            _rng_base = master.merge(a_cy, on=["DEPOT", "SER_NO"], how="left")
+        except Exception:
+            _rng_base = pd.DataFrame()
+        ranges = [
+            ("01-15", 0, 15),
+            ("15-20", 15, 20),
+            ("21-30", 21, 30),
+            ("31-40", 31, 40),
+            ("41-50", 41, 50),
+            (">51", 51, 1e9),
+        ]
+        products = sorted(
+            {
+                str(x).strip()
+                for x in master.get("prod", pd.Series(dtype=str)).dropna().unique()
+                if str(x).strip() and str(x).strip().lower() not in ("nan", "none", "")
+            },
+            key=lambda z: str(z).upper(),
+        )
+        # Also include products from performance if master prod blank
+        if not products and len(_rng_base):
+            products = sorted(
+                {
+                    str(x).strip()
+                    for x in _rng_base.get("prod", pd.Series(dtype=str)).dropna().unique()
+                    if str(x).strip() and str(x).strip().lower() not in ("nan", "none", "")
+                },
+                key=lambda z: str(z).upper(),
+            )
+        if len(_rng_base) and products:
+            _rb = _rng_base.copy()
+            _rb["SER_NO"] = _rb["SER_NO"].map(_norm_svc7)
+            _rb["DEPOT"] = _rb["DEPOT"].astype(str).str.strip().str.upper()
+            _rb["PRODUCT"] = _rb["prod"].astype(str).str.strip()
+            _kms = pd.to_numeric(_rb.get("kms", 0), errors="coerce").fillna(0)
+            _earn = pd.to_numeric(_rb.get(_ecol.replace("_cy", ""), _rb.get(_ecol, 0)), errors="coerce")
+            # a_cy columns may already be without _cy suffix after merge
+            if _ecol not in _rb.columns:
+                # after merge suffixes: kms from a_cy may be plain "kms"
+                alt = {
+                    "ge_tot_cy": "ge_tot", "ge_mhl_cy": "ge_mhl", "ge_fpd_cy": "ge_fpd",
+                    "ne_tot_cy": "ne_tot", "ne_mhl_cy": "ne_mhl", "ne_fpd_cy": "ne_fpd",
+                }.get(_ecol, _ecol)
+                _earn = pd.to_numeric(_rb.get(alt, 0), errors="coerce")
+            _rb["_EPK"] = np.where(_kms > 0, _earn.fillna(0) / _kms, np.nan)
+            depots_r = sorted(_rb["DEPOT"].dropna().unique())
+            rng_rows = []
+            for dep in depots_r:
+                gd = _rb[_rb["DEPOT"] == dep]
+                for rlab, lo, hi in ranges:
+                    rec = {"Depot": dep, "EPK RANGE": rlab}
+                    total = 0
+                    for p in products:
+                        if rlab == ">51":
+                            sub = gd[(gd["PRODUCT"].str.upper() == p.upper()) & (gd["_EPK"] >= 51)]
+                        else:
+                            sub = gd[
+                                (gd["PRODUCT"].str.upper() == p.upper())
+                                & (gd["_EPK"] >= lo)
+                                & (gd["_EPK"] < hi)
+                            ]
+                        cnt = int(sub["SER_NO"].nunique())
+                        rec[p] = cnt if cnt else ""
+                        total += cnt
+                    rec["Grand Total"] = total if total else ""
+                    rng_rows.append(rec)
+                tot = {"Depot": dep, "EPK RANGE": "Total"}
+                grand = 0
+                for p in products:
+                    cnt = int(gd[gd["PRODUCT"].str.upper() == p.upper()]["SER_NO"].nunique())
+                    tot[p] = cnt if cnt else ""
+                    grand += cnt
+                tot["Grand Total"] = grand if grand else ""
+                rng_rows.append(tot)
+            out_r = pd.DataFrame(rng_rows)
+            cols_r = ["Depot", "EPK RANGE"] + products + ["Grand Total"]
+            out_r = out_r.reindex(columns=[c for c in cols_r if c in out_r.columns])
+            thead_r = (
+                "<tr>"
+                + _th("Depot", rowspan=2, top=0)
+                + _th("EPK<br>RANGE", rowspan=2, top=0)
+                + _th(f"{_basis} · {mf_rng_metric} EPK by Product", bg="#1e40af", colspan=len(products), top=0)
+                + _th("Grand<br>Total", rowspan=2, bg="#0f172a", top=0)
+                + "</tr><tr>"
+            )
+            for p in products:
+                thead_r += _th(p, bg="#3b82f6", top=28)
+            thead_r += "</tr>"
+            body_r = []
+            for _, rr in out_r.iterrows():
+                is_tot = str(rr.get("EPK RANGE", "")) == "Total"
+                style = ' style="font-weight:700;background:#e2efda;"' if is_tot else ""
+                body_r.append(f"<tr{style}>")
+                body_r.append(_cell(rr.get("Depot")))
+                body_r.append(_cell(rr.get("EPK RANGE")))
+                for p in products:
+                    body_r.append(_cell(rr.get(p), is_int=True))
+                body_r.append(_cell(rr.get("Grand Total"), is_int=True))
+                body_r.append("</tr>")
+            if body_r:
+                html_r = [
+                    '<div class="table-scroll-fixable"><table class="excel-table" style="border-collapse:collapse;width:max-content;">',
+                    "<thead>", thead_r, "</thead><tbody>",
+                    "".join(body_r), "</tbody></table></div>",
+                ]
+                st.markdown("".join(html_r), unsafe_allow_html=True)
+                st.download_button(
+                    "Download Range-wise Excel",
+                    _excel_bytes(out_r, rng_title),
+                    f"Monthly_{mf_month}_RangeEPK_Product.xlsx",
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    key="mf_dl_RangeEPK_Product",
+                )
+            else:
+                st.warning("No range-wise rows.")
+        else:
+            st.caption("Range-wise table: no product list from SMASTER.")
+
+        st.caption(
+            f"SMASTER services only · {len(out)} row(s) · D/N from D.TYPE · "
+            f"Columns frozen through Sch. Kms · Low/Neg filters on UM vs LUM · Red = UM below LUM"
+        )
 
     # ========== BOARD 8: Trend Service Wise Gross ==========
     elif mf_board.startswith("8."):
         title = f"TREND- GROSS DEPOT SERVICE WISE PERFORMANCE FOR AND UPTO {mf_month}"
+        if mf_depot != "ALL":
+            title += f" | Depot: {mf_depot}"
+        if mf_product != "ALL":
+            title += f" | Product: {mf_product}"
+
         fy_months = []
         cur = fy_start
         while cur <= cy_end:
             fy_months.append(cur.strftime("%b-%Y"))
             cur += pd.DateOffset(months=1)
+        mon_labs = [m.split("-")[0] for m in fy_months]
         keys = ["DEPOT", "SER_NO"]
-        meta = cy_um.groupby(keys, dropna=False).agg(
-            route=("ROUTEE", "first"), rtc=("RTC_HIRE", "first"), typ=("TYPE", "first"),
-            nature=("NATURE", "first"), prod=("PRODUCT", "first"),
-            sch_dep=("SCH_DEP", "first"),
-            schs=("NO_OF_SCHS", "sum"), sers=("SER_NO", "nunique"),
-            sch_kms=("SCH_KMS", "sum"),
+
+        # Scope data once (vectorized — avoid per-service filters)
+        _b8 = base.copy()
+        if mf_depot != "ALL" and "DEPOT" in _b8.columns:
+            _b8 = _b8[_b8["DEPOT"].astype(str).str.strip().str.upper() == str(mf_depot).strip().upper()]
+        if mf_product != "ALL" and "PRODUCT" in _b8.columns:
+            _b8 = _b8[_b8["PRODUCT"].astype(str).str.strip().str.upper() == str(mf_product).strip().upper()]
+        if mf_route != "ALL" and _route_col_mf and _route_col_mf in _b8.columns:
+            _b8 = _b8[_b8[_route_col_mf].astype(str).str.strip().str.upper() == str(mf_route).strip().upper()]
+
+        _cy8 = cy_um.copy()
+        _ly8 = ly_um.copy()
+        if mf_depot != "ALL":
+            if "DEPOT" in _cy8.columns:
+                _cy8 = _cy8[_cy8["DEPOT"].astype(str).str.strip().str.upper() == str(mf_depot).strip().upper()]
+            if "DEPOT" in _ly8.columns:
+                _ly8 = _ly8[_ly8["DEPOT"].astype(str).str.strip().str.upper() == str(mf_depot).strip().upper()]
+        if mf_product != "ALL":
+            if "PRODUCT" in _cy8.columns:
+                _cy8 = _cy8[_cy8["PRODUCT"].astype(str).str.strip().str.upper() == str(mf_product).strip().upper()]
+            if "PRODUCT" in _ly8.columns:
+                _ly8 = _ly8[_ly8["PRODUCT"].astype(str).str.strip().str.upper() == str(mf_product).strip().upper()]
+
+        if len(_cy8) == 0 and len(_b8) == 0:
+            st.warning("No data for selected filters.")
+            st.stop()
+
+        # Identity + sch counts (max per service for schs/sch_kms)
+        def _mode_first(s):
+            s = s.dropna().astype(str).str.strip()
+            s = s[~s.str.lower().isin(["", "nan", "none"])]
+            if len(s) == 0:
+                return ""
+            try:
+                return s.mode().iloc[0]
+            except Exception:
+                return s.iloc[0]
+
+        src_meta = _cy8 if len(_cy8) else _b8
+        if "ROUTEE" not in src_meta.columns and "ROUTE" in src_meta.columns:
+            src_meta = src_meta.copy()
+            src_meta["ROUTEE"] = src_meta["ROUTE"]
+        meta_agg = {
+            "route": ("ROUTEE", _mode_first) if "ROUTEE" in src_meta.columns else ("DEPOT", "first"),
+            "rtc": ("RTC_HIRE", _mode_first) if "RTC_HIRE" in src_meta.columns else ("DEPOT", "first"),
+            "typ": ("TYPE", _mode_first) if "TYPE" in src_meta.columns else ("DEPOT", "first"),
+            "nature": ("NATURE", _mode_first) if "NATURE" in src_meta.columns else ("DEPOT", "first"),
+            "prod": ("PRODUCT", _mode_first) if "PRODUCT" in src_meta.columns else ("DEPOT", "first"),
+            "sch_dep": ("SCH_DEP", _mode_first) if "SCH_DEP" in src_meta.columns else ("DEPOT", "first"),
+        }
+        # schs / sch_kms: max then (already one row per service at groupby level)
+        meta = src_meta.groupby(keys, dropna=False).agg(
+            **{k: v for k, v in meta_agg.items()},
+            schs=("NO_OF_SCHS", "max") if "NO_OF_SCHS" in src_meta.columns else ("DEPOT", "count"),
+            sch_kms=("SCH_KMS", "max") if "SCH_KMS" in src_meta.columns else ("DEPOT", "count"),
         ).reset_index()
+        meta["sers"] = 1
+
+        # Pre-aggregate monthly metrics: groupby DEPOT, SER_NO, Month_Name once
+        _b8m = _b8.copy()
+        if "Month_Name" not in _b8m.columns:
+            st.error("Month_Name missing — cannot build trend.")
+            st.stop()
+        mon_g = (
+            _b8m.groupby(["DEPOT", "SER_NO", "Month_Name"], dropna=False)
+            .agg(kms=("Optd_KMs", "sum"), ge=("GE_TOT", "sum"))
+            .reset_index()
+        )
+        mon_g["Month_Name"] = mon_g["Month_Name"].astype(str).str.strip()
+        mon_g["epk"] = np.where(mon_g["kms"] > 0, mon_g["ge"] / mon_g["kms"], np.nan)
+
+        # Pivot EPK by month label (Jan, Feb, ...)
+        mon_g["_lab"] = mon_g["Month_Name"].map(lambda x: str(x).split("-")[0] if x else "")
+        # Keep only FY months of interest
+        mon_g = mon_g[mon_g["Month_Name"].isin(fy_months)]
+        epk_piv = mon_g.pivot_table(index=["DEPOT", "SER_NO"], columns="_lab", values="epk", aggfunc="first")
+        # Align columns to mon_labs order
+        for lab in mon_labs:
+            if lab not in epk_piv.columns:
+                epk_piv[lab] = np.nan
+        epk_piv = epk_piv.reindex(columns=mon_labs)
+
+        # UM / LY UM aggregates
+        def _um_agg(frame):
+            if len(frame) == 0:
+                return pd.DataFrame(columns=keys + ["kms", "ge", "epk"]).set_index(keys)
+            g = frame.groupby(keys, dropna=False).agg(kms=("Optd_KMs", "sum"), ge=("GE_TOT", "sum"))
+            g["epk"] = np.where(g["kms"] > 0, g["ge"] / g["kms"], np.nan)
+            return g
+
+        cy_agg = _um_agg(_cy8)
+        ly_agg = _um_agg(_ly8)
+
+        # ORF cache by depot
+        _orf_cache_c = {}
+        _orf_cache_l = {}
+        def _orf_c(dep):
+            dep = str(dep)
+            if dep not in _orf_cache_c:
+                _orf_cache_c[dep] = _orf(dep, side="cy")
+            return _orf_cache_c[dep]
+        def _orf_l(dep):
+            dep = str(dep)
+            if dep not in _orf_cache_l:
+                _orf_cache_l[dep] = _orf(dep, side="ly")
+            return _orf_cache_l[dep]
+
         rows = []
         for _, m in meta.iterrows():
             dep, ser = m["DEPOT"], m["SER_NO"]
-            orf_c = _orf(dep, side="cy")
-            orf_l = _orf(dep, side="ly")
+            orf_c = _orf_c(dep)
+            orf_l = _orf_l(dep)
             rec = {
                 "SL NO": len(rows) + 1,
                 "Depot": dep,
@@ -3446,28 +4435,34 @@ elif section == "Monthly files":
                 "Type": m.get("prod", ""),
                 "D/N": m.get("nature", ""),
                 "No. of Schs": int(round(float(m.get("schs", 0) or 0))) or "",
-                "No. of Ser": int(round(float(m.get("sers", 0) or 0))) or "",
+                "No. of Ser": 1,
                 "Sch. Kms": _f0(m.get("sch_kms", 0)),
             }
-            for mkey in fy_months:
-                sub = base[(base["DEPOT"] == dep) & (base["SER_NO"] == ser) & (base["Month_Name"].astype(str).str.strip() == mkey)]
-                kms = float(sub["Optd_KMs"].sum())
-                ge = float(sub["GE_TOT"].sum())
-                epk = _epk(ge, kms)
-                lab = mkey.split("-")[0]
-                rec[f"{lab} EPK"] = round(epk, 2) if pd.notna(epk) else None
+            key = (dep, ser)
+            for lab in mon_labs:
+                epk = np.nan
+                if key in epk_piv.index and lab in epk_piv.columns:
+                    try:
+                        epk = epk_piv.loc[key, lab]
+                    except Exception:
+                        epk = np.nan
+                rec[f"{lab} EPK"] = round(float(epk), 2) if pd.notna(epk) else None
                 rec[f"{lab} OR"] = round(_or(epk, orf_c), 0) if pd.notna(epk) else None
-            sub_cy = cy_um[(cy_um["DEPOT"] == dep) & (cy_um["SER_NO"] == ser)]
-            sub_ly = ly_um[(ly_um["DEPOT"] == dep) & (ly_um["SER_NO"] == ser)]
-            for label, sub, orf in (("UM", sub_cy, orf_c), ("LY UM", sub_ly, orf_l)):
-                kms = float(sub["Optd_KMs"].sum())
-                ge = float(sub["GE_TOT"].sum())
-                epk = _epk(ge, kms)
-                rec[f"{label} EPK"] = round(epk, 2) if pd.notna(epk) else None
+            for label, agg, orf in (("UM", cy_agg, orf_c), ("LY UM", ly_agg, orf_l)):
+                epk = np.nan
+                if key in agg.index:
+                    try:
+                        epk = agg.loc[key, "epk"]
+                    except Exception:
+                        epk = np.nan
+                rec[f"{label} EPK"] = round(float(epk), 2) if pd.notna(epk) else None
                 rec[f"{label} OR"] = round(_or(epk, orf), 0) if pd.notna(epk) else None
             rows.append(rec)
+
         out = pd.DataFrame(rows)
-        mon_labs = [m.split("-")[0] for m in fy_months]
+        if len(out):
+            out = out.sort_values(["Depot", "Ser No"]).reset_index(drop=True)
+            out["SL NO"] = range(1, len(out) + 1)
         thead = (
             "<tr>"
             + _th("SL<br>NO", rowspan=2, top=0) + _th("Depot", rowspan=2, top=0)
@@ -3502,6 +4497,8 @@ elif section == "Monthly files":
             body.append(_cell(r.get("LY UM OR"), is_int=True))
             body.append("</tr>")
         _render_board(title, thead, "".join(body), out, "TrendService")
+        st.caption(f"Vectorized trend · {len(out)} services · months={', '.join(mon_labs)}")
+
 
     else:
         st.info("Select a report board.")
@@ -3623,25 +4620,7 @@ elif section == "ACT VS ACT":
                 _no_dep &= ~_ac_mask_act
         _mcol2 = col_month if col_month else ("Month_Name" if "Month_Name" in df.columns else None)
         _dcol2 = "Date" if "Date" in df.columns else (col_date if col_date else None)
-
-        # Prefer real latest date from ser_wise for display / day-cap
-        _sw_max = pd.NaT
-        try:
-            if df_ser_wise is not None and len(df_ser_wise) and "Date" in df_ser_wise.columns:
-                _swd = pd.to_datetime(df_ser_wise["Date"], errors="coerce")
-                if "Month_Name" in df_ser_wise.columns and month:
-                    _swd = _swd[df_ser_wise["Month_Name"].astype(str).str.strip() == str(month).strip()]
-                _sw_max = _swd.max()
-        except Exception:
-            _sw_max = pd.NaT
-
-        # Month_Name → datetime for monthly files (ser_monthly)
-        _mon_dt = None
-        if _mcol2:
-            _mon_dt = pd.to_datetime(df[_mcol2].astype(str).str.strip(), format="%b-%Y", errors="coerce")
-            if _mon_dt.isna().all():
-                _mon_dt = pd.to_datetime(df[_mcol2].astype(str).str.strip(), format="%b-%y", errors="coerce")
-
+        # CY max date from selected month (available data)
         if _mcol2 and _dcol2:
             _cy_max = pd.to_datetime(
                 df.loc[df[_mcol2].astype(str).str.strip() == str(month).strip(), _dcol2], errors="coerce"
@@ -3650,21 +4629,7 @@ elif section == "ACT VS ACT":
             _cy_max = pd.to_datetime(df[_dcol2], errors="coerce").max()
         else:
             _cy_max = pd.NaT
-        # If Date is only synthesized month-start (day=1) or missing, parse selected month key
-        if pd.isna(_cy_max) or (pd.notna(_cy_max) and int(_cy_max.day) == 1):
-            try:
-                _mk = pd.to_datetime(str(month).strip(), format="%b-%Y", errors="coerce")
-                if pd.isna(_mk):
-                    _mk = pd.to_datetime(str(month).strip(), format="%b-%y", errors="coerce")
-                if pd.notna(_mk):
-                    _cy_max = _mk
-            except Exception:
-                pass
-        if pd.notna(_sw_max):
-            # use ser_wise latest day for heading; keep month for period windows
-            pass
         _ly_max = _cy_max - pd.DateOffset(years=1) if pd.notna(_cy_max) else pd.NaT
-
         if for_upto == "FOR":
             _cy_m = _no_dep & (df[_mcol2].astype(str).str.strip() == str(month).strip()) if _mcol2 else _no_dep
             try:
@@ -3678,39 +4643,30 @@ elif section == "ACT VS ACT":
             except Exception:
                 _ly_m = pd.Series(False, index=df.index)
         else:
-            # UPTO: FY Apr → selected month, using Month_Name dates (works for ser_monthly)
+            # UPTO: from Apr FY start to max available date
             if pd.notna(_cy_max):
                 _fy_y = _cy_max.year if _cy_max.month >= 4 else _cy_max.year - 1
                 _fy_start = pd.Timestamp(year=_fy_y, month=4, day=1)
-                _ly_end = _cy_max - pd.DateOffset(years=1)
-                _ly_fy = _fy_start - pd.DateOffset(years=1)
-                if _mon_dt is not None and _mon_dt.notna().any():
-                    _cy_m = _no_dep & (_mon_dt >= _fy_start) & (_mon_dt <= _cy_max)
-                    _ly_m = _no_dep & (_mon_dt >= _ly_fy) & (_mon_dt <= _ly_end)
-                elif _dcol2:
-                    _dt = pd.to_datetime(df[_dcol2], errors="coerce")
+                _dt = pd.to_datetime(df[_dcol2], errors="coerce") if _dcol2 else None
+                if _dt is not None:
                     _cy_m = _no_dep & (_dt >= _fy_start) & (_dt <= _cy_max)
-                    _ly_m = _no_dep & (_dt >= _ly_fy) & (_dt <= _ly_end)
+                    _ly_m = _no_dep & (_dt >= (_fy_start - pd.DateOffset(years=1))) & (_dt <= _ly_max)
                 else:
-                    _cy_m = _no_dep & (df[_mcol2].astype(str).str.strip() == str(month).strip()) if _mcol2 else _no_dep
-                    _ly_m = pd.Series(False, index=df.index)
+                    _cy_m, _ly_m = _no_dep.copy(), pd.Series(False, index=df.index)
             else:
-                _cy_m = _no_dep & (df[_mcol2].astype(str).str.strip() == str(month).strip()) if _mcol2 else _no_dep
-                _ly_m = pd.Series(False, index=df.index)
-
+                _cy_m, _ly_m = _no_dep.copy(), pd.Series(False, index=df.index)
+        # Cap FOR to available day-of-month
+        if _dcol2 and pd.notna(_cy_max):
+            _dt2 = pd.to_datetime(df[_dcol2], errors="coerce")
+            _cy_m = _cy_m & (_dt2 <= _cy_max)
+            if pd.notna(_ly_max):
+                _ly_m = _ly_m & (_dt2 <= _ly_max)
         cy_data = df[_cy_m].copy()
         ly_data = df[_ly_m].copy()
-        # Expose ser_wise latest date for heading
-        if pd.notna(_sw_max):
-            selected_max_date = _sw_max
-            display_max_date = _sw_max
-        elif pd.notna(_cy_max):
-            selected_max_date = _cy_max
-            display_max_date = _cy_max
     except Exception as _act_e:
         st.caption(f"ACT VS ACT data rebuild: {_act_e}")
 
-    orf_map, orf_by_prod, orf_err = load_orf_map(r"ORF.xlsx")
+    orf_map, orf_by_prod, orf_err = load_orf_map(r"D:\dashboard\ORF.xlsx")
     if orf_map:
         _bhel = orf_map.get("BHEL", {})
         st.caption(
@@ -3721,19 +4677,18 @@ elif section == "ACT VS ACT":
     if orf_err:
         st.warning(f"ORF: {orf_err}")
 
-    # Heading: date from ser_wise latest available day
+    # Heading helper: Actual Vs Actuals {FOR/UPTO} the month of {month} (NET/GROSS) [last date if current month]
     def _act_heading(ng_label):
         fu = str(for_upto).upper()
         date_br = ""
         try:
-            _dshow = selected_max_date
-            try:
-                if pd.notna(display_max_date):
-                    _dshow = display_max_date
-            except NameError:
-                pass
-            if pd.notna(_dshow):
-                date_br = f" ({pd.Timestamp(_dshow).strftime('%d-%m-%Y')})"
+            if pd.notna(selected_max_date):
+                now = pd.Timestamp.now()
+                if selected_max_date.year == now.year and selected_max_date.month == now.month:
+                    date_br = f" ({selected_max_date.strftime('%d-%m-%Y')})"
+                elif fu == "FOR" and selected_max_date.day < 28:
+                    # partial month even if not "today's" calendar month
+                    date_br = f" ({selected_max_date.strftime('%d-%m-%Y')})"
         except Exception:
             date_br = ""
         return f"Actual Vs Actuals {fu} the month of {month}{date_br} ({ng_label})"
@@ -3903,7 +4858,7 @@ elif section == "ACT VS ACT":
 
         # ORF / OR (TOT) per depot from PRODUCT=TOTAL
         try:
-            _orf_map, _, _ = load_orf_map(r"ORF.xlsx")
+            _orf_map, _, _ = load_orf_map(r"D:\dashboard\ORF.xlsx")
         except Exception:
             _orf_map = {}
         def _orf_val(dep, which="cy"):
@@ -4088,16 +5043,16 @@ elif section == "ACT VS ACT":
 
 elif section == "Product wise":
     pax_heading = {"FPD": "FPD PASSENGERS", "MHL": "MHL PASSENGERS"}.get(passengers, "TOTAL PASSENGERS")
-    orf_map, orf_by_prod, orf_err = load_orf_map(r"ORF.xlsx")
+    orf_map, orf_by_prod, orf_err = load_orf_map(r"D:\dashboard\ORF.xlsx")
     if orf_err:
         st.warning(f"ORF: {orf_err}")
 
     # Schedules from SMASTER.parquet (shared for both tables)
     sch_map = {}
     try:
-        sros_path = Path(r"SMASTER.parquet")
+        sros_path = Path(r"D:\Dashboard\SMASTER.parquet")
         if not sros_path.exists():
-            for alt in [Path(r"SMASTER.parquet"), Path(r"SMASTER.parquet"), Path("SMASTER.parquet"), Path(r"/home/workdir/attachments/SMASTER.parquet")]:
+            for alt in [Path(r"D:\dashboard\SMASTER.parquet"), Path(r"D:\MONTHLY\SMASTER.parquet"), Path("SMASTER.parquet"), Path(r"/home/workdir/attachments/SMASTER.parquet")]:
                 if alt.exists():
                     sros_path = alt
                     break
@@ -4805,7 +5760,7 @@ elif section == "ACT vs ACT TRENDS":
                 """Apply same ORF as ACT (depot/product filters) to every month row."""
                 if df_m is None or len(df_m) == 0:
                     return df_m
-                orf_map, orf_by_prod, _err = load_orf_map(r"ORF.xlsx")
+                orf_map, orf_by_prod, _err = load_orf_map(r"D:\dashboard\ORF.xlsx")
                 # Fake a one-row depot frame to reuse add_or_columns_depot logic per EPK
                 # Simpler: get single ORF rates for current depot/product selection
                 depot_orf = orf_map if isinstance(orf_map, dict) else {}
@@ -5111,9 +6066,9 @@ elif section == "Trends from 2024":
             schkms_by_m = {m: 0.0 for m in months_order}
             _sros_dbg = ""
             try:
-                sros_path = Path(r"SMASTER.parquet")
+                sros_path = Path(r"D:\Dashboard\SMASTER.parquet")
                 if not sros_path.exists():
-                    for alt in [Path(r"SMASTER.parquet"), Path(r"SMASTER.parquet"), Path("SMASTER.parquet"), Path(r"/home/workdir/attachments/SMASTER.parquet")]:
+                    for alt in [Path(r"D:\dashboard\SMASTER.parquet"), Path(r"D:\MONTHLY\SMASTER.parquet"), Path("SMASTER.parquet"), Path(r"/home/workdir/attachments/SMASTER.parquet")]:
                         if alt.exists():
                             sros_path = alt
                             break
@@ -5254,7 +6209,7 @@ elif section == "Trends from 2024":
 
             # ORF for OR rows (same rules as ACT)
             try:
-                orf_map, orf_by_prod, _oe = load_orf_map(r"ORF.xlsx")
+                orf_map, orf_by_prod, _oe = load_orf_map(r"D:\dashboard\ORF.xlsx")
             except Exception:
                 orf_map, orf_by_prod = {}, {}
             depot_orf = orf_map if isinstance(orf_map, dict) else {}
@@ -5685,9 +6640,9 @@ elif section == "Service-wise (SROS)":
     fpd_filter = "ALL"
 
     # --- Load SMASTER services from parquet ---
-    sros_path = Path(r"SMASTER.parquet")
+    sros_path = Path(r"D:\Dashboard\SMASTER.parquet")
     if not sros_path.exists():
-        for alt in [Path(r"SMASTER.parquet"), Path(r"SMASTER.parquet"), Path("SMASTER.parquet"), Path(r"/home/workdir/attachments/SMASTER.parquet")]:
+        for alt in [Path(r"D:\dashboard\SMASTER.parquet"), Path(r"D:\MONTHLY\SMASTER.parquet"), Path("SMASTER.parquet"), Path(r"/home/workdir/attachments/SMASTER.parquet")]:
             if alt.exists():
                 sros_path = alt
                 break
@@ -5998,7 +6953,7 @@ elif section == "Task":
 
             # ORF / OR columns
             try:
-                orf_map, orf_by_prod, _oe = load_orf_map(r"ORF.xlsx")
+                orf_map, orf_by_prod, _oe = load_orf_map(r"D:\dashboard\ORF.xlsx")
             except Exception:
                 orf_map, orf_by_prod = {}, {}
             def _orf_dep(d):
@@ -6113,7 +7068,7 @@ elif section == "Task":
 elif section == "Schedules":
     st.markdown('<div class="title-bar">Schedules – SCHs / SERVICES / SCH KMS</div>', unsafe_allow_html=True)
 
-    SCHEDULE_PARQUET = r"SMASTER.parquet"
+    SCHEDULE_PARQUET = r"D:\Dashboard\SMASTER.parquet"
 
     sched_raw, sched_err = load_smaster(SCHEDULE_PARQUET)
     if sched_err:
@@ -6240,7 +7195,7 @@ elif section == "Schedules":
             st.markdown('<hr style="margin:4px 0;border:none;border-top:1px solid #e2e8f0;">', unsafe_allow_html=True)
             st.markdown(f"#### Depot Wise Summary of SCHs and Services — {f_month}")
 
-            col_route = find_col(["ROUTEE", "ROUTE", "RouteName", "Route"])
+            col_route = find_col(["ROUTEE", "Routee", "routee"]) or find_col(["ROUTEE"])
             col_dtype = find_col(["D.TYPE", "DTYPE", "D.Type", "DutyType"])
             col_cond_mus = find_col(["COND MUSTERS", "CONDMUSTERS", "COND_MUSTERS", "ConductorMuster", "CND MUSTER", "COND MUSTER"])
             col_dri_mus = find_col(["DRI MUS", "DRIMUS", "DRI_MUS", "DriverMuster", "DRV MUSTER", "DRI MUSTERS", "DRI MUSTER"])
@@ -6266,7 +7221,7 @@ elif section == "Schedules":
                 b_mhl_opts = ["ALL"] + sorted([x for x in sdf["_MHL"].dropna().unique() if x and str(x).lower() != "nan"])
                 b_mhl = st.selectbox("MHL / NMHL", b_mhl_opts, key="sch_b_mhl")
             with bf2:
-                col_route = find_col(["ROUTEE", "ROUTE", "RouteName", "Route"])
+                col_route = find_col(["ROUTEE", "Routee", "routee"]) or find_col(["ROUTEE"])
                 if col_route:
                     sdf["_ROUTE"] = sdf[col_route].astype(str).str.strip()
                     # month-scoped route list
@@ -6964,7 +7919,7 @@ elif section == "Schedules":
                 if f_depot not in ("ALL", "REGION"):
                     op_src = op_src[op_src["_DEPOT"] == f_depot]
 
-            col_route = find_col(["ROUTEE", "ROUTE", "RouteName", "Route"])
+            col_route = find_col(["ROUTEE", "Routee", "routee"]) or find_col(["ROUTEE"])
             if col_route and "_ROUTE" not in op_src.columns:
                 op_src["_ROUTE"] = op_src[col_route].astype(str).str.strip()
             elif "_ROUTE" not in op_src.columns:
