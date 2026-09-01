@@ -1034,6 +1034,16 @@ def _load_monthly_service_metrics_cached(path_str, signature=None):
             "passengerstotal": "PSNGR_TOT", "passengersfarepaid": "PSNGR_FPD",
             "passengersmhl": "PSNGR_MHL",
             "mhlnmhl": "MHL_NMHL",
+            # Service-master attributes intentionally retained in the monthly
+            # service metrics file because Boards 7/8 use these fields from
+            # ser_monthly/ser_montly:
+            "product": "PRODUCT",
+            "schdep": "SCH_DEP",
+            "scheduledpt": "SCH_DEP",
+            "rl": "R_L",
+            "r/l": "R_L",
+            "route": "ROUTE",
+            "routee": "ROUTEE",
             "rtchire": "RTC_HIRE",
             "days": "DAYS", "noofdays": "DAYS", "operateddays": "DAYS",
             "optdays": "DAYS", "optddays": "DAYS",
@@ -1084,6 +1094,11 @@ def _load_monthly_service_metrics_cached(path_str, signature=None):
 
         if "Month_Name" in dfm.columns:
             dfm["Month_Name"] = dfm["Month_Name"].astype(str).str.strip()
+        for c in ["PRODUCT", "SCH_DEP", "ROUTE", "ROUTEE", "RTC_HIRE"]:
+            if c in dfm.columns:
+                dfm[c] = dfm[c].astype(str).str.strip()
+        if "R_L" in dfm.columns:
+            dfm["R_L"] = pd.to_numeric(dfm["R_L"], errors="coerce").fillna(0.0)
         for c in ["Optd_KMs", "GE_TOT", "GE_FPD", "GE_MHL", "NE_TOT", "NE_FPD",
                   "NE_MHL", "PSNGR_TOT", "PSNGR_FPD", "PSNGR_MHL", "DAYS"]:
             if c in dfm.columns:
@@ -3297,7 +3312,7 @@ elif section == "DOR":
                 secondary_y=True, color="#15803d", title_font=dict(size=11),
                 tickfont=dict(size=10), showgrid=False,
             )
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
 
     except Exception as _ce:
         st.caption(f"DOR charts: {_ce}")
@@ -3629,7 +3644,10 @@ elif section == "Monthly files":
         b1_ng = mf_ng
         _route_col = _route_col_mf
 
-        b1_prefix = "GROSS" if b1_ng == "Gross" else "NET"
+        # Board 1 now displays BOTH GROSS and NET EPK/OR.  Keep the existing
+        # Gross/Net selector for backward-compatible UI state, but do not use it
+        # to hide either metric group.
+        b1_prefix = "GROSS + NET"
         if b1_ng == "Gross":
             _et, _em, _ef = "GE_TOT", "GE_MHL", "GE_FPD"
         else:
@@ -3669,7 +3687,7 @@ elif section == "Monthly files":
             Ser: nunique SER_NO. Kms / earnings: sum as before.
             """
             if len(data) == 0:
-                return pd.DataFrame(columns=keys + ["schs", "sers", "rl", "sch_kms", "kms", "earn_tot", "earn_mhl", "earn_fpd"])
+                return pd.DataFrame(columns=keys + ["schs", "sers", "rl", "sch_kms", "kms", "gross_tot", "gross_mhl", "gross_fpd", "net_tot", "net_mhl", "net_fpd"])
             d = data.copy()
             if "SER_NO" not in d.columns:
                 d["SER_NO"] = ""
@@ -3682,9 +3700,12 @@ elif section == "Monthly files":
                     sch_kms=("SCH_KMS", "max"),
                     rl=("R_L", "max"),
                     kms=("Optd_KMs", "sum"),
-                    earn_tot=(_et, "sum"),
-                    earn_mhl=(_em, "sum"),
-                    earn_fpd=(_ef, "sum"),
+                    gross_tot=("GE_TOT", "sum"),
+                    gross_mhl=("GE_MHL", "sum"),
+                    gross_fpd=("GE_FPD", "sum"),
+                    net_tot=("NE_TOT", "sum"),
+                    net_mhl=("NE_MHL", "sum"),
+                    net_fpd=("NE_FPD", "sum"),
                 )
                 .reset_index()
             )
@@ -3696,9 +3717,12 @@ elif section == "Monthly files":
                     rl=("rl", "max"),
                     sch_kms=("sch_kms", "sum"),
                     kms=("kms", "sum"),
-                    earn_tot=("earn_tot", "sum"),
-                    earn_mhl=("earn_mhl", "sum"),
-                    earn_fpd=("earn_fpd", "sum"),
+                    gross_tot=("gross_tot", "sum"),
+                    gross_mhl=("gross_mhl", "sum"),
+                    gross_fpd=("gross_fpd", "sum"),
+                    net_tot=("net_tot", "sum"),
+                    net_mhl=("net_mhl", "sum"),
+                    net_fpd=("net_fpd", "sum"),
                 )
                 .reset_index()
             )
@@ -3727,9 +3751,17 @@ elif section == "Monthly files":
             def pack(earn_t, earn_m, earn_f, kms, orf):
                 et, em, ef = _epk(earn_t, kms), _epk(earn_m, kms), _epk(earn_f, kms)
                 return et, em, ef, _or(et, orf), _or(em, orf), _or(ef, orf)
-            et_cm, em_cm, ef_cm, ot_cm, om_cm, of_cm = pack(r.get("earn_tot_cm", 0), r.get("earn_mhl_cm", 0), r.get("earn_fpd_cm", 0), kms_cm, orf_c)
-            et_cy, em_cy, ef_cy, ot_cy, om_cy, of_cy = pack(r.get("earn_tot_cy", 0), r.get("earn_mhl_cy", 0), r.get("earn_fpd_cy", 0), kms_cy, orf_c)
-            et_ly, em_ly, ef_ly, ot_ly, om_ly, of_ly = pack(r.get("earn_tot_ly", 0), r.get("earn_mhl_ly", 0), r.get("earn_fpd_ly", 0), kms_ly, orf_l)
+            et_cm, em_cm, ef_cm, ot_cm, om_cm, of_cm = pack(r.get("gross_tot_cm", 0), r.get("gross_mhl_cm", 0), r.get("gross_fpd_cm", 0), kms_cm, orf_c)
+            et_cy, em_cy, ef_cy, ot_cy, om_cy, of_cy = pack(r.get("gross_tot_cy", 0), r.get("gross_mhl_cy", 0), r.get("gross_fpd_cy", 0), kms_cy, orf_c)
+            et_ly, em_ly, ef_ly, ot_ly, om_ly, of_ly = pack(r.get("gross_tot_ly", 0), r.get("gross_mhl_ly", 0), r.get("gross_fpd_ly", 0), kms_ly, orf_l)
+            nt_cm, nm_cm, nf_cm, not_cm, nom_cm, nof_cm = pack(r.get("net_tot_cm", 0), r.get("net_mhl_cm", 0), r.get("net_fpd_cm", 0), kms_cm, orf_c)
+            nt_cy, nm_cy, nf_cy, not_cy, nom_cy, nof_cy = pack(r.get("net_tot_cy", 0), r.get("net_mhl_cy", 0), r.get("net_fpd_cy", 0), kms_cy, orf_c)
+            nt_ly, nm_ly, nf_ly, not_ly, nom_ly, nof_ly = pack(r.get("net_tot_ly", 0), r.get("net_mhl_ly", 0), r.get("net_fpd_ly", 0), kms_ly, orf_l)
+            # NET is calculated from the same underlying period/KM rows, using
+            # the NET earnings columns in the three period aggregations.
+            # `_agg_side` stores the selected metric only, so for the combined
+            # Board 1 view we calculate a second set directly from the filtered
+            # source data below.
             rows.append({
                 "SL.NO.": sno,
                 "DEPOT": dep,
@@ -3758,6 +3790,24 @@ elif section == "Monthly files":
                 "LY UM TOT OR": round(ot_ly, 0) if pd.notna(ot_ly) else None,
                 "LY UM MHL OR": round(om_ly, 0) if pd.notna(om_ly) else None,
                 "LY UM FPD OR": round(of_ly, 0) if pd.notna(of_ly) else None,
+                "N CM TOT EPK": round(nt_cm, 2) if pd.notna(nt_cm) else None,
+                "N CM MHL EPK": round(nm_cm, 2) if pd.notna(nm_cm) else None,
+                "N CM FPD EPK": round(nf_cm, 2) if pd.notna(nf_cm) else None,
+                "N CY UM TOT EPK": round(nt_cy, 2) if pd.notna(nt_cy) else None,
+                "N CY UM MHL EPK": round(nm_cy, 2) if pd.notna(nm_cy) else None,
+                "N CY UM FPD EPK": round(nf_cy, 2) if pd.notna(nf_cy) else None,
+                "N LY UM TOT EPK": round(nt_ly, 2) if pd.notna(nt_ly) else None,
+                "N LY UM MHL EPK": round(nm_ly, 2) if pd.notna(nm_ly) else None,
+                "N LY UM FPD EPK": round(nf_ly, 2) if pd.notna(nf_ly) else None,
+                "N CM TOT OR": round(not_cm, 0) if pd.notna(not_cm) else None,
+                "N CM MHL OR": round(nom_cm, 0) if pd.notna(nom_cm) else None,
+                "N CM FPD OR": round(nof_cm, 0) if pd.notna(nof_cm) else None,
+                "N CY UM TOT OR": round(not_cy, 0) if pd.notna(not_cy) else None,
+                "N CY UM MHL OR": round(nom_cy, 0) if pd.notna(nom_cy) else None,
+                "N CY UM FPD OR": round(nof_cy, 0) if pd.notna(nof_cy) else None,
+                "N LY UM TOT OR": round(not_ly, 0) if pd.notna(not_ly) else None,
+                "N LY UM MHL OR": round(nom_ly, 0) if pd.notna(nom_ly) else None,
+                "N LY UM FPD OR": round(nof_ly, 0) if pd.notna(nof_ly) else None,
             })
         out = pd.DataFrame(rows)
 
@@ -3791,8 +3841,8 @@ elif section == "Monthly files":
                 "sub": PatternFill("solid", fgColor="FEF3C7"),
             }
 
-            # Title
-            ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=27)
+            # Title — fixed 9 identity columns + 36 metric columns
+            ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=45)
             tcell = ws.cell(1, 1, report_title)
             tcell.font = Font(bold=True, size=12, color="1E3A8A")
             tcell.alignment = Alignment(horizontal="center", vertical="center")
@@ -3811,25 +3861,24 @@ elif section == "Monthly files":
                     ws.cell(rr, c).font = white
                     ws.cell(rr, c).alignment = center
 
-            # Row 2: GROSS/NET EPK | GROSS/NET OR
-            ws.merge_cells(start_row=2, start_column=10, end_row=2, end_column=18)
-            c = ws.cell(2, 10, f"{prefix_label} E P K")
-            c.fill = fills["epk"]
-            c.font = Font(bold=True, color="14532D", size=10)
-            c.alignment = center
-            for cc in range(10, 19):
-                ws.cell(2, cc).fill = fills["epk"]
-                ws.cell(2, cc).border = thin
-            ws.merge_cells(start_row=2, start_column=19, end_row=2, end_column=27)
-            c = ws.cell(2, 19, f"{prefix_label} OR")
-            c.fill = fills["or"]
-            c.font = Font(bold=True, color="1E3A8A", size=10)
-            c.alignment = center
-            for cc in range(19, 28):
-                ws.cell(2, cc).fill = fills["or"]
-                ws.cell(2, cc).border = thin
+            # Row 2: GROSS EPK | GROSS OR | NET EPK | NET OR
+            groups = [
+                (10, 18, "GROSS E P K", fills["epk"], "14532D"),
+                (19, 27, "GROSS OR", fills["or"], "1E3A8A"),
+                (28, 36, "NET E P K", PatternFill("solid", fgColor="FEF3C7"), "92400E"),
+                (37, 45, "NET OR", PatternFill("solid", fgColor="EDE9FE"), "5B21B6"),
+            ]
+            for start, end, label, fill, font_color in groups:
+                ws.merge_cells(start_row=2, start_column=start, end_row=2, end_column=end)
+                c = ws.cell(2, start, label)
+                c.fill = fill
+                c.font = Font(bold=True, color=font_color, size=10)
+                c.alignment = center
+                for cc in range(start, end + 1):
+                    ws.cell(2, cc).fill = fill
+                    ws.cell(2, cc).border = thin
 
-            # Row 3: Current Month / CY UM / LY UM × 2
+            # Row 3: Current Month / CY UM / LY UM × 4
             periods = [
                 (10, "Current Month", fills["cm"]),
                 (13, "CY Upto The Month", fills["cy"]),
@@ -3837,6 +3886,12 @@ elif section == "Monthly files":
                 (19, "Current Month", fills["orc"]),
                 (22, "CY Upto The Month", fills["orcy"]),
                 (25, "LY Upto The Month", fills["orly"]),
+                (28, "Current Month", PatternFill("solid", fgColor="FDE68A")),
+                (31, "CY Upto The Month", PatternFill("solid", fgColor="FBBF24")),
+                (34, "LY Upto The Month", PatternFill("solid", fgColor="FEF3C7")),
+                (37, "Current Month", PatternFill("solid", fgColor="C4B5FD")),
+                (40, "CY Upto The Month", PatternFill("solid", fgColor="A78BFA")),
+                (43, "LY Upto The Month", PatternFill("solid", fgColor="EDE9FE")),
             ]
             for start, lab, fl in periods:
                 ws.merge_cells(start_row=3, start_column=start, end_row=3, end_column=start + 2)
@@ -3849,7 +3904,7 @@ elif section == "Monthly files":
                     ws.cell(3, cc).border = thin
 
             # Row 4: TOT MHL FPD
-            for start in (10, 13, 16, 19, 22, 25):
+            for start in [p[0] for p in periods]:
                 for i, lab in enumerate(["TOT", "MHL", "FPD"]):
                     cell = ws.cell(4, start + i, lab)
                     cell.fill = fills["sub"]
@@ -3863,6 +3918,10 @@ elif section == "Monthly files":
                 "LY UM TOT EPK", "LY UM MHL EPK", "LY UM FPD EPK",
                 "CM TOT OR", "CM MHL OR", "CM FPD OR", "CY UM TOT OR", "CY UM MHL OR", "CY UM FPD OR",
                 "LY UM TOT OR", "LY UM MHL OR", "LY UM FPD OR",
+                "N CM TOT EPK", "N CM MHL EPK", "N CM FPD EPK", "N CY UM TOT EPK", "N CY UM MHL EPK", "N CY UM FPD EPK",
+                "N LY UM TOT EPK", "N LY UM MHL EPK", "N LY UM FPD EPK",
+                "N CM TOT OR", "N CM MHL OR", "N CM FPD OR", "N CY UM TOT OR", "N CY UM MHL OR", "N CY UM FPD OR",
+                "N LY UM TOT OR", "N LY UM MHL OR", "N LY UM FPD OR",
             ]
             for ri, row in enumerate(df_out.itertuples(index=False), 5):
                 rec = dict(zip(df_out.columns, row))
@@ -3871,8 +3930,11 @@ elif section == "Monthly files":
                     if val is None or (isinstance(val, float) and (pd.isna(val) or abs(val) < 1e-12)):
                         val = None
                     elif isinstance(val, float) and abs(val - round(val)) < 1e-6 and col in (
-                        "SL.NO.", "No. of Schs", "No. of Ser", "CM TOT OR", "CM MHL OR", "CM FPD OR",
-                        "CY UM TOT OR", "CY UM MHL OR", "CY UM FPD OR", "LY UM TOT OR", "LY UM MHL OR", "LY UM FPD OR",
+                        "SL.NO.", "No. of Schs", "No. of Ser",
+                        "CM TOT OR", "CM MHL OR", "CM FPD OR", "CY UM TOT OR", "CY UM MHL OR", "CY UM FPD OR",
+                        "LY UM TOT OR", "LY UM MHL OR", "LY UM FPD OR",
+                        "N CM TOT OR", "N CM MHL OR", "N CM FPD OR", "N CY UM TOT OR", "N CY UM MHL OR",
+                        "N CY UM FPD OR", "N LY UM TOT OR", "N LY UM MHL OR", "N LY UM FPD OR",
                     ):
                         val = int(round(val))
                     cell = ws.cell(ri, ci, val if val != "" else None)
@@ -3880,7 +3942,7 @@ elif section == "Monthly files":
                     cell.border = thin
 
             widths = {1: 6, 2: 10, 3: 10, 4: 10, 5: 9, 6: 8, 7: 8, 8: 8, 9: 10}
-            for i in range(1, 28):
+            for i in range(1, 46):
                 ws.column_dimensions[get_column_letter(i)].width = widths.get(i, 9)
             ws.row_dimensions[1].height = 20
             ws.row_dimensions[2].height = 18
@@ -3904,8 +3966,10 @@ elif section == "Monthly files":
             + _th("No.<br>of<br>Ser", rowspan=3, top=0)
             + _th("R/L", rowspan=3, top=0)
             + _th("Sch<br>Kms", rowspan=3, top=0)
-            + _th(f"{b1_prefix} E P K", bg="#dcfce7", color="#14532d", colspan=9, top=0)
-            + _th(f"{b1_prefix} OR", bg="#dbeafe", color="#1e3a8a", colspan=9, top=0)
+            + _th("GROSS E P K", bg="#dcfce7", color="#14532d", colspan=9, top=0)
+            + _th("GROSS OR", bg="#dbeafe", color="#1e3a8a", colspan=9, top=0)
+            + _th("NET E P K", bg="#fef3c7", color="#92400e", colspan=9, top=0)
+            + _th("NET OR", bg="#ede9fe", color="#5b21b6", colspan=9, top=0)
             + "</tr><tr>"
             + _th("Current Month", bg="#bbf7d0", color="#14532d", colspan=3, top=28)
             + _th("CY Upto The Month", bg="#86efac", color="#14532d", colspan=3, top=28)
@@ -3913,9 +3977,15 @@ elif section == "Monthly files":
             + _th("Current Month", bg="#bfdbfe", color="#1e3a8a", colspan=3, top=28)
             + _th("CY Upto The Month", bg="#93c5fd", color="#1e3a8a", colspan=3, top=28)
             + _th("LY Upto The Month", bg="#bfdbfe", color="#1e3a8a", colspan=3, top=28)
+            + _th("Current Month", bg="#fde68a", color="#92400e", colspan=3, top=28)
+            + _th("CY Upto The Month", bg="#fbbf24", color="#92400e", colspan=3, top=28)
+            + _th("LY Upto The Month", bg="#fef3c7", color="#92400e", colspan=3, top=28)
+            + _th("Current Month", bg="#c4b5fd", color="#5b21b6", colspan=3, top=28)
+            + _th("CY Upto The Month", bg="#a78bfa", color="#5b21b6", colspan=3, top=28)
+            + _th("LY Upto The Month", bg="#ede9fe", color="#5b21b6", colspan=3, top=28)
             + "</tr><tr>"
         )
-        for _ in range(6):
+        for _ in range(12):
             thead += _th("TOT", bg="#fef3c7", color="#92400e", top=56) + _th("MHL", bg="#fef3c7", color="#92400e", top=56) + _th("FPD", bg="#fef3c7", color="#92400e", top=56)
         thead += "</tr>"
         body = []
@@ -3925,6 +3995,10 @@ elif section == "Monthly files":
             "LY UM TOT EPK", "LY UM MHL EPK", "LY UM FPD EPK",
             "CM TOT OR", "CM MHL OR", "CM FPD OR", "CY UM TOT OR", "CY UM MHL OR", "CY UM FPD OR",
             "LY UM TOT OR", "LY UM MHL OR", "LY UM FPD OR",
+            "N CM TOT EPK", "N CM MHL EPK", "N CM FPD EPK", "N CY UM TOT EPK", "N CY UM MHL EPK", "N CY UM FPD EPK",
+            "N LY UM TOT EPK", "N LY UM MHL EPK", "N LY UM FPD EPK",
+            "N CM TOT OR", "N CM MHL OR", "N CM FPD OR", "N CY UM TOT OR", "N CY UM MHL OR", "N CY UM FPD OR",
+            "N LY UM TOT OR", "N LY UM MHL OR", "N LY UM FPD OR",
         ]
         for _, r in out.iterrows():
             body.append("<tr>")
@@ -4452,6 +4526,41 @@ elif section == "Monthly files":
             if sk == 0 and rl > 0 and sc > 0:
                 master.at[i, "sch_kms"] = rl * sc
 
+        # `master` is SMASTER-only for schedule counts/identity.  However,
+        # Sch Dep, R/L and Type must come from the monthly service file.
+        _meta7 = _svc7[_svc7["Month_Name"].astype(str).str.strip() == str(mf_month).strip()].copy()
+        if len(_meta7):
+            _meta7["_SVC"] = _meta7["SER_NO"].map(_norm_svc7)
+            _meta7["_DEP"] = _meta7["DEPOT"].astype(str).str.strip().str.upper()
+            def _first_nonblank7(series):
+                z = series.dropna().astype(str).str.strip()
+                z = z[~z.str.lower().isin(["", "nan", "none"])]
+                return z.mode().iloc[0] if len(z) else ""
+            mcols7 = ["_DEP", "_SVC"]
+            agg7_meta = {}
+            if "SCH_DEP" in _meta7.columns:
+                agg7_meta["sch_dep_m"] = ("SCH_DEP", _first_nonblank7)
+            if "R_L" in _meta7.columns:
+                agg7_meta["rl_m"] = ("R_L", "max")
+            if "PRODUCT" in _meta7.columns:
+                agg7_meta["typ_m"] = ("PRODUCT", _first_nonblank7)
+            if agg7_meta:
+                monthly_meta7 = _meta7.groupby(mcols7, dropna=False).agg(**agg7_meta).reset_index()
+                master = master.merge(
+                    monthly_meta7.rename(columns={"_DEP":"DEPOT","_SVC":"SER_NO"}),
+                    on=["DEPOT","SER_NO"], how="left"
+                )
+                if "sch_dep_m" in master.columns:
+                    # Strict source rule: Sch Dep is from monthly parquet.
+                    master["sch_dep"] = master["sch_dep_m"].fillna("").astype(str).str.strip()
+                if "rl_m" in master.columns:
+                    # Strict source rule: R/L is from monthly parquet.
+                    master["rl"] = pd.to_numeric(master["rl_m"], errors="coerce").fillna(0.0)
+                if "typ_m" in master.columns:
+                    # Strict source rule: Type is PRODUCT from monthly parquet.
+                    master["typ"] = master["typ_m"].fillna("").astype(str).str.strip()
+                master = master.drop(columns=[c for c in ["sch_dep_m","rl_m","typ_m"] if c in master.columns])
+
         allowed = set(zip(master["DEPOT"].astype(str).str.upper(), master["SER_NO"].map(_norm_svc7)))
 
         def _b7_filter(data):
@@ -4489,6 +4598,12 @@ elif section == "Monthly files":
             st.stop()
         _svc7["SER_NO"] = _svc7["SER_NO"].map(_norm_svc7)
         _svc7["DEPOT"] = _svc7["DEPOT"].astype(str).str.strip().str.upper()
+        # Board 7 source rule:
+        #   SMASTER -> Depot, Ser No, Route, RTC/HIRE, D/N, No.of Schs,
+        #              No.of Ser, Sch.Kms
+        #   ser_monthly -> Sch Dep, R/L, TYPE (= PRODUCT)
+        # Monthly attributes are merged later by DEPOT+SER_NO and NEVER used
+        # for schedule counts.
         # Metrics may contain services not present in the selected SMASTER month;
         # never let those create rows in Board 7.
         _svc7 = _svc7[_svc7.apply(
@@ -4508,7 +4623,6 @@ elif section == "Monthly files":
             if len(data) == 0:
                 return pd.DataFrame(columns=keys + [
                     "kms", "ge_tot", "ge_mhl", "ge_fpd", "ne_tot", "ne_mhl", "ne_fpd", "days",
-                    "rl_p", "route_p", "rtc_p", "prod_p", "typ_p", "nature_p", "sch_dep_p",
                 ])
             d = data.copy()
             d["SER_NO"] = d["SER_NO"].map(_norm_svc7)
@@ -4542,8 +4656,7 @@ elif section == "Monthly files":
         merged = master.merge(a_cy, on=keys, how="left")
         merged = merged.merge(a_cm, on=keys, how="left", suffixes=("_cy", "_cm"))
         merged = merged.merge(a_ly, on=keys, how="left")
-        for c in ["kms", "ge_tot", "ge_mhl", "ge_fpd", "ne_tot", "ne_mhl", "ne_fpd", "days",
-                  "rl_p", "route_p", "rtc_p", "prod_p", "typ_p", "nature_p", "sch_dep_p"]:
+        for c in ["kms", "ge_tot", "ge_mhl", "ge_fpd", "ne_tot", "ne_mhl", "ne_fpd", "days"]:
             if c in merged.columns:
                 merged.rename(columns={c: f"{c}_ly"}, inplace=True)
 
@@ -5200,6 +5313,48 @@ elif section == "Monthly files":
         _svc8["DEPOT"] = _svc8["DEPOT"].astype(str).str.strip().str.upper()
         _svc8 = _svc8[_svc8.apply(lambda rr: (rr["DEPOT"], _norm8(rr["SER_NO"])) in allowed8, axis=1)].copy()
 
+        # Board 8 source rule:
+        #   SMASTER -> Depot, Ser No, Route, RTC/HIRE, D/N,
+        #              No.of Schs, No.of Ser, Sch.Kms
+        #   ser_monthly -> Sch Dep, R/L, Type (= PRODUCT)
+        _meta8 = _svc8[_svc8["Month_Name"].astype(str).str.strip() == str(mf_month).strip()].copy()
+        if len(_meta8):
+            _meta8["_SVC"] = _meta8["SER_NO"].map(_norm8)
+            def _first_nonblank8(series):
+                z = series.dropna().astype(str).str.strip()
+                z = z[~z.str.lower().isin(["", "nan", "none"])]
+                return z.mode().iloc[0] if len(z) else ""
+            agg8_meta = {}
+            if "SCH_DEP" in _meta8.columns:
+                agg8_meta["sch_dep_m"] = ("SCH_DEP", _first_nonblank8)
+            if "R_L" in _meta8.columns:
+                agg8_meta["rl_m"] = ("R_L", "max")
+            if "PRODUCT" in _meta8.columns:
+                agg8_meta["typ_m"] = ("PRODUCT", _first_nonblank8)
+            if agg8_meta:
+                mm8 = _meta8.groupby(["DEPOT","_SVC"], dropna=False).agg(**agg8_meta).reset_index()
+                master8 = master8.merge(
+                    mm8.rename(columns={"_SVC":"SER_NO"}), on=["DEPOT","SER_NO"], how="left"
+                )
+                if "sch_dep_m" in master8.columns:
+                    # Strict source rule: Sch Dep is from monthly parquet.
+                    master8["sch_dep"] = master8["sch_dep_m"].fillna("").astype(str).str.strip()
+                if "rl_m" in master8.columns:
+                    # Strict source rule: R/L is from monthly parquet.
+                    master8["rl"] = pd.to_numeric(master8["rl_m"], errors="coerce").fillna(0.0)
+                if "typ_m" in master8.columns:
+                    # Strict source rule: Type is PRODUCT from monthly parquet.
+                    master8["typ"] = master8["typ_m"].fillna("").astype(str).str.strip()
+                master8 = master8.drop(columns=[c for c in ["sch_dep_m","rl_m","typ_m"] if c in master8.columns])
+        # Recalculate Sch Kms only if SMASTER Sch Kms is blank, using the
+        # monthly R/L as requested.
+        for ii, rr in master8.iterrows():
+            sk = float(rr.get("sch_kms", 0) or 0)
+            rl = float(rr.get("rl", 0) or 0)
+            sc = float(rr.get("schs", 0) or 0)
+            if sk == 0 and rl > 0 and sc > 0:
+                master8.at[ii, "sch_kms"] = rl * sc
+
         fy_months = []
         cur = fy_start
         while cur <= cy_end:
@@ -5264,29 +5419,35 @@ elif section == "Monthly files":
             st.stop()
         mon_g = (
             _b8m.groupby(["DEPOT", "SER_NO", "Month_Name"], dropna=False)
-            .agg(kms=("Optd_KMs", "sum"), ge=("GE_TOT", "sum"))
+            .agg(kms=("Optd_KMs", "sum"), ge=("GE_TOT", "sum"), ne=("NE_TOT", "sum"))
             .reset_index()
         )
         mon_g["Month_Name"] = mon_g["Month_Name"].astype(str).str.strip()
-        mon_g["epk"] = np.where(mon_g["kms"] > 0, mon_g["ge"] / mon_g["kms"], np.nan)
+        mon_g["g_epk"] = np.where(mon_g["kms"] > 0, mon_g["ge"] / mon_g["kms"], np.nan)
+        mon_g["n_epk"] = np.where(mon_g["kms"] > 0, mon_g["ne"] / mon_g["kms"], np.nan)
 
-        # Pivot EPK by month label (Jan, Feb, ...)
+        # Pivot GROSS and NET EPK by month label (Jan, Feb, ...)
         mon_g["_lab"] = mon_g["Month_Name"].map(lambda x: str(x).split("-")[0] if x else "")
-        # Keep only FY months of interest
         mon_g = mon_g[mon_g["Month_Name"].isin(fy_months)]
-        epk_piv = mon_g.pivot_table(index=["DEPOT", "SER_NO"], columns="_lab", values="epk", aggfunc="first")
-        # Align columns to mon_labs order
+        g_epk_piv = mon_g.pivot_table(index=["DEPOT", "SER_NO"], columns="_lab", values="g_epk", aggfunc="first")
+        n_epk_piv = mon_g.pivot_table(index=["DEPOT", "SER_NO"], columns="_lab", values="n_epk", aggfunc="first")
         for lab in mon_labs:
-            if lab not in epk_piv.columns:
-                epk_piv[lab] = np.nan
-        epk_piv = epk_piv.reindex(columns=mon_labs)
+            if lab not in g_epk_piv.columns:
+                g_epk_piv[lab] = np.nan
+            if lab not in n_epk_piv.columns:
+                n_epk_piv[lab] = np.nan
+        g_epk_piv = g_epk_piv.reindex(columns=mon_labs)
+        n_epk_piv = n_epk_piv.reindex(columns=mon_labs)
 
         # UM / LY UM aggregates
         def _um_agg(frame):
             if len(frame) == 0:
-                return pd.DataFrame(columns=keys + ["kms", "ge", "epk"]).set_index(keys)
-            g = frame.groupby(keys, dropna=False).agg(kms=("Optd_KMs", "sum"), ge=("GE_TOT", "sum"))
-            g["epk"] = np.where(g["kms"] > 0, g["ge"] / g["kms"], np.nan)
+                return pd.DataFrame(columns=keys + ["kms", "ge", "ne", "g_epk", "n_epk"]).set_index(keys)
+            g = frame.groupby(keys, dropna=False).agg(
+                kms=("Optd_KMs", "sum"), ge=("GE_TOT", "sum"), ne=("NE_TOT", "sum")
+            )
+            g["g_epk"] = np.where(g["kms"] > 0, g["ge"] / g["kms"], np.nan)
+            g["n_epk"] = np.where(g["kms"] > 0, g["ne"] / g["kms"], np.nan)
             return g
 
         cy_agg = _um_agg(_cy8)
@@ -5326,23 +5487,33 @@ elif section == "Monthly files":
             }
             key = (dep, ser)
             for lab in mon_labs:
-                epk = np.nan
-                if key in epk_piv.index and lab in epk_piv.columns:
+                g_epk = n_epk = np.nan
+                if key in g_epk_piv.index and lab in g_epk_piv.columns:
                     try:
-                        epk = epk_piv.loc[key, lab]
+                        g_epk = g_epk_piv.loc[key, lab]
                     except Exception:
-                        epk = np.nan
-                rec[f"{lab} EPK"] = round(float(epk), 2) if pd.notna(epk) else None
-                rec[f"{lab} OR"] = round(_or(epk, orf_c), 0) if pd.notna(epk) else None
+                        pass
+                if key in n_epk_piv.index and lab in n_epk_piv.columns:
+                    try:
+                        n_epk = n_epk_piv.loc[key, lab]
+                    except Exception:
+                        pass
+                rec[f"{lab} GROSS EPK"] = round(float(g_epk), 2) if pd.notna(g_epk) else None
+                rec[f"{lab} GROSS OR"] = round(_or(g_epk, orf_c), 0) if pd.notna(g_epk) else None
+                rec[f"{lab} NET EPK"] = round(float(n_epk), 2) if pd.notna(n_epk) else None
+                rec[f"{lab} NET OR"] = round(_or(n_epk, orf_c), 0) if pd.notna(n_epk) else None
             for label, agg, orf in (("UM", cy_agg, orf_c), ("LY UM", ly_agg, orf_l)):
-                epk = np.nan
+                g_epk = n_epk = np.nan
                 if key in agg.index:
                     try:
-                        epk = agg.loc[key, "epk"]
+                        g_epk = agg.loc[key, "g_epk"]
+                        n_epk = agg.loc[key, "n_epk"]
                     except Exception:
-                        epk = np.nan
-                rec[f"{label} EPK"] = round(float(epk), 2) if pd.notna(epk) else None
-                rec[f"{label} OR"] = round(_or(epk, orf), 0) if pd.notna(epk) else None
+                        pass
+                rec[f"{label} GROSS EPK"] = round(float(g_epk), 2) if pd.notna(g_epk) else None
+                rec[f"{label} GROSS OR"] = round(_or(g_epk, orf), 0) if pd.notna(g_epk) else None
+                rec[f"{label} NET EPK"] = round(float(n_epk), 2) if pd.notna(n_epk) else None
+                rec[f"{label} NET OR"] = round(_or(n_epk, orf), 0) if pd.notna(n_epk) else None
             rows.append(rec)
 
         out = pd.DataFrame(rows)
@@ -5359,6 +5530,8 @@ elif section == "Monthly files":
             + _th("No.<br>of<br>Ser", rowspan=2, top=0) + _th("Sch.<br>Kms", rowspan=2, top=0)
             + _th("GROSS EPK", bg="#dcfce7", color="#14532d", colspan=len(mon_labs) + 2, top=0)
             + _th("GROSS OR", bg="#dbeafe", color="#1e3a8a", colspan=len(mon_labs) + 2, top=0)
+            + _th("NET EPK", bg="#fef3c7", color="#92400e", colspan=len(mon_labs) + 2, top=0)
+            + _th("NET OR", bg="#ede9fe", color="#5b21b6", colspan=len(mon_labs) + 2, top=0)
             + "</tr><tr>"
         )
         for lab in mon_labs:
@@ -5367,6 +5540,12 @@ elif section == "Monthly files":
         for lab in mon_labs:
             thead += _th(lab.upper()[:3], bg="#bfdbfe", color="#1e3a8a", top=28)
         thead += _th("UM", bg="#93c5fd", color="#1e3a8a", top=28) + _th("LY UM", bg="#bfdbfe", color="#1e3a8a", top=28)
+        for lab in mon_labs:
+            thead += _th(lab.upper()[:3], bg="#fef3c7", color="#92400e", top=28)
+        thead += _th("UM", bg="#fbbf24", color="#92400e", top=28) + _th("LY UM", bg="#fef3c7", color="#92400e", top=28)
+        for lab in mon_labs:
+            thead += _th(lab.upper()[:3], bg="#ddd6fe", color="#5b21b6", top=28)
+        thead += _th("UM", bg="#c4b5fd", color="#5b21b6", top=28) + _th("LY UM", bg="#ddd6fe", color="#5b21b6", top=28)
         thead += "</tr>"
         body = []
         for _, r in out.iterrows():
@@ -5374,13 +5553,21 @@ elif section == "Monthly files":
             for c in ["SL NO", "Depot", "Ser No", "Sch Dep", "Route", "RTC/HIRE", "Type", "D/N", "No. of Schs", "No. of Ser", "Sch. Kms"]:
                 body.append(_cell(r.get(c)))
             for lab in mon_labs:
-                body.append(_cell(r.get(f"{lab} EPK")))
-            body.append(_cell(r.get("UM EPK")))
-            body.append(_cell(r.get("LY UM EPK")))
+                body.append(_cell(r.get(f"{lab} GROSS EPK")))
+            body.append(_cell(r.get("UM GROSS EPK")))
+            body.append(_cell(r.get("LY UM GROSS EPK")))
             for lab in mon_labs:
-                body.append(_cell(r.get(f"{lab} OR"), is_int=True))
-            body.append(_cell(r.get("UM OR"), is_int=True))
-            body.append(_cell(r.get("LY UM OR"), is_int=True))
+                body.append(_cell(r.get(f"{lab} GROSS OR"), is_int=True))
+            body.append(_cell(r.get("UM GROSS OR"), is_int=True))
+            body.append(_cell(r.get("LY UM GROSS OR"), is_int=True))
+            for lab in mon_labs:
+                body.append(_cell(r.get(f"{lab} NET EPK")))
+            body.append(_cell(r.get("UM NET EPK")))
+            body.append(_cell(r.get("LY UM NET EPK")))
+            for lab in mon_labs:
+                body.append(_cell(r.get(f"{lab} NET OR"), is_int=True))
+            body.append(_cell(r.get("UM NET OR"), is_int=True))
+            body.append(_cell(r.get("LY UM NET OR"), is_int=True))
             body.append("</tr>")
         _render_board(title, thead, "".join(body), out, "TrendService")
         st.caption(f"Vectorized trend · {len(out)} services · months={', '.join(mon_labs)}")
@@ -5829,7 +6016,7 @@ elif section == "ACT VS ACT":
                         yaxis=dict(title=ylab, range=[0, ymax]),
                         template="plotly_white", bargap=0.25,
                     )
-                    st.plotly_chart(fig, use_container_width=True)
+                    st.plotly_chart(fig, width="stretch")
 
         # ---- 6th chart: REGION – each metric own scale (so Earnings does not dwarf others) ----
         try:
@@ -5919,7 +6106,7 @@ elif section == "ACT VS ACT":
             # subplot title style
             for ann in fig_r["layout"]["annotations"]:
                 ann["font"] = dict(size=12, color="#dc2626")
-            st.plotly_chart(fig_r, use_container_width=True)
+            st.plotly_chart(fig_r, width="stretch")
         except Exception as _re:
             st.caption(f"Region chart: {_re}")
 
@@ -6246,7 +6433,7 @@ elif section == "Day wise":
                     ann["y"] = float(ann["y"]) + 0.08 if ann["y"] is not None else 1.08
                 except Exception:
                     pass
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
             # Table - only CY, LY, VAR (no % Growth)
             html = ['<div class="table-scroll"><table class="excel-table">']
             html.append('<tr>')
@@ -6460,7 +6647,7 @@ elif section == "Day wise":
                                     unsafe_allow_html=True,
                                 )
                                 fig, vol, epk = _make_fig(mets, lr, dt, left_tickvals=tickvals)
-                                st.plotly_chart(fig, use_container_width=True)
+                                st.plotly_chart(fig, width="stretch")
                                 st.markdown(_summary_html(vol, epk), unsafe_allow_html=True)
             except Exception as _ce:
                 st.caption(f"Day-wise chart: {_ce}")
@@ -6786,15 +6973,15 @@ elif section == "ACT vs ACT TRENDS":
                 # Single row, 5 charts side by side (narrower)
                 ch1, ch2, ch3, ch4, ch5 = st.columns(5)
                 with ch1:
-                    st.plotly_chart(_combo(df_chart_plot, "kms_CY", "kms_LY", f"KMs ({_chart_prefix})", "#0284c7", "#93c5fd"), use_container_width=True)
+                    st.plotly_chart(_combo(df_chart_plot, "kms_CY", "kms_LY", f"KMs ({_chart_prefix})", "#0284c7", "#93c5fd"), width="stretch")
                 with ch2:
-                    st.plotly_chart(_combo(df_chart_plot, "epk_tot_CY", "epk_tot_LY", f"{_chart_prefix} TOT EPK", "#6b21a8", "#c4b5fd"), use_container_width=True)
+                    st.plotly_chart(_combo(df_chart_plot, "epk_tot_CY", "epk_tot_LY", f"{_chart_prefix} TOT EPK", "#6b21a8", "#c4b5fd"), width="stretch")
                 with ch3:
-                    st.plotly_chart(_combo(df_chart_plot, "epk_fpd_CY", "epk_fpd_LY", f"{_chart_prefix} FPD EPK", "#15803d", "#86efac"), use_container_width=True)
+                    st.plotly_chart(_combo(df_chart_plot, "epk_fpd_CY", "epk_fpd_LY", f"{_chart_prefix} FPD EPK", "#15803d", "#86efac"), width="stretch")
                 with ch4:
-                    st.plotly_chart(_combo(df_chart_plot, "epk_mhl_CY", "epk_mhl_LY", f"{_chart_prefix} MHL EPK", "#1d4ed8", "#93c5fd"), use_container_width=True)
+                    st.plotly_chart(_combo(df_chart_plot, "epk_mhl_CY", "epk_mhl_LY", f"{_chart_prefix} MHL EPK", "#1d4ed8", "#93c5fd"), width="stretch")
                 with ch5:
-                    st.plotly_chart(_combo(df_chart_plot, "pax_CY", "pax_LY", pax_heading, "#db2777", "#f9a8d4", is_pax=True), use_container_width=True)
+                    st.plotly_chart(_combo(df_chart_plot, "pax_CY", "pax_LY", pax_heading, "#db2777", "#f9a8d4", is_pax=True), width="stretch")
 
             # TABLE A NET
             st.markdown(
@@ -6914,16 +7101,16 @@ elif section == "Trends from 2024":
 
             ch1, ch2, ch3, ch4, ch5 = st.columns(5)
             with ch1:
-                st.plotly_chart(create_card_chart(m_chart, "Kms_Lakhs", "KILOMETERS (in lks.)", "#0284c7"), use_container_width=True)
+                st.plotly_chart(create_card_chart(m_chart, "Kms_Lakhs", "KILOMETERS (in lks.)", "#0284c7"), width="stretch")
             with ch2:
-                st.plotly_chart(create_card_chart(m_chart, "Tot_EPK", f"{prefix} TOT. E.P.K (in Ps/kms.)", "#2563eb"), use_container_width=True)
+                st.plotly_chart(create_card_chart(m_chart, "Tot_EPK", f"{prefix} TOT. E.P.K (in Ps/kms.)", "#2563eb"), width="stretch")
             with ch3:
-                st.plotly_chart(create_card_chart(m_chart, "FPD_EPK", f"{prefix} FPD. E.P.K (in Ps/kms.)", "#16a34a"), use_container_width=True)
+                st.plotly_chart(create_card_chart(m_chart, "FPD_EPK", f"{prefix} FPD. E.P.K (in Ps/kms.)", "#16a34a"), width="stretch")
             with ch4:
-                st.plotly_chart(create_card_chart(m_chart, "MHL_EPK", f"{prefix} MHL. E.P.K (in Ps/kms.)", "#9333ea"), use_container_width=True)
+                st.plotly_chart(create_card_chart(m_chart, "MHL_EPK", f"{prefix} MHL. E.P.K (in Ps/kms.)", "#9333ea"), width="stretch")
             with ch5:
                 pax_title = {"FPD": "FPD PASSENGERS (in lks.)", "MHL": "MHL PASSENGERS (in lks.)"}.get(passengers, "TOTAL PASSENGERS (in lks.)")
-                st.plotly_chart(create_card_chart(m_chart, "Pax_Lakhs", pax_title, "#db2777", is_pax=True), use_container_width=True)
+                st.plotly_chart(create_card_chart(m_chart, "Pax_Lakhs", pax_title, "#db2777", is_pax=True), width="stretch")
 
             # 3. Cumulative CY & LY Totals using Global Filtering Rules
             cy_kms_tot = cy_data["Optd_KMs"].sum() / 100000 if len(cy_data) else 0
@@ -7212,7 +7399,7 @@ elif section == "Trends from 2024":
                     yaxis_title="TOT EPK",
                     template="plotly_white",
                 )
-                st.plotly_chart(fig_line, use_container_width=True)
+                st.plotly_chart(fig_line, width="stretch")
             except Exception as _le:
                 st.caption(f"Line chart: {_le}")
 
@@ -9459,7 +9646,7 @@ elif section == "MISSION RR":
                 st.success(f"Loaded {len(master)} services from upload. ({info})")
                 # show sample so user can verify
                 st.caption("Sample of parsed rows:")
-                st.dataframe(master.head(5), use_container_width=True)
+                st.dataframe(master.head(5), width="stretch")
             else:
                 st.error("Could not parse service columns from the Excel.")
                 with st.expander("Detected column headers (debug)"):
