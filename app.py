@@ -1039,9 +1039,18 @@ def _load_monthly_service_metrics_cached(path_str, signature=None):
             # ser_monthly/ser_montly:
             "product": "PRODUCT",
             "schdep": "SCH_DEP",
+            "sch.dep": "SCH_DEP",
             "scheduledpt": "SCH_DEP",
+            "scheduledepot": "SCH_DEP",
+            "schdepot": "SCH_DEP",
+            "scheduledep": "SCH_DEP",
+            "schdepo": "SCH_DEP",
             "rl": "R_L",
             "r/l": "R_L",
+            "routelength": "R_L",
+            "routelen": "R_L",
+            "route.length": "R_L",
+            "schkmsrl": "R_L",
             "route": "ROUTE",
             "routee": "ROUTEE",
             "rtchire": "RTC_HIRE",
@@ -1097,8 +1106,28 @@ def _load_monthly_service_metrics_cached(path_str, signature=None):
         for c in ["PRODUCT", "SCH_DEP", "ROUTE", "ROUTEE", "RTC_HIRE"]:
             if c in dfm.columns:
                 dfm[c] = dfm[c].astype(str).str.strip()
+        # Fuzzy recover SCH_DEP / R_L if still missing after alias rename
+        def _normk(c):
+            return (str(c).strip().lower().replace("_", "")
+                    .replace(" ", "").replace("/", "").replace(".", ""))
+        if "SCH_DEP" not in dfm.columns:
+            for c in list(dfm.columns):
+                k = _normk(c)
+                if ("sch" in k and "dep" in k) or k in ("schdep", "scheduledepot", "schdepot"):
+                    dfm["SCH_DEP"] = dfm[c].astype(str)
+                    break
+        if "R_L" not in dfm.columns:
+            for c in list(dfm.columns):
+                k = _normk(c)
+                if k in ("rl", "routelength", "routelen") or k.startswith("rl") and "epk" not in k:
+                    dfm["R_L"] = pd.to_numeric(dfm[c], errors="coerce").fillna(0.0)
+                    break
         if "R_L" in dfm.columns:
             dfm["R_L"] = pd.to_numeric(dfm["R_L"], errors="coerce").fillna(0.0)
+        if "SCH_DEP" in dfm.columns:
+            dfm["SCH_DEP"] = dfm["SCH_DEP"].astype(str).str.strip().replace(
+                {"nan": "", "None": "", "none": "", "<NA>": ""}
+            )
         for c in ["Optd_KMs", "GE_TOT", "GE_FPD", "GE_MHL", "NE_TOT", "NE_FPD",
                   "NE_MHL", "PSNGR_TOT", "PSNGR_FPD", "PSNGR_MHL", "DAYS"]:
             if c in dfm.columns:
@@ -3573,7 +3602,7 @@ elif section == "Monthly files":
             f'text-align:center;border:1px solid #94a3b8;{sticky}">{text}</th>'
         )
 
-    def _cell(v, is_int=False):
+    def _cell(v, is_int=False, bg=None, row_hl=False):
         if v is None or v == "" or (isinstance(v, float) and (np.isnan(v) or abs(v) < 1e-12)):
             s = ""
         elif isinstance(v, (int, float)):
@@ -3587,7 +3616,19 @@ elif section == "Monthly files":
                 s = str(v)
         else:
             s = str(v)
-        return f'<td style="padding:3px 5px;text-align:center;border:1px solid #e2e8f0;font-size:11px;">{s}</td>'
+        style = "padding:3px 5px;text-align:center;border:1px solid #e2e8f0;font-size:11px;"
+        if row_hl:
+            style += "background:#fef08a !important;font-weight:700;"
+        elif bg:
+            style += f"background:{bg};"
+        return f'<td style="{style}">{s}</td>'
+
+    # Soft fills matching header groups (GROSS EPK / GROSS OR / NET EPK / NET OR)
+    _BG_GEPK = "#f0fdf4"   # green tint
+    _BG_GOR = "#eff6ff"    # blue tint
+    _BG_NEPK = "#fffbeb"   # amber tint
+    _BG_NOR = "#f5f3ff"    # violet tint
+    _BG_OPTD = "#ecfdf5"   # teal tint
 
     def _render_board(title, thead_html, body_rows_html, df_for_excel, key_suffix):
         st.markdown(f'<div class="title-bar">{title}</div>', unsafe_allow_html=True)
@@ -3985,10 +4026,15 @@ elif section == "Monthly files":
             + _th("LY Upto The Month", bg="#ede9fe", color="#5b21b6", colspan=3, top=28)
             + "</tr><tr>"
         )
-        for _ in range(12):
-            thead += _th("TOT", bg="#fef3c7", color="#92400e", top=56) + _th("MHL", bg="#fef3c7", color="#92400e", top=56) + _th("FPD", bg="#fef3c7", color="#92400e", top=56)
+        # Row-3 sub-headers match parent group colours
+        for bg, col in [
+            ("#dcfce7", "#14532d"), ("#dcfce7", "#14532d"), ("#dcfce7", "#14532d"),  # GROSS EPK x3 periods
+            ("#dbeafe", "#1e3a8a"), ("#dbeafe", "#1e3a8a"), ("#dbeafe", "#1e3a8a"),  # GROSS OR
+            ("#fef3c7", "#92400e"), ("#fef3c7", "#92400e"), ("#fef3c7", "#92400e"),  # NET EPK
+            ("#ede9fe", "#5b21b6"), ("#ede9fe", "#5b21b6"), ("#ede9fe", "#5b21b6"),  # NET OR
+        ]:
+            thead += _th("TOT", bg=bg, color=col, top=56) + _th("MHL", bg=bg, color=col, top=56) + _th("FPD", bg=bg, color=col, top=56)
         thead += "</tr>"
-        body = []
         data_cols = [
             "SL.NO.", "DEPOT", "ROUTE", "Product", "RTC/HIRE", "No. of Schs", "No. of Ser", "R/L", "Sch Kms",
             "CM TOT EPK", "CM MHL EPK", "CM FPD EPK", "CY UM TOT EPK", "CY UM MHL EPK", "CY UM FPD EPK",
@@ -4000,15 +4046,35 @@ elif section == "Monthly files":
             "N CM TOT OR", "N CM MHL OR", "N CM FPD OR", "N CY UM TOT OR", "N CY UM MHL OR", "N CY UM FPD OR",
             "N LY UM TOT OR", "N LY UM MHL OR", "N LY UM FPD OR",
         ]
-        for _, r in out.iterrows():
-            body.append("<tr>")
-            for c in data_cols:
-                body.append(_cell(r.get(c)))
-            body.append("</tr>")
+        def _b1_col_bg(c):
+            if c.startswith("N ") and "EPK" in c:
+                return _BG_NEPK
+            if c.startswith("N ") and "OR" in c:
+                return _BG_NOR
+            if "EPK" in c:
+                return _BG_GEPK
+            if "OR" in c:
+                return _BG_GOR
+            return None
         st.markdown(f'<div class="title-bar">{title}</div>', unsafe_allow_html=True)
-        if not body:
+        if out is None or len(out) == 0:
             st.warning("No rows for this board.")
+            body = []
         else:
+            _row_opts = ["(none)"] + [
+                f"{int(r.get('SL.NO.', i+1))}. {r.get('DEPOT','')} / {r.get('ROUTE','')} / {r.get('Product','')}"
+                for i, r in out.iterrows()
+            ]
+            b1_sel = st.selectbox("Highlight row", _row_opts, index=0, key="mf_b1_row_sel")
+            body = []
+            for i, r in out.iterrows():
+                label = f"{int(r.get('SL.NO.', i+1))}. {r.get('DEPOT','')} / {r.get('ROUTE','')} / {r.get('Product','')}"
+                hl = b1_sel == label
+                tr_style = ' style="background:#fef08a;"' if hl else ""
+                body.append(f"<tr{tr_style}>")
+                for c in data_cols:
+                    body.append(_cell(r.get(c), bg=_b1_col_bg(c), row_hl=hl))
+                body.append("</tr>")
             html = [
                 '<div class="table-scroll-fixable"><table class="excel-table" style="border-collapse:collapse;width:max-content;">',
                 "<thead>", thead, "</thead><tbody>",
@@ -4526,25 +4592,31 @@ elif section == "Monthly files":
             if sk == 0 and rl > 0 and sc > 0:
                 master.at[i, "sch_kms"] = rl * sc
 
-        # Performance metrics for Board 7 come ONLY from ser_monthly/ser_montly.
-        # Service identity and displayed Ser No come ONLY from SMASTER `SER NO`.
-        # Load monthly metrics BEFORE meta merge (Sch Dep / R/L / Type from monthly).
-        _svc7, _svc7_err = load_monthly_service_metrics()
-        if _svc7_err:
-            st.error(f"Could not read service-monthly parquet: {_svc7_err}")
-            st.stop()
-        if _svc7 is None or len(_svc7) == 0:
-            st.error("Service-monthly parquet not found/empty. Checked ser_monthly.parquet and ser_montly.parquet.")
-            st.stop()
-        _svc7 = _svc7.copy()
-        if "SER_NO" not in _svc7.columns or "DEPOT" not in _svc7.columns:
-            st.error("Service-monthly parquet must contain DEPOT and SER_NO for SMASTER matching.")
-            st.stop()
-        _svc7["SER_NO"] = _svc7["SER_NO"].map(_norm_svc7)
-        _svc7["DEPOT"] = _svc7["DEPOT"].astype(str).str.strip().str.upper()
-
         # `master` is SMASTER-only for schedule counts/identity.  However,
         # Sch Dep, R/L and Type must come from the monthly service file.
+        # Ensure SCH_DEP / R_L exist on monthly frame (fuzzy) for Board 7 meta
+        def _ensure_sch_rl(frame):
+            if frame is None or len(frame) == 0:
+                return frame
+            def nk(c):
+                return str(c).strip().lower().replace("_", "").replace(" ", "").replace("/", "").replace(".", "")
+            if "SCH_DEP" not in frame.columns:
+                for c in frame.columns:
+                    k = nk(c)
+                    if ("sch" in k and "dep" in k) or k in ("schdep", "scheduledepot", "schdepot"):
+                        frame = frame.copy()
+                        frame["SCH_DEP"] = frame[c].astype(str)
+                        break
+            if "R_L" not in frame.columns:
+                for c in frame.columns:
+                    k = nk(c)
+                    if k in ("rl", "routelength", "routelen") or (k.startswith("rl") and "epk" not in k and len(k) <= 6):
+                        frame = frame.copy()
+                        frame["R_L"] = pd.to_numeric(frame[c], errors="coerce").fillna(0.0)
+                        break
+            return frame
+        _svc7 = _ensure_sch_rl(_svc7)
+
         _meta7 = _svc7[_svc7["Month_Name"].astype(str).str.strip() == str(mf_month).strip()].copy()
         if len(_meta7):
             _meta7["_SVC"] = _meta7["SER_NO"].map(_norm_svc7)
@@ -4564,33 +4636,77 @@ elif section == "Monthly files":
             if agg7_meta:
                 monthly_meta7 = _meta7.groupby(mcols7, dropna=False).agg(**agg7_meta).reset_index()
                 master = master.merge(
-                    monthly_meta7.rename(columns={"_DEP": "DEPOT", "_SVC": "SER_NO"}),
-                    on=["DEPOT", "SER_NO"], how="left",
+                    monthly_meta7.rename(columns={"_DEP":"DEPOT","_SVC":"SER_NO"}),
+                    on=["DEPOT","SER_NO"], how="left"
                 )
+                def _nonblank_series(s):
+                    s = s.astype(str).str.strip()
+                    return s.where(~s.str.lower().isin(["", "nan", "none", "nat", "<na>"]), other=pd.NA)
+
                 if "sch_dep_m" in master.columns:
-                    # Strict source rule: Sch Dep is from monthly parquet.
-                    master["sch_dep"] = master["sch_dep_m"].fillna("").astype(str).str.strip()
+                    # Prefer monthly Sch Dep; fall back to SMASTER when blank
+                    m = _nonblank_series(master["sch_dep_m"])
+                    fb = master["sch_dep"].astype(str).str.strip() if "sch_dep" in master.columns else ""
+                    master["sch_dep"] = m.fillna(fb).fillna("").astype(str).str.strip()
                 if "rl_m" in master.columns:
-                    # Strict source rule: R/L is from monthly parquet.
-                    master["rl"] = pd.to_numeric(master["rl_m"], errors="coerce").fillna(0.0)
+                    # Prefer monthly R/L; fall back to SMASTER when 0/blank
+                    mrl = pd.to_numeric(master["rl_m"], errors="coerce")
+                    fbrl = pd.to_numeric(master.get("rl", 0), errors="coerce").fillna(0.0)
+                    master["rl"] = mrl.where(mrl.fillna(0) != 0, fbrl).fillna(fbrl)
                 if "typ_m" in master.columns:
-                    # Strict source rule: Type is PRODUCT from monthly parquet.
-                    master["typ"] = master["typ_m"].fillna("").astype(str).str.strip()
+                    m = _nonblank_series(master["typ_m"])
+                    fb = master["typ"].astype(str).str.strip() if "typ" in master.columns else ""
+                    master["typ"] = m.fillna(fb).fillna("").astype(str).str.strip()
                 master = master.drop(columns=[c for c in ["sch_dep_m", "rl_m", "typ_m"] if c in master.columns])
 
         allowed = set(zip(master["DEPOT"].astype(str).str.upper(), master["SER_NO"].map(_norm_svc7)))
 
+        def _b7_filter(data):
+            out_d = data.copy() if len(data) else data
+            if len(out_d) == 0:
+                return out_d
+            if mf_depot != "ALL" and "DEPOT" in out_d.columns:
+                out_d = out_d[out_d["DEPOT"].astype(str).str.strip().str.upper() == str(mf_depot).strip().upper()]
+            if mf_route != "ALL" and _route_col_mf and _route_col_mf in out_d.columns:
+                out_d = out_d[out_d[_route_col_mf].astype(str).str.strip().str.upper() == str(mf_route).strip().upper()]
+            if mf_product != "ALL" and "PRODUCT" in out_d.columns:
+                out_d = out_d[out_d["PRODUCT"].astype(str).str.strip().str.upper() == str(mf_product).strip().upper()]
+            if "SER_NO" in out_d.columns and "DEPOT" in out_d.columns:
+                mask = out_d.apply(
+                    lambda r: (str(r["DEPOT"]).strip().upper(), _norm_svc7(r["SER_NO"])) in allowed,
+                    axis=1,
+                )
+                out_d = out_d[mask]
+            if mf_svc != "ALL" and "SER_NO" in out_d.columns:
+                out_d = out_d[out_d["SER_NO"].map(_norm_svc7) == str(mf_svc).strip()]
+            return out_d
+
+        # Performance metrics for Board 7 come ONLY from ser_monthly/ser_montly.
+        # Service identity and displayed Ser No come ONLY from SMASTER `SER NO`.
+        _svc7, _svc7_err = load_monthly_service_metrics()
+        if _svc7_err:
+            st.error(f"Could not read service-monthly parquet: {_svc7_err}")
+            st.stop()
+        if _svc7 is None or len(_svc7) == 0:
+            st.error("Service-monthly parquet not found/empty. Checked ser_monthly.parquet and ser_montly.parquet.")
+            st.stop()
+        _svc7 = _svc7.copy()
+        if "SER_NO" not in _svc7.columns or "DEPOT" not in _svc7.columns:
+            st.error("Service-monthly parquet must contain DEPOT and SER_NO for SMASTER matching.")
+            st.stop()
+        _svc7["SER_NO"] = _svc7["SER_NO"].map(_norm_svc7)
+        _svc7["DEPOT"] = _svc7["DEPOT"].astype(str).str.strip().str.upper()
         # Board 7 source rule:
         #   SMASTER -> Depot, Ser No, Route, RTC/HIRE, D/N, No.of Schs,
         #              No.of Ser, Sch.Kms
         #   ser_monthly -> Sch Dep, R/L, TYPE (= PRODUCT)
-        # Monthly attributes are merged by DEPOT+SER_NO and NEVER used
+        # Monthly attributes are merged later by DEPOT+SER_NO and NEVER used
         # for schedule counts.
         # Metrics may contain services not present in the selected SMASTER month;
         # never let those create rows in Board 7.
-        # Vectorized membership (avoid slow axis=1 apply)
-        _svc7["_pair"] = list(zip(_svc7["DEPOT"], _svc7["SER_NO"].map(_norm_svc7)))
-        _svc7 = _svc7[_svc7["_pair"].isin(allowed)].drop(columns=["_pair"]).copy()
+        _svc7 = _svc7[_svc7.apply(
+            lambda rr: (rr["DEPOT"], _norm_svc7(rr["SER_NO"])) in allowed, axis=1
+        )].copy()
         _cm7 = _svc7[_svc7["Month_Name"].astype(str).str.strip() == str(mf_month).strip()].copy()
         # The monthly metrics parquet is month-grain data. It does not need
         # Date or Weekday; CY/LY are selected from Month_Name.
@@ -4762,7 +4878,7 @@ elif section == "Monthly files":
             out = out.sort_values(["Depot", "_ord"]).drop(columns=["_ord"]).reset_index(drop=True)
             out["SL NO"] = range(1, len(out) + 1)
 
-        def _cell_neg(v, is_neg=False, is_int=False):
+        def _cell_neg(v, is_neg=False, is_int=False, bg=None, row_hl=False):
             if v is None or v == "" or (isinstance(v, float) and (pd.isna(v) or abs(v) < 1e-12)):
                 s = ""
             elif isinstance(v, (int, float)):
@@ -4777,8 +4893,12 @@ elif section == "Monthly files":
             else:
                 s = str(v)
             style = "padding:3px 5px;text-align:center;border:1px solid #e2e8f0;font-size:11px;"
-            if is_neg and s:
+            if row_hl:
+                style += "background:#fef08a !important;font-weight:700;"
+            elif is_neg and s:
                 style += "background:#fee2e2;color:#b91c1c;font-weight:700;"
+            elif bg:
+                style += f"background:{bg};"
             return f'<td style="{style}">{s}</td>'
 
         # Freeze left columns through Sch Kms (12 cols, TP removed)
@@ -4864,9 +4984,31 @@ elif section == "Monthly files":
             "SL NO", "Depot", "Ser No", "Sch Dep", "Route", "RTC/HIRE", "R/L", "Type", "D/N",
             "No.of Schs", "No.of Sers", "Sch. Kms",
         }
+        def _b7_col_bg(c):
+            if c.startswith("G EPK"):
+                return _BG_GEPK
+            if c.startswith("G OR"):
+                return _BG_GOR
+            if c.startswith("N EPK"):
+                return _BG_NEPK
+            if c.startswith("N OR"):
+                return _BG_NOR
+            if c in ("Optd CM", "Optd UM"):
+                return _BG_OPTD
+            return None
+
+        _row_opts7 = ["(none)"] + [
+            f"{int(r.get('SL NO', i+1))}. {r.get('Depot','')} / {r.get('Ser No','')} / {r.get('Route','')}"
+            for i, r in out.iterrows()
+        ]
+        b7_sel = st.selectbox("Highlight service row", _row_opts7, index=0, key="mf_b7_row_sel")
+
         body = []
-        for _, r in out.iterrows():
-            body.append("<tr>")
+        for i, r in out.iterrows():
+            label = f"{int(r.get('SL NO', i+1))}. {r.get('Depot','')} / {r.get('Ser No','')} / {r.get('Route','')}"
+            hl = b7_sel == label
+            tr_style = ' style="background:#fef08a;"' if hl else ""
+            body.append(f"<tr{tr_style}>")
             for ci, c in enumerate(data_cols):
                 is_neg = False
                 if c in um_epk_cols:
@@ -4874,6 +5016,7 @@ elif section == "Monthly files":
                 elif c in um_or_cols:
                     is_neg = bool(r.get(um_or_cols[c], 0))
                 is_int = c in ("SL NO", "No.of Schs", "No.of Sers", "Optd CM", "Optd UM") or " OR " in c or c.startswith("G OR") or c.startswith("N OR")
+                col_bg = _b7_col_bg(c)
                 if c in freeze_cols:
                     left = _fl[ci]
                     width = _fw[ci]
@@ -4887,13 +5030,15 @@ elif section == "Monthly files":
                             s = ""
                     else:
                         s = str(v)
+                    bg = "#fef08a" if hl else "#f8fafc"
                     body.append(
-                        f'<td style="position:sticky;left:{left}px;z-index:2;background:#f8fafc;'
+                        f'<td style="position:sticky;left:{left}px;z-index:2;background:{bg};'
                         f'padding:3px 5px;text-align:center;border:1px solid #e2e8f0;font-size:11px;'
-                        f'min-width:{width}px;max-width:{width}px;">{s}</td>'
+                        f'min-width:{width}px;max-width:{width}px;{"font-weight:700;" if hl else ""}">{s}</td>'
                     )
                 else:
-                    body.append(_cell_neg(r.get(c), is_neg=is_neg, is_int=is_int))
+                    # group color under full columns; red still wins for negative
+                    body.append(_cell_neg(r.get(c), is_neg=is_neg, is_int=is_int, bg=None if is_neg else col_bg, row_hl=hl))
             body.append("</tr>")
 
         def _b7_excel(df_out, report_title):
@@ -5299,6 +5444,28 @@ elif section == "Monthly files":
         #   SMASTER -> Depot, Ser No, Route, RTC/HIRE, D/N,
         #              No.of Schs, No.of Ser, Sch.Kms
         #   ser_monthly -> Sch Dep, R/L, Type (= PRODUCT)
+        def _ensure_sch_rl8(frame):
+            if frame is None or len(frame) == 0:
+                return frame
+            def nk(c):
+                return str(c).strip().lower().replace("_", "").replace(" ", "").replace("/", "").replace(".", "")
+            if "SCH_DEP" not in frame.columns:
+                for c in frame.columns:
+                    k = nk(c)
+                    if ("sch" in k and "dep" in k) or k in ("schdep", "scheduledepot", "schdepot"):
+                        frame = frame.copy()
+                        frame["SCH_DEP"] = frame[c].astype(str)
+                        break
+            if "R_L" not in frame.columns:
+                for c in frame.columns:
+                    k = nk(c)
+                    if k in ("rl", "routelength", "routelen") or (k.startswith("rl") and "epk" not in k and len(k) <= 6):
+                        frame = frame.copy()
+                        frame["R_L"] = pd.to_numeric(frame[c], errors="coerce").fillna(0.0)
+                        break
+            return frame
+        _svc8 = _ensure_sch_rl8(_svc8)
+
         _meta8 = _svc8[_svc8["Month_Name"].astype(str).str.strip() == str(mf_month).strip()].copy()
         if len(_meta8):
             _meta8["_SVC"] = _meta8["SER_NO"].map(_norm8)
@@ -5318,16 +5485,23 @@ elif section == "Monthly files":
                 master8 = master8.merge(
                     mm8.rename(columns={"_SVC":"SER_NO"}), on=["DEPOT","SER_NO"], how="left"
                 )
+                def _nonblank8(s):
+                    s = s.astype(str).str.strip()
+                    return s.where(~s.str.lower().isin(["", "nan", "none", "nat", "<na>"]), other=pd.NA)
+
                 if "sch_dep_m" in master8.columns:
-                    # Strict source rule: Sch Dep is from monthly parquet.
-                    master8["sch_dep"] = master8["sch_dep_m"].fillna("").astype(str).str.strip()
+                    m = _nonblank8(master8["sch_dep_m"])
+                    fb = master8["sch_dep"].astype(str).str.strip() if "sch_dep" in master8.columns else ""
+                    master8["sch_dep"] = m.fillna(fb).fillna("").astype(str).str.strip()
                 if "rl_m" in master8.columns:
-                    # Strict source rule: R/L is from monthly parquet.
-                    master8["rl"] = pd.to_numeric(master8["rl_m"], errors="coerce").fillna(0.0)
+                    mrl = pd.to_numeric(master8["rl_m"], errors="coerce")
+                    fbrl = pd.to_numeric(master8.get("rl", 0), errors="coerce").fillna(0.0)
+                    master8["rl"] = mrl.where(mrl.fillna(0) != 0, fbrl).fillna(fbrl)
                 if "typ_m" in master8.columns:
-                    # Strict source rule: Type is PRODUCT from monthly parquet.
-                    master8["typ"] = master8["typ_m"].fillna("").astype(str).str.strip()
-                master8 = master8.drop(columns=[c for c in ["sch_dep_m","rl_m","typ_m"] if c in master8.columns])
+                    m = _nonblank8(master8["typ_m"])
+                    fb = master8["typ"].astype(str).str.strip() if "typ" in master8.columns else ""
+                    master8["typ"] = m.fillna(fb).fillna("").astype(str).str.strip()
+                master8 = master8.drop(columns=[c for c in ["sch_dep_m", "rl_m", "typ_m"] if c in master8.columns])
         # Recalculate Sch Kms only if SMASTER Sch Kms is blank, using the
         # monthly R/L as requested.
         for ii, rr in master8.iterrows():
@@ -5529,27 +5703,35 @@ elif section == "Monthly files":
             thead += _th(lab.upper()[:3], bg="#ddd6fe", color="#5b21b6", top=28)
         thead += _th("UM", bg="#c4b5fd", color="#5b21b6", top=28) + _th("LY UM", bg="#ddd6fe", color="#5b21b6", top=28)
         thead += "</tr>"
+        _row_opts8 = ["(none)"] + [
+            f"{int(r.get('SL NO', i+1))}. {r.get('Depot','')} / {r.get('Ser No','')}"
+            for i, r in out.iterrows()
+        ]
+        b8_sel = st.selectbox("Highlight service row", _row_opts8, index=0, key="mf_b8_row_sel")
         body = []
-        for _, r in out.iterrows():
-            body.append("<tr>")
+        for i, r in out.iterrows():
+            label = f"{int(r.get('SL NO', i+1))}. {r.get('Depot','')} / {r.get('Ser No','')}"
+            hl = b8_sel == label
+            tr_style = ' style="background:#fef08a;"' if hl else ""
+            body.append(f"<tr{tr_style}>")
             for c in ["SL NO", "Depot", "Ser No", "Sch Dep", "Route", "RTC/HIRE", "Type", "D/N", "No. of Schs", "No. of Ser", "Sch. Kms"]:
-                body.append(_cell(r.get(c)))
+                body.append(_cell(r.get(c), row_hl=hl))
             for lab in mon_labs:
-                body.append(_cell(r.get(f"{lab} GROSS EPK")))
-            body.append(_cell(r.get("UM GROSS EPK")))
-            body.append(_cell(r.get("LY UM GROSS EPK")))
+                body.append(_cell(r.get(f"{lab} GROSS EPK"), bg=_BG_GEPK, row_hl=hl))
+            body.append(_cell(r.get("UM GROSS EPK"), bg=_BG_GEPK, row_hl=hl))
+            body.append(_cell(r.get("LY UM GROSS EPK"), bg=_BG_GEPK, row_hl=hl))
             for lab in mon_labs:
-                body.append(_cell(r.get(f"{lab} GROSS OR"), is_int=True))
-            body.append(_cell(r.get("UM GROSS OR"), is_int=True))
-            body.append(_cell(r.get("LY UM GROSS OR"), is_int=True))
+                body.append(_cell(r.get(f"{lab} GROSS OR"), is_int=True, bg=_BG_GOR, row_hl=hl))
+            body.append(_cell(r.get("UM GROSS OR"), is_int=True, bg=_BG_GOR, row_hl=hl))
+            body.append(_cell(r.get("LY UM GROSS OR"), is_int=True, bg=_BG_GOR, row_hl=hl))
             for lab in mon_labs:
-                body.append(_cell(r.get(f"{lab} NET EPK")))
-            body.append(_cell(r.get("UM NET EPK")))
-            body.append(_cell(r.get("LY UM NET EPK")))
+                body.append(_cell(r.get(f"{lab} NET EPK"), bg=_BG_NEPK, row_hl=hl))
+            body.append(_cell(r.get("UM NET EPK"), bg=_BG_NEPK, row_hl=hl))
+            body.append(_cell(r.get("LY UM NET EPK"), bg=_BG_NEPK, row_hl=hl))
             for lab in mon_labs:
-                body.append(_cell(r.get(f"{lab} NET OR"), is_int=True))
-            body.append(_cell(r.get("UM NET OR"), is_int=True))
-            body.append(_cell(r.get("LY UM NET OR"), is_int=True))
+                body.append(_cell(r.get(f"{lab} NET OR"), is_int=True, bg=_BG_NOR, row_hl=hl))
+            body.append(_cell(r.get("UM NET OR"), is_int=True, bg=_BG_NOR, row_hl=hl))
+            body.append(_cell(r.get("LY UM NET OR"), is_int=True, bg=_BG_NOR, row_hl=hl))
             body.append("</tr>")
         _render_board(title, thead, "".join(body), out, "TrendService")
         st.caption(f"Vectorized trend · {len(out)} services · months={', '.join(mon_labs)}")
