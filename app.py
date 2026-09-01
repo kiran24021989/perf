@@ -1099,7 +1099,9 @@ def load_monthly_service_metrics():
     if p is None:
         return pd.DataFrame(), None
     try:
-        return _load_monthly_service_metrics_cached(str(p), _parquet_signature(p)), None
+        # _load_monthly_service_metrics_cached already returns (DataFrame, error).
+        # Do not wrap that tuple again; Boards 7/8 expect (DataFrame, error).
+        return _load_monthly_service_metrics_cached(str(p), _parquet_signature(p))
     except Exception as exc:
         return pd.DataFrame(), str(exc)
 
@@ -4493,8 +4495,12 @@ elif section == "Monthly files":
             lambda rr: (rr["DEPOT"], _norm_svc7(rr["SER_NO"])) in allowed, axis=1
         )].copy()
         _cm7 = _svc7[_svc7["Month_Name"].astype(str).str.strip() == str(mf_month).strip()].copy()
-        _cy7 = _svc7[(_svc7["Date"] >= fy_start) & (_svc7["Date"] <= cy_end)].copy()
-        _ly7 = _svc7[(_svc7["Date"] >= ly_start) & (_svc7["Date"] <= ly_end)].copy()
+        # The monthly metrics parquet is month-grain data. It does not need
+        # Date or Weekday; CY/LY are selected from Month_Name.
+        _fy7_months = [x.strftime("%b-%Y") for x in pd.date_range(fy_start, cy_end, freq="MS")]
+        _ly7_months = [(pd.to_datetime(x, format="%b-%Y") - pd.DateOffset(years=1)).strftime("%b-%Y") for x in _fy7_months]
+        _cy7 = _svc7[_svc7["Month_Name"].astype(str).str.strip().isin(_fy7_months)].copy()
+        _ly7 = _svc7[_svc7["Month_Name"].astype(str).str.strip().isin(_ly7_months)].copy()
 
         keys = ["DEPOT", "SER_NO"]
 
