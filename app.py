@@ -752,12 +752,17 @@ def _load_data_cached(parquet_path=None, required=True, signature=None):
     # avoids materialising the unused columns in the 51-column source file.
     # If DuckDB is unavailable, fall back to pandas for local compatibility.
     _dashboard_targets = {
-        "Date", "Month_Name", "DEPOT", "REGION", "SER_NO", "PRODUCT",
-        "PRODUCT_NAME", "ROUTEE", "ROUTE", "ROUTE_OLD", "Optd_KMs",
-        "DAY_SCH_KMS", "GE_TOT", "GE_FPD", "GE_MHL", "NE_TOT", "NE_FPD",
-        "NE_MHL", "PSNGR_TOT", "PSNGR_FPD", "PSNGR_MHL", "MHL_NMHL",
-        "RTC_HIRE", "Weekday", "NO_OF_SCHS", "INTERSTATE", "TYPE",
-        "D.TYPE", "NATURE", "SCH_DEP", "R/L", "LONG_TP.",
+        # Canonical names plus source aliases used by SER parquet.
+        "Date", "Month_Name", "Month Name", "DEPOT", "REGION", "SER_NO",
+        "PRODUCT", "PRODUCT_NAME", "ROUTEE", "ROUTE", "ROUTE_OLD",
+        "Optd_KMs", "OPD_KMS", "OPTD_KMS", "DAY_SCH_KMS",
+        "GE_TOT", "Gross Total", "GE_FPD", "Gross Fare Paid",
+        "GE_MHL", "Gross MHL", "NE_TOT", "Net Total",
+        "NE_FPD", "Net Fare Paid", "NE_MHL", "Net MHL",
+        "PSNGR_TOT", "Passengers Total", "PSNGR_FPD", "Passengers Fare Paid",
+        "PSNGR_MHL", "Passengers MHL", "MHL_NMHL", "MHL/NMHL",
+        "RTC_HIRE", "RTC/HIRE", "Weekday", "NO_OF_SCHS", "NO.OF SCHs",
+        "INTERSTATE", "TYPE", "D.TYPE", "NATURE", "SCH_DEP", "R/L", "LONG_TP.",
     }
     try:
         if duckdb is not None:
@@ -773,7 +778,15 @@ def _load_data_cached(parquet_path=None, required=True, signature=None):
                 selected = [c for c in actual_cols if _norm_src(c) in wanted_norm]
                 # Always include the full set when projection cannot identify enough
                 # columns; this keeps compatibility with unusual parquet schemas.
-                if selected:
+                # Never silently omit core metrics. If aliases cannot be resolved,
+                # read the source schema rather than creating blank metric columns.
+                _required_norm = {
+                    "date", "monthname", "depot", "product", "routee",
+                    "opdkms", "optdkms", "grosstotal", "nettotal",
+                    "passengerstotal", "mhlnmhl", "rtchire", "serno", "weekday"
+                }
+                _selected_norm = {_norm_src(c) for c in selected}
+                if selected and len(_selected_norm & _required_norm) >= 7:
                     qcols = ", ".join('"' + str(c).replace('"', '""') + '"' for c in selected)
                     df = con.execute(
                         f"SELECT {qcols} FROM read_parquet(?)", [str(path)]
@@ -2314,7 +2327,13 @@ if section not in ("Schedules", "Home", "DOR", "MISSION RR", "Monthly files"):
 
         )
 
-        pivot["UPTO"] = np.where(overall["kms"] > 0, overall["earnings"] / overall["kms"], np.nan)
+        # Align to the pivot index explicitly. This preserves the calculation
+        # while avoiding pandas MultiIndex assignment/reindex errors.
+        _overall_kms = pd.to_numeric(overall["kms"], errors="coerce")
+        _overall_earn = pd.to_numeric(overall["earnings"], errors="coerce")
+        _overall_epk = (_overall_earn / _overall_kms.replace(0, np.nan))
+        _overall_epk = _overall_epk.reindex(pivot.index)
+        pivot["UPTO"] = _overall_epk.to_numpy()
 
         return pivot.round(2)
 
