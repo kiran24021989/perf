@@ -686,6 +686,17 @@ st.markdown(
 # ========== PATH ==========
 PARQUET_FILE = r"D:\dashboard\ser_wise.parquet"
 SERVICE_MONTHLY_FILE = r"D:\dashboard\ser_wise.parquet"
+# Dedicated service-monthly metrics file for Monthly boards 7 and 8.
+# Both spellings are supported: ser_monthly.parquet / ser_montly.parquet.
+MONTHLY_SERVICE_METRICS_FILE = r"D:\dashboard\ser_monthly.parquet"
+MONTHLY_SERVICE_METRICS_ALTS = [
+    Path(r"D:\Dashboard\ser_monthly.parquet"), Path(r"D:\dashboard\ser_monthly.parquet"),
+    Path(r"D:\MONTHLY\ser_monthly.parquet"), Path(r"D:\Dashboard\ser_montly.parquet"),
+    Path(r"D:\dashboard\ser_montly.parquet"), Path(r"D:\MONTHLY\ser_montly.parquet"),
+    Path("ser_monthly.parquet"), Path("ser_montly.parquet"),
+    Path(r"/home/workdir/attachments/ser_monthly.parquet"),
+    Path(r"/home/workdir/attachments/ser_montly.parquet"),
+]
 # These tabs load from ser_wise.parquet (same folder as ser_wise)
 SERVICE_MONTHLY_TABS = {
     "ACT VS ACT",
@@ -955,16 +966,14 @@ def _load_data_cached(parquet_path=None, required=True, signature=None):
     if "ROUTEE" not in df.columns and "ROUTE" in df.columns:
         df["ROUTEE"] = df["ROUTE"].astype(str).str.strip()
 
-    # Low-memory representation for repeated filter dimensions.  Numeric values
-    # remain float64 so existing financial calculations are not changed.
-    for c in ["DEPOT", "REGION", "PRODUCT", "PRODUCT_NAME", "ROUTEE", "ROUTE",
-              "ROUTE_OLD", "Month_Name", "MHL_NMHL", "RTC_HIRE", "SER_NO",
-              "Weekday", "INTERSTATE", "TYPE", "D.TYPE", "NATURE", "SCH_DEP"]:
-        if c in df.columns and not isinstance(df[c].dtype, pd.CategoricalDtype):
-            try:
-                df[c] = df[c].astype("category")
-            except Exception:
-                pass
+    # IMPORTANT: do not convert dashboard dimensions to pandas Categorical here.
+    # Many existing report functions intentionally use broad operations such as
+    # merged.fillna(0).iterrows().  Pandas raises TypeError when 0 is assigned to
+    # a categorical column whose categories do not contain 0.  Keeping these
+    # columns as normal object/string columns preserves the original behaviour
+    # and avoids breaking existing calculations, tables and Excel exports.
+    # Memory reduction is achieved by DuckDB column projection rather than by
+    # changing the dtypes used by the reporting logic.
 
     return df
 
@@ -982,6 +991,22 @@ df_ser_wise = load_data()
 df_service_monthly = df_ser_wise
 # Default working frame; switched per tab after section is chosen
 df = df_ser_wise
+
+
+@st.cache_resource(show_spinner=False)
+def _load_monthly_service_metrics_cached(path_str, signature=None):
+    """Dedicated service-monthly metrics source for Monthly boards 7/8."""
+    return _load_data_cached(path_str, required=False, signature=signature)
+
+
+def load_monthly_service_metrics():
+    p = _resolve_parquet(MONTHLY_SERVICE_METRICS_FILE, MONTHLY_SERVICE_METRICS_ALTS)
+    if p is None:
+        return pd.DataFrame(), None
+    try:
+        return _load_monthly_service_metrics_cached(str(p), _parquet_signature(p)), None
+    except Exception as exc:
+        return pd.DataFrame(), str(exc)
 
 
 @st.cache_data(ttl=300, show_spinner=False)
@@ -4352,9 +4377,29 @@ elif section == "Monthly files":
                 out_d = out_d[out_d["SER_NO"].map(_norm_svc7) == str(mf_svc).strip()]
             return out_d
 
-        _cm7 = _b7_filter(mf[mf["Month_Name"].astype(str).str.strip() == str(mf_month).strip()].copy())
-        _cy7 = _b7_filter(mf[(mf["Date"] >= fy_start) & (mf["Date"] <= cy_end)].copy())
-        _ly7 = _b7_filter(mf[(mf["Date"] >= ly_start) & (mf["Date"] <= ly_end)].copy())
+        # Performance metrics for Board 7 come ONLY from ser_monthly/ser_montly.
+        # Service identity and displayed Ser No come ONLY from SMASTER `SER NO`.
+        _svc7, _svc7_err = load_monthly_service_metrics()
+        if _svc7_err:
+            st.error(f"Could not read service-monthly parquet: {_svc7_err}")
+            st.stop()
+        if _svc7 is None or len(_svc7) == 0:
+            st.error("Service-monthly parquet not found/empty. Checked ser_monthly.parquet and ser_montly.parquet.")
+            st.stop()
+        _svc7 = _svc7.copy()
+        if "SER_NO" not in _svc7.columns or "DEPOT" not in _svc7.columns:
+            st.error("Service-monthly parquet must contain DEPOT and SER_NO for SMASTER matching.")
+            st.stop()
+        _svc7["SER_NO"] = _svc7["SER_NO"].map(_norm_svc7)
+        _svc7["DEPOT"] = _svc7["DEPOT"].astype(str).str.strip().str.upper()
+        # Metrics may contain services not present in the selected SMASTER month;
+        # never let those create rows in Board 7.
+        _svc7 = _svc7[_svc7.apply(
+            lambda rr: (rr["DEPOT"], _norm_svc7(rr["SER_NO"])) in allowed, axis=1
+        )].copy()
+        _cm7 = _svc7[_svc7["Month_Name"].astype(str).str.strip() == str(mf_month).strip()].copy()
+        _cy7 = _svc7[(_svc7["Date"] >= fy_start) & (_svc7["Date"] <= cy_end)].copy()
+        _ly7 = _svc7[(_svc7["Date"] >= ly_start) & (_svc7["Date"] <= ly_end)].copy()
 
         keys = ["DEPOT", "SER_NO"]
 
@@ -4958,6 +5003,102 @@ elif section == "Monthly files":
         if mf_product != "ALL":
             title += f" | Product: {mf_product}"
 
+        # ===== Board 8 master: SMASTER supplies service identity =====
+        _sm8_path = _resolve_smaster_path()
+        if not _sm8_path.exists():
+            st.error("SMASTER.parquet not found — Board 8 requires SMASTER for Ser No/service identity.")
+            st.stop()
+        _sm8_raw, _sm8_err = load_smaster(str(_sm8_path))
+        if _sm8_raw is None or len(_sm8_raw) == 0:
+            st.error(f"Could not read SMASTER for Board 8: {_sm8_err or 'empty file'}")
+            st.stop()
+        _sm8_raw = _sm8_raw.copy()
+        _sm8_raw.columns = [str(c).strip() for c in _sm8_raw.columns]
+        def _fc8(cands):
+            norm = {str(c).strip().lower().replace(" ", "").replace("_", "").replace("/", "").replace(".", ""): c for c in _sm8_raw.columns}
+            for cand in cands:
+                k = cand.lower().replace(" ", "").replace("_", "").replace("/", "").replace(".", "")
+                if k in norm:
+                    return norm[k]
+            return None
+        def _norm8(v):
+            if v is None or (isinstance(v, float) and pd.isna(v)):
+                return ""
+            z = str(v).strip()
+            if z.lower() in ("", "nan", "none"):
+                return ""
+            try:
+                return str(int(float(z)))
+            except Exception:
+                return z
+        def _mode8(series):
+            z = series.dropna().astype(str).str.strip()
+            z = z[~z.str.lower().isin(["", "nan", "none"])]
+            if len(z) == 0:
+                return ""
+            try:
+                return z.mode().iloc[0]
+            except Exception:
+                return z.iloc[0]
+        c8_svc = _fc8(["ServiceNo", "SER_NO", "SERVICE_NO", "SERVICENO"])
+        c8_dep = _fc8(["DEPOT"])
+        c8_prod = _fc8(["PRODUCT"])
+        c8_route = _fc8(["ROUTEE", "ROUTE"])
+        c8_sch = _fc8(["NoOfSchedules", "NoOfSchedule", "NO_OF_SCHS"])
+        c8_kms = _fc8(["RevenueKms", "Revenue Kms", "SCH_KMS", "SchKms", "DAY_SCH_KMS"])
+        c8_rtc = _fc8(["RTC/HIRE", "RTC_HIRE", "RTCHIRE"])
+        c8_rl = _fc8(["R/L", "R_L", "RL", "RouteLength"])
+        c8_schdep = _fc8(["SCH_DEP", "SCH_DEP.", "SchDep", "SCHDEP", "ScheduleDepot"])
+        c8_type = _fc8(["TYPE", "TYPE OF SERV.", "ServiceType", "TP"])
+        c8_dtype = _fc8(["D.TYPE", "DTYPE", "DutyType"])
+        if not c8_svc or not c8_dep:
+            st.error("SMASTER must contain DEPOT and SER NO/ServiceNo for Board 8.")
+            st.stop()
+        sm8 = _sm8_raw.copy()
+        sm8["_SVC"] = sm8[c8_svc].map(_norm8)
+        sm8["_DEP"] = sm8[c8_dep].astype(str).str.strip().str.upper()
+        sm8["_PROD"] = sm8[c8_prod].astype(str).str.strip() if c8_prod else ""
+        sm8["_ROUTE"] = sm8[c8_route].astype(str).str.strip() if c8_route else ""
+        sm8["_SCH"] = pd.to_numeric(sm8[c8_sch], errors="coerce").fillna(0) if c8_sch else 0.0
+        sm8["_SCH_KMS"] = pd.to_numeric(sm8[c8_kms], errors="coerce").fillna(0) if c8_kms else 0.0
+        sm8["_RL"] = pd.to_numeric(sm8[c8_rl], errors="coerce").fillna(0) if c8_rl else 0.0
+        sm8["_RTC"] = sm8[c8_rtc].astype(str).str.strip() if c8_rtc else ""
+        sm8["_SCH_DEP"] = sm8[c8_schdep].astype(str).str.strip() if c8_schdep else ""
+        sm8["_TYPE"] = sm8[c8_type].astype(str).str.strip() if c8_type else ""
+        sm8["_DN"] = sm8[c8_dtype].astype(str).str.strip().str.upper() if c8_dtype else ""
+        if mf_depot != "ALL":
+            sm8 = sm8[sm8["_DEP"] == str(mf_depot).strip().upper()]
+        if mf_product != "ALL":
+            sm8 = sm8[sm8["_PROD"].astype(str).str.strip().str.upper() == str(mf_product).strip().upper()]
+        if mf_route != "ALL":
+            sm8 = sm8[sm8["_ROUTE"].astype(str).str.strip().str.upper() == str(mf_route).strip().upper()]
+        master8 = (sm8.groupby(["_DEP", "_SVC"], dropna=False).agg(
+            route=("_ROUTE", _mode8), prod=("_PROD", _mode8), rtc=("_RTC", _mode8),
+            sch_dep=("_SCH_DEP", _mode8), typ=("_TYPE", _mode8), nature=("_DN", _mode8),
+            rl=("_RL", "max"), schs=("_SCH", "sum"), sch_kms=("_SCH_KMS", "sum")
+        ).reset_index().rename(columns={"_DEP": "DEPOT", "_SVC": "SER_NO"}))
+        for ii, rr in master8.iterrows():
+            sk, rl, sc = float(rr.get("sch_kms", 0) or 0), float(rr.get("rl", 0) or 0), float(rr.get("schs", 0) or 0)
+            if sk == 0 and rl > 0 and sc > 0:
+                master8.at[ii, "sch_kms"] = rl * sc
+        allowed8 = set(zip(master8["DEPOT"].astype(str).str.upper(), master8["SER_NO"].map(_norm8)))
+
+        # ===== Board 8 metrics: dedicated service-monthly parquet =====
+        _svc8, _svc8_err = load_monthly_service_metrics()
+        if _svc8_err:
+            st.error(f"Could not read service-monthly parquet: {_svc8_err}")
+            st.stop()
+        if _svc8 is None or len(_svc8) == 0:
+            st.error("Service-monthly parquet not found/empty. Checked ser_monthly.parquet and ser_montly.parquet.")
+            st.stop()
+        if "SER_NO" not in _svc8.columns or "DEPOT" not in _svc8.columns:
+            st.error("Service-monthly parquet must contain DEPOT and SER_NO for SMASTER matching.")
+            st.stop()
+        _svc8 = _svc8.copy()
+        _svc8["SER_NO"] = _svc8["SER_NO"].map(_norm8)
+        _svc8["DEPOT"] = _svc8["DEPOT"].astype(str).str.strip().str.upper()
+        _svc8 = _svc8[_svc8.apply(lambda rr: (rr["DEPOT"], _norm8(rr["SER_NO"])) in allowed8, axis=1)].copy()
+
         fy_months = []
         cur = fy_start
         while cur <= cy_end:
@@ -4967,7 +5108,7 @@ elif section == "Monthly files":
         keys = ["DEPOT", "SER_NO"]
 
         # Scope data once (vectorized — avoid per-service filters)
-        _b8 = base.copy()
+        _b8 = _svc8.copy()
         if mf_depot != "ALL" and "DEPOT" in _b8.columns:
             _b8 = _b8[_b8["DEPOT"].astype(str).str.strip().str.upper() == str(mf_depot).strip().upper()]
         if mf_product != "ALL" and "PRODUCT" in _b8.columns:
@@ -4975,8 +5116,8 @@ elif section == "Monthly files":
         if mf_route != "ALL" and _route_col_mf and _route_col_mf in _b8.columns:
             _b8 = _b8[_b8[_route_col_mf].astype(str).str.strip().str.upper() == str(mf_route).strip().upper()]
 
-        _cy8 = cy_um.copy()
-        _ly8 = ly_um.copy()
+        _cy8 = _svc8.copy()
+        _ly8 = _svc8.copy()
         if mf_depot != "ALL":
             if "DEPOT" in _cy8.columns:
                 _cy8 = _cy8[_cy8["DEPOT"].astype(str).str.strip().str.upper() == str(mf_depot).strip().upper()]
@@ -4987,6 +5128,14 @@ elif section == "Monthly files":
                 _cy8 = _cy8[_cy8["PRODUCT"].astype(str).str.strip().str.upper() == str(mf_product).strip().upper()]
             if "PRODUCT" in _ly8.columns:
                 _ly8 = _ly8[_ly8["PRODUCT"].astype(str).str.strip().str.upper() == str(mf_product).strip().upper()]
+
+        if "Date" in _cy8.columns:
+            _cy8 = _cy8[(_cy8["Date"] >= fy_start) & (_cy8["Date"] <= cy_end)].copy()
+            _ly8 = _ly8[(_ly8["Date"] >= ly_start) & (_ly8["Date"] <= ly_end)].copy()
+        elif "Month_Name" in _cy8.columns:
+            _cy8 = _cy8[_cy8["Month_Name"].astype(str).str.strip().isin(fy_months)].copy()
+            _ly_months = [(pd.to_datetime(x, format="%b-%Y") - pd.DateOffset(years=1)).strftime("%b-%Y") for x in fy_months]
+            _ly8 = _ly8[_ly8["Month_Name"].astype(str).str.strip().isin(_ly_months)].copy()
 
         if len(_cy8) == 0 and len(_b8) == 0:
             st.warning("No data for selected filters.")
@@ -5003,24 +5152,8 @@ elif section == "Monthly files":
             except Exception:
                 return s.iloc[0]
 
-        src_meta = _cy8 if len(_cy8) else _b8
-        if "ROUTEE" not in src_meta.columns and "ROUTE" in src_meta.columns:
-            src_meta = src_meta.copy()
-            src_meta["ROUTEE"] = src_meta["ROUTE"]
-        meta_agg = {
-            "route": ("ROUTEE", _mode_first) if "ROUTEE" in src_meta.columns else ("DEPOT", "first"),
-            "rtc": ("RTC_HIRE", _mode_first) if "RTC_HIRE" in src_meta.columns else ("DEPOT", "first"),
-            "typ": ("TYPE", _mode_first) if "TYPE" in src_meta.columns else ("DEPOT", "first"),
-            "nature": ("NATURE", _mode_first) if "NATURE" in src_meta.columns else ("DEPOT", "first"),
-            "prod": ("PRODUCT", _mode_first) if "PRODUCT" in src_meta.columns else ("DEPOT", "first"),
-            "sch_dep": ("SCH_DEP", _mode_first) if "SCH_DEP" in src_meta.columns else ("DEPOT", "first"),
-        }
-        # schs / sch_kms: max then (already one row per service at groupby level)
-        meta = src_meta.groupby(keys, dropna=False).agg(
-            **{k: v for k, v in meta_agg.items()},
-            schs=("NO_OF_SCHS", "max") if "NO_OF_SCHS" in src_meta.columns else ("DEPOT", "count"),
-            sch_kms=("SCH_KMS", "max") if "SCH_KMS" in src_meta.columns else ("DEPOT", "count"),
-        ).reset_index()
+        # Identity and schedule information are exclusively from SMASTER.
+        meta = master8.copy()
         meta["sers"] = 1
 
         # Pre-aggregate monthly metrics: groupby DEPOT, SER_NO, Month_Name once
@@ -5084,7 +5217,6 @@ elif section == "Monthly files":
                 "Sch Dep": m.get("sch_dep", ""),
                 "Route": m.get("route", ""),
                 "RTC/HIRE": m.get("rtc", ""),
-                "TP": m.get("typ", ""),
                 "Type": m.get("prod", ""),
                 "D/N": m.get("nature", ""),
                 "No. of Schs": int(round(float(m.get("schs", 0) or 0))) or "",
@@ -5121,7 +5253,7 @@ elif section == "Monthly files":
             + _th("SL<br>NO", rowspan=2, top=0) + _th("Depot", rowspan=2, top=0)
             + _th("Ser No", rowspan=2, top=0) + _th("Sch<br>Dep", rowspan=2, top=0)
             + _th("Route", rowspan=2, top=0) + _th("RTC/<br>HIRE", rowspan=2, top=0)
-            + _th("TP", rowspan=2, top=0) + _th("Type", rowspan=2, top=0)
+            + _th("Type", rowspan=2, top=0)
             + _th("D/N", rowspan=2, top=0) + _th("No.<br>of<br>Schs", rowspan=2, top=0)
             + _th("No.<br>of<br>Ser", rowspan=2, top=0) + _th("Sch.<br>Kms", rowspan=2, top=0)
             + _th("GROSS EPK", bg="#dcfce7", color="#14532d", colspan=len(mon_labs) + 2, top=0)
@@ -5138,7 +5270,7 @@ elif section == "Monthly files":
         body = []
         for _, r in out.iterrows():
             body.append("<tr>")
-            for c in ["SL NO", "Depot", "Ser No", "Sch Dep", "Route", "RTC/HIRE", "TP", "Type", "D/N", "No. of Schs", "No. of Ser", "Sch. Kms"]:
+            for c in ["SL NO", "Depot", "Ser No", "Sch Dep", "Route", "RTC/HIRE", "Type", "D/N", "No. of Schs", "No. of Ser", "Sch. Kms"]:
                 body.append(_cell(r.get(c)))
             for lab in mon_labs:
                 body.append(_cell(r.get(f"{lab} EPK")))
