@@ -4,3 +4,10 @@ pandas
 plotly.express
 streamlit
 openpyxl 
+streamlit>=1.39,<2
+pandas>=2.2,<3
+numpy>=1.26,<3
+pyarrow>=15,<22
+duckdb>=1.1,<2
+plotly>=5.20,<7
+openpyxl>=3.1,<4
