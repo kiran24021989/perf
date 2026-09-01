@@ -5,6 +5,11 @@ import plotly.express as px
 import streamlit as st
 from io import BytesIO
 
+try:
+    import duckdb
+except ImportError:
+    duckdb = None
+
 def df_to_excel_bytes(df, sheet_name="Sheet1"):
     """Downloadable Excel with basic header styling."""
     bio = BytesIO()
@@ -691,23 +696,6 @@ SERVICE_MONTHLY_TABS = {
 }
 
 
-@st.cache_data(ttl=300, show_spinner=False)
-def _read_parquet_cached(path_str: str, mtime_ns: int = 0, engine: str | None = None, columns=None):
-    """Shared Parquet reader. File modification time is part of the cache key."""
-    kwargs = {}
-    if engine:
-        kwargs["engine"] = engine
-    if columns is not None:
-        kwargs["columns"] = columns
-    return pd.read_parquet(path_str, **kwargs)
-
-
-def _read_parquet_fast(path, engine=None, columns=None):
-    p = Path(path)
-    mtime_ns = p.stat().st_mtime_ns if p.exists() else 0
-    return _read_parquet_cached(str(p), mtime_ns, engine=engine, columns=columns)
-
-
 def _resolve_parquet(primary, extra_alts=None):
     path = Path(primary)
     if path.exists():
@@ -727,8 +715,17 @@ def _resolve_parquet(primary, extra_alts=None):
     return None
 
 
-@st.cache_data(ttl=300, show_spinner=False)
-def load_data(parquet_path=None, required=True):
+def _parquet_signature(path):
+    try:
+        p = Path(path)
+        stt = p.stat()
+        return (str(p.resolve()), int(stt.st_mtime_ns), int(stt.st_size))
+    except Exception:
+        return (str(path), 0, 0)
+
+
+@st.cache_resource(show_spinner=False)
+def _load_data_cached(parquet_path=None, required=True, signature=None):
     """Load performance parquet; normalize columns to app-standard names.
 
     parquet_path: optional override (ser_wise.parquet).
@@ -751,11 +748,46 @@ def load_data(parquet_path=None, required=True):
             st.error(f"File not found: {parquet_path or PARQUET_FILE}")
             st.stop()
         return pd.DataFrame()
-    df = _read_parquet_fast(path)
+    # Read only columns used by the dashboard.  DuckDB scans Parquet directly and
+    # avoids materialising the unused columns in the 51-column source file.
+    # If DuckDB is unavailable, fall back to pandas for local compatibility.
+    _dashboard_targets = {
+        "Date", "Month_Name", "DEPOT", "REGION", "SER_NO", "PRODUCT",
+        "PRODUCT_NAME", "ROUTEE", "ROUTE", "ROUTE_OLD", "Optd_KMs",
+        "DAY_SCH_KMS", "GE_TOT", "GE_FPD", "GE_MHL", "NE_TOT", "NE_FPD",
+        "NE_MHL", "PSNGR_TOT", "PSNGR_FPD", "PSNGR_MHL", "MHL_NMHL",
+        "RTC_HIRE", "Weekday", "NO_OF_SCHS", "INTERSTATE", "TYPE",
+        "D.TYPE", "NATURE", "SCH_DEP", "R/L", "LONG_TP.",
+    }
     try:
-        df.attrs["_source_mtime_ns"] = path.stat().st_mtime_ns
+        if duckdb is not None:
+            con = duckdb.connect(database=":memory:")
+            try:
+                schema = con.execute(
+                    "DESCRIBE SELECT * FROM read_parquet(?)", [str(path)]
+                ).fetchall()
+                actual_cols = [r[0] for r in schema]
+                def _norm_src(c):
+                    return str(c).strip().lower().replace("_", "").replace(" ", "")
+                wanted_norm = {_norm_src(x) for x in _dashboard_targets}
+                selected = [c for c in actual_cols if _norm_src(c) in wanted_norm]
+                # Always include the full set when projection cannot identify enough
+                # columns; this keeps compatibility with unusual parquet schemas.
+                if selected:
+                    qcols = ", ".join('"' + str(c).replace('"', '""') + '"' for c in selected)
+                    df = con.execute(
+                        f"SELECT {qcols} FROM read_parquet(?)", [str(path)]
+                    ).df()
+                else:
+                    df = con.execute("SELECT * FROM read_parquet(?)", [str(path)]).df()
+            finally:
+                con.close()
+        else:
+            df = pd.read_parquet(path)
     except Exception:
-        pass
+        # Keep the application compatible with Windows/local installations where
+        # duckdb has not yet been installed.
+        df = pd.read_parquet(path)
 
     # Map actual parquet columns -> names expected by the dashboard
     rename_map = {
@@ -905,25 +937,35 @@ def load_data(parquet_path=None, required=True):
             s = s.iloc[:, 0]
         df["Date"] = pd.to_datetime(s, errors="coerce")
 
-    # One-time normalized keys for the high-frequency global filters.
-    # This avoids repeated astype/strip/upper scans over 450K+ rows.
-    for _src, _dst in [
-        ("DEPOT", "__F_DEPOT"), ("MHL_NMHL", "__F_MHL"),
-        ("ROUTEE", "__F_ROUTE"), ("PRODUCT", "__F_PRODUCT"),
-        ("RTC_HIRE", "__F_RTC"), ("Month_Name", "__F_MONTH"),
-    ]:
-        if _src in df.columns and _dst not in df.columns:
-            _ss = df[_src]
-            if isinstance(_ss, pd.DataFrame):
-                _ss = _ss.iloc[:, 0]
-            df[_dst] = _ss.astype(str).str.strip().str.upper()
-    if "Date" in df.columns and "__F_DATE" not in df.columns:
-        df["__F_DATE"] = pd.to_datetime(df["Date"], errors="coerce")
+    # Build ROUTEE once so downstream tabs never have to mutate the shared
+    # cached DataFrame during a Streamlit rerun.
+    if "ROUTEE" not in df.columns and "ROUTE" in df.columns:
+        df["ROUTEE"] = df["ROUTE"].astype(str).str.strip()
+
+    # Low-memory representation for repeated filter dimensions.  Numeric values
+    # remain float64 so existing financial calculations are not changed.
+    for c in ["DEPOT", "REGION", "PRODUCT", "PRODUCT_NAME", "ROUTEE", "ROUTE",
+              "ROUTE_OLD", "Month_Name", "MHL_NMHL", "RTC_HIRE", "SER_NO",
+              "Weekday", "INTERSTATE", "TYPE", "D.TYPE", "NATURE", "SCH_DEP"]:
+        if c in df.columns and not isinstance(df[c].dtype, pd.CategoricalDtype):
+            try:
+                df[c] = df[c].astype("category")
+            except Exception:
+                pass
 
     return df
 
+
+def load_data(parquet_path=None, required=True):
+    """Resolve Parquet and cache one shared DataFrame per file version."""
+    if parquet_path:
+        path = _resolve_parquet(parquet_path)
+    else:
+        path = _resolve_parquet(PARQUET_FILE, [Path(r"D:\Dashboard\ser_wise.parquet"), Path(r"D:\MONTHLY\ser_wise.parquet"), Path("ser_wise.parquet"), Path(r"/home/workdir/attachments/ser_wise.parquet")])
+    sig = _parquet_signature(path) if path is not None else (str(parquet_path or PARQUET_FILE), 0, 0)
+    return _load_data_cached(parquet_path, required, sig)
+
 df_ser_wise = load_data()
-# Both constants intentionally point to the same Parquet file; reuse the same cached frame.
 df_service_monthly = df_ser_wise
 # Default working frame; switched per tab after section is chosen
 df = df_ser_wise
@@ -958,9 +1000,9 @@ def load_fleet_map(path: str = r"D:\Dashboard\FLEET.parquet"):
             return {}, "FLEET.parquet not found"
     try:
         try:
-            fdf = _read_parquet_fast(p, engine="pyarrow")
+            fdf = pd.read_parquet(p, engine="pyarrow")
         except Exception:
-            fdf = _read_parquet_fast(p)
+            fdf = pd.read_parquet(p)
         fdf.columns = [str(c).strip() for c in fdf.columns]
 
         def fc(cands):
@@ -1172,18 +1214,18 @@ def _resolve_smaster_path(primary=r"D:\Dashboard\SMASTER.parquet"):
     return p
 
 
-@st.cache_data(ttl=300, show_spinner=False)
-def load_smaster(path):
-    """Load SMASTER schedule master parquet."""
+@st.cache_resource(show_spinner=False)
+def _load_smaster_cached(path, signature=None):
     p = Path(path)
-    if not p.exists():
-        resolved = _resolve_smaster_path(path)
-        if resolved.exists():
-            p = resolved
-        else:
-            return None, f"File not found: {path}"
     try:
-        sdf = _read_parquet_fast(p)
+        if duckdb is not None:
+            con = duckdb.connect(database=":memory:")
+            try:
+                sdf = con.execute("SELECT * FROM read_parquet(?)", [str(p)]).df()
+            finally:
+                con.close()
+        else:
+            sdf = pd.read_parquet(p)
         sdf.columns = [str(c).strip() for c in sdf.columns]
         if "DATE" in sdf.columns and not pd.api.types.is_datetime64_any_dtype(sdf["DATE"]):
             sdf["DATE"] = pd.to_datetime(sdf["DATE"], errors="coerce")
@@ -1192,10 +1234,24 @@ def load_smaster(path):
         return None, str(e)
 
 
+def load_smaster(path):
+    """Resolve SMASTER and cache one shared copy per file version."""
+    p = Path(path)
+    if not p.exists():
+        resolved = _resolve_smaster_path(path)
+        if resolved.exists():
+            p = resolved
+        else:
+            return None, f"File not found: {path}"
+    return _load_smaster_cached(str(p), _parquet_signature(p))
+
 @st.cache_data(ttl=300, show_spinner=False)
 def _load_sros_sch_map_pw(smaster_path: str, month_key: str, depot_key: str = "ALL"):
     """Product-wise schedule counts from SMASTER for a month (CY + LY pair)."""
-    s = _read_parquet_fast(smaster_path)
+    s, _sm_err = load_smaster(smaster_path)
+    if s is None:
+        return {}
+    s = s.copy()
     s.columns = [str(c).strip() for c in s.columns]
 
     def fc(cands):
@@ -1209,16 +1265,15 @@ def _load_sros_sch_map_pw(smaster_path: str, month_key: str, depot_key: str = "A
     cp, cs, cm, cyear, cd = fc(["PRODUCT"]), fc(["NoOfSchedules", "NoOfSchedule"]), fc(["MONTH"]), fc(["YEAR"]), fc(["DEPOT"])
     if not cp or not cs:
         return {}
-    s = s.copy()
     s["_P"] = s[cp].astype(str).str.strip()
     s["_SCH"] = pd.to_numeric(s[cs], errors="coerce").fillna(0)
     if cd and depot_key and str(depot_key).upper() not in ("ALL", "REGION", "NONE", ""):
         s = s[s[cd].astype(str).str.strip().str.upper() == str(depot_key).strip().upper()]
     if cm and cyear:
         _mon = s[cm].astype(str).str.strip().str[:3].str.title()
-        _yr_num = pd.to_numeric(s[cyear], errors="coerce")
-        s["_MK"] = _mon + "-" + _yr_num.round().astype("Int64").astype(str)
-        s.loc[_yr_num.isna(), "_MK"] = ""
+        _yr = pd.to_numeric(s[cyear], errors="coerce")
+        s["_MK"] = _mon + "-" + _yr.fillna(-1).astype(int).astype(str)
+        s.loc[_yr.isna(), "_MK"] = ""
     else:
         s["_MK"] = "ALL"
     cy_g = s[s["_MK"] == month_key].groupby("_P")["_SCH"].sum() if month_key else s.groupby("_P")["_SCH"].sum()
@@ -1238,7 +1293,10 @@ def _load_sros_sch_map_pw(smaster_path: str, month_key: str, depot_key: str = "A
 @st.cache_data(ttl=300, show_spinner=False)
 def _load_sros_services_full(smaster_path: str, depot_key: str, month_key: str):
     """Service-level rows from SMASTER for Service-wise (SROS) tab."""
-    s = _read_parquet_fast(smaster_path)
+    s, _sm_err = load_smaster(smaster_path)
+    if s is None:
+        return pd.DataFrame()
+    s = s.copy()
     s.columns = [str(c).strip() for c in s.columns]
 
     def fc(cands):
@@ -1266,9 +1324,9 @@ def _load_sros_services_full(smaster_path: str, depot_key: str, month_key: str):
     s["_SCH"] = pd.to_numeric(s[c_sch], errors="coerce").fillna(0) if c_sch else 0
     if c_mon and c_year:
         _mon = s[c_mon].astype(str).str.strip().str[:3].str.title()
-        _yr_num = pd.to_numeric(s[c_year], errors="coerce")
-        s["_MK"] = _mon + "-" + _yr_num.round().astype("Int64").astype(str)
-        s.loc[_yr_num.isna(), "_MK"] = ""
+        _yr = pd.to_numeric(s[c_year], errors="coerce")
+        s["_MK"] = _mon + "-" + _yr.fillna(-1).astype(int).astype(str)
+        s.loc[_yr.isna(), "_MK"] = ""
     else:
         s["_MK"] = "ALL"
     if depot_key and str(depot_key).upper() not in ("ALL", "REGION", ""):
@@ -1877,7 +1935,7 @@ if section not in ("Schedules", "Home", "DOR", "MISSION RR", "Monthly files"):
     col_month = _exact_or_find(df, ["Month_Name", "MONTH_NAME", "Month"], "Month_Name", "MONTH_NAME", "Month", "MONTH")
     col_date = _exact_or_find(df, ["Date", "DATE"], "Date", "DATE", "TravelDate", "TripDate")
 
-    temp = df.copy()
+    temp = df
 
     AC_PRODUCTS = {
         "AC-HBD", "AC-SLP", "GRD+", "RJD", "e-GRD", "AC-HBD R", "AC-HBD H", "AC SLP", "AC HBD",
@@ -2026,46 +2084,38 @@ if section not in ("Schedules", "Home", "DOR", "MISSION RR", "Monthly files"):
         str(depot), str(mhl), str(rtc), str(product), str(route),
         str(ac_type), str(month), str(for_upto), str(passengers), str(net_gross),
         len(df),
-        int(df.attrs.get("_source_mtime_ns", 0)) if hasattr(df, "attrs") else 0,
     )
-    _reuse = (
-        st.session_state.get("_cy_ly_filter_key") == _filter_key
-        and "cy_data" in st.session_state
-        and "ly_data" in st.session_state
-        and "base_mask" in st.session_state
-    )
+    # Only cache the boolean mask/date metadata in session_state.  Storing full
+    # CY/LY DataFrames here duplicates tens/hundreds of MB per user on Cloud.
+    # Do not keep 450K-row CY/LY DataFrames in per-user session state.
+    # Rebuild the small boolean masks on each rerun; this trades a cheap scan for
+    # a large and persistent RAM allocation per Cloud user.
+    _reuse = False
 
     # Resolve month / date columns safely (cheap; needed for aliases either way)
     _mcol = col_month if col_month else _find_col(df, "Month_Name", "MONTH_NAME", "Month", "MONTH")
     _dcol = col_date if col_date else _find_col(df, "Date", "DATE", "TravelDate")
 
     def _month_match(series, mval):
-        return series.astype(str).str.strip().str.upper() == str(mval).strip().upper()
+        return series.astype(str).str.strip() == str(mval).strip()
 
     if _reuse:
-        cy_data = st.session_state["cy_data"]
-        ly_data = st.session_state["ly_data"]
         base_mask = st.session_state["base_mask"]
         selected_max_date = st.session_state.get("selected_max_date", pd.NaT)
-        # Keep Month_Name / Date aliases in place for downstream tabs
-        if _mcol and "Month_Name" not in df.columns:
-            df["Month_Name"] = df[_mcol]
-        if _dcol and "Date" not in df.columns:
-            df["Date"] = pd.to_datetime(df[_dcol], errors="coerce")
     else:
         base_mask = pd.Series(True, index=df.index)
 
         if depot not in ("ALL", "REGION") and col_depot:
-            base_mask &= df["__F_DEPOT"] == str(depot).strip().upper()
+            base_mask &= df[col_depot].astype(str).str.strip().str.upper() == str(depot).strip().upper()
 
         if mhl != "ALL" and col_mhl:
-            base_mask &= df["__F_MHL"] == str(mhl).strip().upper()
+            base_mask &= df[col_mhl].astype(str).str.strip().str.upper() == str(mhl).strip().upper()
 
         if route != "ALL" and col_route:
-            base_mask &= df["__F_ROUTE"] == str(route).strip().upper()
+            base_mask &= df[col_route].astype(str).str.strip().str.upper() == str(route).strip().upper()
 
         if product != "ALL" and col_product:
-            base_mask &= df["__F_PRODUCT"] == str(product).strip().upper()
+            base_mask &= df[col_product].astype(str).str.strip().str.upper() == str(product).strip().upper()
 
         if rtc != "ALL" and col_rtc:
             base_mask &= _rtc_match_mask(df[col_rtc], rtc)
@@ -2078,9 +2128,9 @@ if section not in ("Schedules", "Home", "DOR", "MISSION RR", "Monthly files"):
                 base_mask &= ~_ac_full
 
         if _mcol and _dcol:
-            selected_max_date = pd.to_datetime(df.loc[df["__F_MONTH"] == str(month).strip().upper(), _dcol], errors="coerce").max()
+            selected_max_date = pd.to_datetime(df.loc[df[_mcol].astype(str).str.strip() == str(month).strip(), _dcol], errors="coerce").max()
         elif _dcol:
-            selected_max_date = df["__F_DATE"].max()
+            selected_max_date = pd.to_datetime(df[_dcol], errors="coerce").max()
         else:
             selected_max_date = pd.NaT
 
@@ -2103,7 +2153,7 @@ if section not in ("Schedules", "Home", "DOR", "MISSION RR", "Monthly files"):
                     cy_mask = base_mask.copy()
             else:
                 if _dcol:
-                    _dt = df["__F_DATE"]
+                    _dt = pd.to_datetime(df[_dcol], errors="coerce")
                     cy_mask = base_mask & (_dt >= fy_start_date) & (_dt <= selected_max_date)
                 elif _mcol:
                     cy_mask = base_mask & _month_match(df[_mcol], month)
@@ -2128,17 +2178,17 @@ if section not in ("Schedules", "Home", "DOR", "MISSION RR", "Monthly files"):
                         ly_mask = pd.Series(False, index=df.index)
                     # Cap LY at same day-of-month as available CY data (e.g. CY to 22-08-2026 → LY to 22-08-2025)
                     if _dcol and pd.notna(ly_max_date):
-                        _dt_ly = df["__F_DATE"]
+                        _dt_ly = pd.to_datetime(df[_dcol], errors="coerce")
                         ly_mask = ly_mask & (_dt_ly <= ly_max_date)
                     # Also cap CY to selected_max_date so average is consistent
                     if _dcol and pd.notna(selected_max_date):
-                        _dt_cy = df["__F_DATE"]
+                        _dt_cy = pd.to_datetime(df[_dcol], errors="coerce")
                         cy_mask = cy_mask & (_dt_cy <= selected_max_date)
                 except Exception:
                     ly_mask = pd.Series(False, index=df.index)
             else:
                 if _dcol:
-                    _dt = df["__F_DATE"]
+                    _dt = pd.to_datetime(df[_dcol], errors="coerce")
                     ly_mask = base_mask & (_dt >= ly_fy_start_date) & (_dt <= ly_max_date)
                 else:
                     ly_mask = pd.Series(False, index=df.index)
@@ -2146,20 +2196,8 @@ if section not in ("Schedules", "Home", "DOR", "MISSION RR", "Monthly files"):
         cy_data = df[cy_mask].copy() if cy_mask is not None else df.iloc[0:0].copy()
         ly_data = df[ly_mask].copy() if ly_mask is not None else df.iloc[0:0].copy()
 
-        # Convenience: ensure Month_Name alias exists for downstream tabs
-        if _mcol and "Month_Name" not in df.columns:
-            df["Month_Name"] = df[_mcol]
-            if _mcol in cy_data.columns or True:
-                cy_data = df[cy_mask].copy()
-                ly_data = df[ly_mask].copy()
-        if _dcol and "Date" not in df.columns:
-            df["Date"] = pd.to_datetime(df[_dcol], errors="coerce")
-            cy_data = df[cy_mask].copy()
-            ly_data = df[ly_mask].copy()
 
         st.session_state["_cy_ly_filter_key"] = _filter_key
-        st.session_state["cy_data"] = cy_data
-        st.session_state["ly_data"] = ly_data
         st.session_state["base_mask"] = base_mask
         st.session_state["selected_max_date"] = selected_max_date
 
@@ -4126,7 +4164,10 @@ elif section == "Monthly files":
             st.error("SMASTER.parquet not found — Board 7 lists services from SMASTER only.")
             st.stop()
         try:
-            _sm_raw = _read_parquet_fast(_sros_p)
+            _sm_raw, _sm_err = load_smaster(str(_sros_p))
+            if _sm_raw is None:
+                raise RuntimeError(_sm_err or "Unable to load SMASTER.parquet")
+            _sm_raw = _sm_raw.copy()
             _sm_raw.columns = [str(c).strip() for c in _sm_raw.columns]
         except Exception as _e:
             st.error(f"Could not read SMASTER: {_e}")
@@ -6668,7 +6709,10 @@ elif section == "Trends from 2024":
                 if not sros_path.exists():
                     st.warning(r"SMASTER.parquet not found (checked D:\Dashboard and D:\MONTHLY)")
                 else:
-                    sros = _read_parquet_fast(sros_path)
+                    sros, _sros_err = load_smaster(str(sros_path))
+                    if sros is None:
+                        raise RuntimeError(_sros_err or "Unable to load SMASTER.parquet")
+                    sros = sros.copy()
                     sros.columns = [str(c).strip() for c in sros.columns]
                     def _fc(cands):
                         n = {str(c).strip().lower().replace(" ", "").replace("_", ""): c for c in sros.columns}
