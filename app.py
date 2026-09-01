@@ -995,8 +995,103 @@ df = df_ser_wise
 
 @st.cache_resource(show_spinner=False)
 def _load_monthly_service_metrics_cached(path_str, signature=None):
-    """Dedicated service-monthly metrics source for Monthly boards 7/8."""
-    return _load_data_cached(path_str, required=False, signature=signature)
+    """Load the dedicated monthly service metrics parquet ONLY.
+
+    This source is intentionally independent from ser_wise.parquet.  It must not
+    require Date/Weekday or SMASTER identity fields.  Boards 7/8 get service
+    identity/schedule information from SMASTER and performance metrics from
+    this file.
+    """
+    p = Path(path_str)
+    if not p.exists():
+        return pd.DataFrame(), None
+    try:
+        if duckdb is not None:
+            con = duckdb.connect(database=":memory:")
+            try:
+                dfm = con.execute("SELECT * FROM read_parquet(?)", [str(p)]).df()
+            finally:
+                con.close()
+        else:
+            dfm = pd.read_parquet(p)
+
+        dfm.columns = [str(c).strip() for c in dfm.columns]
+
+        def norm(c):
+            return (str(c).strip().lower().replace("_", "")
+                    .replace(" ", "").replace("/", "").replace(".", ""))
+
+        # Source -> application-standard names.  Only monthly metric fields are
+        # normalized here; master/schedule fields deliberately stay out.
+        aliases = {
+            "monthname": "Month_Name", "month": "Month_Name",
+            "depot": "DEPOT",
+            "serno": "SER_NO", "serviceno": "SER_NO", "servicenumber": "SER_NO",
+            "opdkms": "Optd_KMs", "optdkms": "Optd_KMs", "operatedkms": "Optd_KMs",
+            "grosstotal": "GE_TOT", "grosstotalamount": "GE_TOT",
+            "grossfarepaid": "GE_FPD", "grossmhl": "GE_MHL",
+            "nettotal": "NE_TOT", "netfarepaid": "NE_FPD", "netmhl": "NE_MHL",
+            "passengerstotal": "PSNGR_TOT", "passengersfarepaid": "PSNGR_FPD",
+            "passengersmhl": "PSNGR_MHL",
+            "mhlnmhl": "MHL_NMHL",
+            "rtchire": "RTC_HIRE",
+            "days": "DAYS", "noofdays": "DAYS", "operateddays": "DAYS",
+            "optdays": "DAYS", "optddays": "DAYS",
+            "date": "Date",
+        }
+        ren = {}
+        for c in dfm.columns:
+            k = norm(c)
+            if k in aliases:
+                ren[c] = aliases[k]
+        dfm = dfm.rename(columns=ren)
+        if dfm.columns.duplicated().any():
+            dfm = dfm.loc[:, ~dfm.columns.duplicated()].copy()
+
+        # Month_Name is mandatory for monthly boards.  Derive it from Date or
+        # Month + Year if the source uses those instead.
+        if "Month_Name" not in dfm.columns:
+            if "Date" in dfm.columns:
+                dt = pd.to_datetime(dfm["Date"], errors="coerce")
+                dfm["Month_Name"] = dt.dt.strftime("%b-%Y")
+            else:
+                cols = {norm(c): c for c in dfm.columns}
+                mc = cols.get("month")
+                yc = cols.get("year")
+                if mc and yc:
+                    mon = dfm[mc].astype(str).str.strip().str[:3].str.title()
+                    yr = pd.to_numeric(dfm[yc], errors="coerce")
+                    dfm["Month_Name"] = mon + "-" + yr.fillna(-1).astype(int).astype(str)
+                    dfm.loc[yr.isna(), "Month_Name"] = ""
+
+        # Normalize key fields.
+        if "DEPOT" in dfm.columns:
+            dfm["DEPOT"] = dfm["DEPOT"].astype(str).str.strip().str.upper()
+        if "SER_NO" in dfm.columns:
+            def _svc(v):
+                if v is None or (isinstance(v, float) and pd.isna(v)):
+                    return ""
+                z = str(v).strip()
+                if z.lower() in ("", "nan", "none"):
+                    return ""
+                if z.endswith(".0"):
+                    z = z[:-2]
+                try:
+                    return str(int(float(z)))
+                except Exception:
+                    return z
+            dfm["SER_NO"] = dfm["SER_NO"].map(_svc)
+
+        if "Month_Name" in dfm.columns:
+            dfm["Month_Name"] = dfm["Month_Name"].astype(str).str.strip()
+        for c in ["Optd_KMs", "GE_TOT", "GE_FPD", "GE_MHL", "NE_TOT", "NE_FPD",
+                  "NE_MHL", "PSNGR_TOT", "PSNGR_FPD", "PSNGR_MHL", "DAYS"]:
+            if c in dfm.columns:
+                dfm[c] = pd.to_numeric(dfm[c], errors="coerce").fillna(0.0)
+
+        return dfm, None
+    except Exception as exc:
+        return pd.DataFrame(), str(exc)
 
 
 def load_monthly_service_metrics():
@@ -4415,27 +4510,27 @@ elif section == "Monthly files":
             rc = "ROUTEE" if "ROUTEE" in d.columns else ("ROUTE" if "ROUTE" in d.columns else None)
             if rc and "ROUTEE" not in d.columns:
                 d["ROUTEE"] = d[rc]
-            return (
-                d.groupby(keys, dropna=False)
-                .agg(
-                    kms=("Optd_KMs", "sum"),
-                    ge_tot=("GE_TOT", "sum"),
-                    ge_mhl=("GE_MHL", "sum"),
-                    ge_fpd=("GE_FPD", "sum"),
-                    ne_tot=("NE_TOT", "sum"),
-                    ne_mhl=("NE_MHL", "sum"),
-                    ne_fpd=("NE_FPD", "sum"),
-                    days=("Date", "nunique"),
-                    rl_p=("R_L", "max"),
-                    route_p=("ROUTEE", _mode_or_first),
-                    rtc_p=("RTC_HIRE", _mode_or_first),
-                    prod_p=("PRODUCT", _mode_or_first),
-                    typ_p=("TYPE", _mode_or_first),
-                    nature_p=("NATURE", _mode_or_first),
-                    sch_dep_p=("SCH_DEP", _mode_or_first),
-                )
-                .reset_index()
-            )
+            # IMPORTANT: this aggregation receives ONLY the monthly metrics source.
+            # Identity/schedule columns are never requested here; they come from
+            # `master`, which was built exclusively from SMASTER above.
+            agg_map = {
+                "kms": ("Optd_KMs", "sum"),
+                "ge_tot": ("GE_TOT", "sum"),
+                "ge_mhl": ("GE_MHL", "sum"),
+                "ge_fpd": ("GE_FPD", "sum"),
+                "ne_tot": ("NE_TOT", "sum"),
+                "ne_mhl": ("NE_MHL", "sum"),
+                "ne_fpd": ("NE_FPD", "sum"),
+            }
+            if "DAYS" in d.columns:
+                agg_map["days"] = ("DAYS", "sum")
+            elif "Date" in d.columns:
+                agg_map["days"] = ("Date", "nunique")
+            else:
+                # Monthly parquet has one service/month record; this is only a
+                # fallback for the display count and does not affect EPK/OR.
+                agg_map["days"] = ("Month_Name", "nunique")
+            return d.groupby(keys, dropna=False).agg(**agg_map).reset_index()
 
         a_cm, a_cy, a_ly = agg7_perf(_cm7), agg7_perf(_cy7), agg7_perf(_ly7)
         merged = master.merge(a_cy, on=keys, how="left")
@@ -4512,12 +4607,12 @@ elif section == "Monthly files":
                 "SL NO": len(rows) + 1,
                 "Depot": dep,
                 "Ser No": ser,
-                "Sch Dep": _pick(r.get("sch_dep"), r.get("sch_dep_p_cy"), r.get("sch_dep_p_cm"), r.get("sch_dep_p_ly")),
-                "Route": _pick(r.get("route"), r.get("route_p_cy"), r.get("route_p_cm"), r.get("route_p_ly")),
-                "RTC/HIRE": _pick(r.get("rtc"), r.get("rtc_p_cy"), r.get("rtc_p_cm"), r.get("rtc_p_ly")),
+                "Sch Dep": _pick(r.get("sch_dep")),
+                "Route": _pick(r.get("route")),
+                "RTC/HIRE": _pick(r.get("rtc")),
                 "R/L": _f0(rl_v),
-                "Type": _pick(r.get("prod"), r.get("prod_p_cy"), r.get("prod_p_cm"), r.get("prod_p_ly")),
-                "D/N": _pick(r.get("nature"), r.get("nature_p_cy"), r.get("nature_p_cm"), r.get("nature_p_ly")),
+                "Type": _pick(r.get("typ")),
+                "D/N": _pick(r.get("nature")),
                 "No.of Schs": int(round(schs_v)) if schs_v else "",
                 "No.of Sers": 1,
                 "Sch. Kms": _f0(sch_kms_v),
@@ -5217,7 +5312,7 @@ elif section == "Monthly files":
                 "Sch Dep": m.get("sch_dep", ""),
                 "Route": m.get("route", ""),
                 "RTC/HIRE": m.get("rtc", ""),
-                "Type": m.get("prod", ""),
+                "Type": m.get("typ", ""),
                 "D/N": m.get("nature", ""),
                 "No. of Schs": int(round(float(m.get("schs", 0) or 0))) or "",
                 "No. of Ser": 1,
