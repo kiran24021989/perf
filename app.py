@@ -4592,8 +4592,23 @@ elif section == "Monthly files":
             if sk == 0 and rl > 0 and sc > 0:
                 master.at[i, "sch_kms"] = rl * sc
 
-        # `master` is SMASTER-only for schedule counts/identity.  However,
-        # Sch Dep, R/L and Type must come from the monthly service file.
+        # Performance metrics for Board 7 come ONLY from ser_monthly/ser_montly.
+        # Service identity and displayed Ser No come ONLY from SMASTER `SER NO`.
+        # Load monthly metrics BEFORE meta merge (Sch Dep / R/L / Type).
+        _svc7, _svc7_err = load_monthly_service_metrics()
+        if _svc7_err:
+            st.error(f"Could not read service-monthly parquet: {_svc7_err}")
+            st.stop()
+        if _svc7 is None or len(_svc7) == 0:
+            st.error("Service-monthly parquet not found/empty. Checked ser_monthly.parquet and ser_montly.parquet.")
+            st.stop()
+        _svc7 = _svc7.copy()
+        if "SER_NO" not in _svc7.columns or "DEPOT" not in _svc7.columns:
+            st.error("Service-monthly parquet must contain DEPOT and SER_NO for SMASTER matching.")
+            st.stop()
+        _svc7["SER_NO"] = _svc7["SER_NO"].map(_norm_svc7)
+        _svc7["DEPOT"] = _svc7["DEPOT"].astype(str).str.strip().str.upper()
+
         # Ensure SCH_DEP / R_L exist on monthly frame (fuzzy) for Board 7 meta
         def _ensure_sch_rl(frame):
             if frame is None or len(frame) == 0:
@@ -4617,6 +4632,8 @@ elif section == "Monthly files":
             return frame
         _svc7 = _ensure_sch_rl(_svc7)
 
+        # `master` is SMASTER-only for schedule counts/identity.  However,
+        # Sch Dep, R/L and Type must come from the monthly service file.
         _meta7 = _svc7[_svc7["Month_Name"].astype(str).str.strip() == str(mf_month).strip()].copy()
         if len(_meta7):
             _meta7["_SVC"] = _meta7["SER_NO"].map(_norm_svc7)
@@ -4636,20 +4653,17 @@ elif section == "Monthly files":
             if agg7_meta:
                 monthly_meta7 = _meta7.groupby(mcols7, dropna=False).agg(**agg7_meta).reset_index()
                 master = master.merge(
-                    monthly_meta7.rename(columns={"_DEP":"DEPOT","_SVC":"SER_NO"}),
-                    on=["DEPOT","SER_NO"], how="left"
+                    monthly_meta7.rename(columns={"_DEP": "DEPOT", "_SVC": "SER_NO"}),
+                    on=["DEPOT", "SER_NO"], how="left",
                 )
                 def _nonblank_series(s):
                     s = s.astype(str).str.strip()
                     return s.where(~s.str.lower().isin(["", "nan", "none", "nat", "<na>"]), other=pd.NA)
-
                 if "sch_dep_m" in master.columns:
-                    # Prefer monthly Sch Dep; fall back to SMASTER when blank
                     m = _nonblank_series(master["sch_dep_m"])
                     fb = master["sch_dep"].astype(str).str.strip() if "sch_dep" in master.columns else ""
                     master["sch_dep"] = m.fillna(fb).fillna("").astype(str).str.strip()
                 if "rl_m" in master.columns:
-                    # Prefer monthly R/L; fall back to SMASTER when 0/blank
                     mrl = pd.to_numeric(master["rl_m"], errors="coerce")
                     fbrl = pd.to_numeric(master.get("rl", 0), errors="coerce").fillna(0.0)
                     master["rl"] = mrl.where(mrl.fillna(0) != 0, fbrl).fillna(fbrl)
@@ -4661,55 +4675,14 @@ elif section == "Monthly files":
 
         allowed = set(zip(master["DEPOT"].astype(str).str.upper(), master["SER_NO"].map(_norm_svc7)))
 
-        def _b7_filter(data):
-            out_d = data.copy() if len(data) else data
-            if len(out_d) == 0:
-                return out_d
-            if mf_depot != "ALL" and "DEPOT" in out_d.columns:
-                out_d = out_d[out_d["DEPOT"].astype(str).str.strip().str.upper() == str(mf_depot).strip().upper()]
-            if mf_route != "ALL" and _route_col_mf and _route_col_mf in out_d.columns:
-                out_d = out_d[out_d[_route_col_mf].astype(str).str.strip().str.upper() == str(mf_route).strip().upper()]
-            if mf_product != "ALL" and "PRODUCT" in out_d.columns:
-                out_d = out_d[out_d["PRODUCT"].astype(str).str.strip().str.upper() == str(mf_product).strip().upper()]
-            if "SER_NO" in out_d.columns and "DEPOT" in out_d.columns:
-                mask = out_d.apply(
-                    lambda r: (str(r["DEPOT"]).strip().upper(), _norm_svc7(r["SER_NO"])) in allowed,
-                    axis=1,
-                )
-                out_d = out_d[mask]
-            if mf_svc != "ALL" and "SER_NO" in out_d.columns:
-                out_d = out_d[out_d["SER_NO"].map(_norm_svc7) == str(mf_svc).strip()]
-            return out_d
-
-        # Performance metrics for Board 7 come ONLY from ser_monthly/ser_montly.
-        # Service identity and displayed Ser No come ONLY from SMASTER `SER NO`.
-        _svc7, _svc7_err = load_monthly_service_metrics()
-        if _svc7_err:
-            st.error(f"Could not read service-monthly parquet: {_svc7_err}")
-            st.stop()
-        if _svc7 is None or len(_svc7) == 0:
-            st.error("Service-monthly parquet not found/empty. Checked ser_monthly.parquet and ser_montly.parquet.")
-            st.stop()
-        _svc7 = _svc7.copy()
-        if "SER_NO" not in _svc7.columns or "DEPOT" not in _svc7.columns:
-            st.error("Service-monthly parquet must contain DEPOT and SER_NO for SMASTER matching.")
-            st.stop()
-        _svc7["SER_NO"] = _svc7["SER_NO"].map(_norm_svc7)
-        _svc7["DEPOT"] = _svc7["DEPOT"].astype(str).str.strip().str.upper()
         # Board 7 source rule:
-        #   SMASTER -> Depot, Ser No, Route, RTC/HIRE, D/N, No.of Schs,
-        #              No.of Ser, Sch.Kms
+        #   SMASTER -> Depot, Ser No, Route, RTC/HIRE, D/N, No.of Schs, No.of Ser, Sch.Kms
         #   ser_monthly -> Sch Dep, R/L, TYPE (= PRODUCT)
-        # Monthly attributes are merged later by DEPOT+SER_NO and NEVER used
-        # for schedule counts.
-        # Metrics may contain services not present in the selected SMASTER month;
-        # never let those create rows in Board 7.
-        _svc7 = _svc7[_svc7.apply(
-            lambda rr: (rr["DEPOT"], _norm_svc7(rr["SER_NO"])) in allowed, axis=1
-        )].copy()
+        # never let metrics-only services create rows in Board 7.
+        _svc7["_pair"] = list(zip(_svc7["DEPOT"], _svc7["SER_NO"].map(_norm_svc7)))
+        _svc7 = _svc7[_svc7["_pair"].isin(allowed)].drop(columns=["_pair"]).copy()
         _cm7 = _svc7[_svc7["Month_Name"].astype(str).str.strip() == str(mf_month).strip()].copy()
-        # The monthly metrics parquet is month-grain data. It does not need
-        # Date or Weekday; CY/LY are selected from Month_Name.
+        # The monthly metrics parquet is month-grain data. CY/LY from Month_Name.
         _fy7_months = [x.strftime("%b-%Y") for x in pd.date_range(fy_start, cy_end, freq="MS")]
         _ly7_months = [(pd.to_datetime(x, format="%b-%Y") - pd.DateOffset(years=1)).strftime("%b-%Y") for x in _fy7_months]
         _cy7 = _svc7[_svc7["Month_Name"].astype(str).str.strip().isin(_fy7_months)].copy()
