@@ -1067,21 +1067,53 @@ def _load_monthly_service_metrics_cached(path_str, signature=None):
         if dfm.columns.duplicated().any():
             dfm = dfm.loc[:, ~dfm.columns.duplicated()].copy()
 
-        # Month_Name is mandatory for monthly boards.  Derive it from Date or
-        # Month + Year if the source uses those instead.
-        if "Month_Name" not in dfm.columns:
+        # Month_Name is mandatory for monthly boards. Always normalize to "Mon-YYYY".
+        cols_n = {norm(c): c for c in dfm.columns}
+        # Rebuild from Month+Year when both exist (even if Month was aliased to Month_Name)
+        mc = cols_n.get("month") or ( "Month_Name" if "Month_Name" in dfm.columns else None)
+        yc = cols_n.get("year")
+        if yc is not None and mc is not None and mc in dfm.columns and yc in dfm.columns:
+            mon = dfm[mc].astype(str).str.strip().str.replace(r"\.0$", "", regex=True)
+            # if value already looks like Mon-YYYY keep month part only
+            mon = mon.str.split("-").str[0].str[:3].str.title()
+            yr = pd.to_numeric(dfm[yc], errors="coerce")
+            dfm["Month_Name"] = [
+                (f"{m}-{int(y)}" if m and pd.notna(y) else "")
+                for m, y in zip(mon, yr)
+            ]
+        elif "Month_Name" not in dfm.columns:
             if "Date" in dfm.columns:
                 dt = pd.to_datetime(dfm["Date"], errors="coerce")
                 dfm["Month_Name"] = dt.dt.strftime("%b-%Y")
             else:
-                cols = {norm(c): c for c in dfm.columns}
-                mc = cols.get("month")
-                yc = cols.get("year")
-                if mc and yc:
-                    mon = dfm[mc].astype(str).str.strip().str[:3].str.title()
-                    yr = pd.to_numeric(dfm[yc], errors="coerce")
-                    dfm["Month_Name"] = mon + "-" + yr.fillna(-1).astype(int).astype(str)
-                    dfm.loc[yr.isna(), "Month_Name"] = ""
+                dfm["Month_Name"] = ""
+
+        # Normalize any remaining Month_Name values to Mon-YYYY
+        if "Month_Name" in dfm.columns:
+            def _norm_mon(v):
+                s = str(v).strip() if v is not None else ""
+                if not s or s.lower() in ("nan", "none", "nat", ""):
+                    return ""
+                # already Mon-YYYY or Mon-YY
+                try:
+                    dt = pd.to_datetime(s, errors="coerce")
+                    if pd.notna(dt):
+                        return dt.strftime("%b-%Y")
+                except Exception:
+                    pass
+                parts = s.replace("/", "-").replace(" ", "-").split("-")
+                if len(parts) >= 2:
+                    mon = parts[0][:3].title()
+                    yr = parts[1]
+                    try:
+                        yi = int(float(yr))
+                        if yi < 100:
+                            yi += 2000
+                        return f"{mon}-{yi}"
+                    except Exception:
+                        return s
+                return s
+            dfm["Month_Name"] = dfm["Month_Name"].map(_norm_mon)
 
         # Normalize key fields.
         if "DEPOT" in dfm.columns:
@@ -1101,8 +1133,6 @@ def _load_monthly_service_metrics_cached(path_str, signature=None):
                     return z
             dfm["SER_NO"] = dfm["SER_NO"].map(_svc)
 
-        if "Month_Name" in dfm.columns:
-            dfm["Month_Name"] = dfm["Month_Name"].astype(str).str.strip()
         for c in ["PRODUCT", "SCH_DEP", "ROUTE", "ROUTEE", "RTC_HIRE"]:
             if c in dfm.columns:
                 dfm[c] = dfm[c].astype(str).str.strip()
@@ -1148,6 +1178,50 @@ def load_monthly_service_metrics():
         return _load_monthly_service_metrics_cached(str(p), _parquet_signature(p))
     except Exception as exc:
         return pd.DataFrame(), str(exc)
+
+
+def _norm_month_key(v):
+    """Normalize any month label to Mon-YYYY (e.g. Aug-2026)."""
+    if v is None or (isinstance(v, float) and pd.isna(v)):
+        return ""
+    s = str(v).strip()
+    if not s or s.lower() in ("nan", "none", "nat", ""):
+        return ""
+    try:
+        dt = pd.to_datetime(s, errors="coerce")
+        if pd.notna(dt):
+            return dt.strftime("%b-%Y")
+    except Exception:
+        pass
+    parts = s.replace("/", "-").replace(" ", "-").split("-")
+    if len(parts) >= 2:
+        mon = parts[0][:3].title()
+        try:
+            yi = int(float(parts[1]))
+            if yi < 100:
+                yi += 2000
+            return f"{mon}-{yi}"
+        except Exception:
+            return s
+    return s
+
+
+def _month_match_mask(series, target):
+    """True where series month equals target (flexible formats)."""
+    tgt = _norm_month_key(target)
+    if not tgt:
+        return pd.Series(False, index=series.index)
+    s = series.map(_norm_month_key)
+    mask = s == tgt
+    # also try Mon-YY
+    try:
+        dt = pd.to_datetime(tgt, format="%b-%Y", errors="coerce")
+        if pd.notna(dt):
+            alt = dt.strftime("%b-%y")
+            mask = mask | (s == alt) | (series.astype(str).str.strip() == str(target).strip())
+    except Exception:
+        mask = mask | (series.astype(str).str.strip() == str(target).strip())
+    return mask
 
 
 @st.cache_data(ttl=300, show_spinner=False)
@@ -4618,23 +4692,41 @@ elif section == "Monthly files":
             if "SCH_DEP" not in frame.columns:
                 for c in frame.columns:
                     k = nk(c)
-                    if ("sch" in k and "dep" in k) or k in ("schdep", "scheduledepot", "schdepot"):
+                    if (
+                        ("sch" in k and "dep" in k)
+                        or k in ("schdep", "scheduledepot", "schdepot", "schdepo", "fromdepot", "schedep")
+                        or k.endswith("schdep")
+                    ):
                         frame = frame.copy()
                         frame["SCH_DEP"] = frame[c].astype(str)
                         break
             if "R_L" not in frame.columns:
                 for c in frame.columns:
                     k = nk(c)
-                    if k in ("rl", "routelength", "routelen") or (k.startswith("rl") and "epk" not in k and len(k) <= 6):
+                    if (
+                        k in ("rl", "routelength", "routelen", "rlength", "routelenkm")
+                        or (k.startswith("rl") and "epk" not in k and "or" not in k and len(k) <= 8)
+                    ):
                         frame = frame.copy()
                         frame["R_L"] = pd.to_numeric(frame[c], errors="coerce").fillna(0.0)
                         break
+            if "SCH_DEP" in frame.columns:
+                frame = frame.copy()
+                frame["SCH_DEP"] = (
+                    frame["SCH_DEP"].astype(str).str.strip()
+                    .replace({"nan": "", "None": "", "none": "", "<NA>": "", "NaT": ""})
+                )
+            if "R_L" in frame.columns:
+                frame = frame.copy()
+                frame["R_L"] = pd.to_numeric(frame["R_L"], errors="coerce").fillna(0.0)
             return frame
         _svc7 = _ensure_sch_rl(_svc7)
 
         # `master` is SMASTER-only for schedule counts/identity.  However,
         # Sch Dep, R/L and Type must come from the monthly service file.
-        _meta7 = _svc7[_svc7["Month_Name"].astype(str).str.strip() == str(mf_month).strip()].copy()
+        if "Month_Name" in _svc7.columns:
+            _svc7["Month_Name"] = _svc7["Month_Name"].map(_norm_month_key)
+        _meta7 = _svc7[_month_match_mask(_svc7["Month_Name"], mf_month)].copy()
         if len(_meta7):
             _meta7["_SVC"] = _meta7["SER_NO"].map(_norm_svc7)
             _meta7["_DEP"] = _meta7["DEPOT"].astype(str).str.strip().str.upper()
@@ -4681,12 +4773,12 @@ elif section == "Monthly files":
         # never let metrics-only services create rows in Board 7.
         _svc7["_pair"] = list(zip(_svc7["DEPOT"], _svc7["SER_NO"].map(_norm_svc7)))
         _svc7 = _svc7[_svc7["_pair"].isin(allowed)].drop(columns=["_pair"]).copy()
-        _cm7 = _svc7[_svc7["Month_Name"].astype(str).str.strip() == str(mf_month).strip()].copy()
+        _cm7 = _svc7[_month_match_mask(_svc7["Month_Name"], mf_month)].copy()
         # The monthly metrics parquet is month-grain data. CY/LY from Month_Name.
         _fy7_months = [x.strftime("%b-%Y") for x in pd.date_range(fy_start, cy_end, freq="MS")]
         _ly7_months = [(pd.to_datetime(x, format="%b-%Y") - pd.DateOffset(years=1)).strftime("%b-%Y") for x in _fy7_months]
-        _cy7 = _svc7[_svc7["Month_Name"].astype(str).str.strip().isin(_fy7_months)].copy()
-        _ly7 = _svc7[_svc7["Month_Name"].astype(str).str.strip().isin(_ly7_months)].copy()
+        _cy7 = _svc7[_svc7["Month_Name"].map(_norm_month_key).isin(_fy7_months)].copy()
+        _ly7 = _svc7[_svc7["Month_Name"].map(_norm_month_key).isin(_ly7_months)].copy()
 
         keys = ["DEPOT", "SER_NO"]
 
@@ -5425,21 +5517,39 @@ elif section == "Monthly files":
             if "SCH_DEP" not in frame.columns:
                 for c in frame.columns:
                     k = nk(c)
-                    if ("sch" in k and "dep" in k) or k in ("schdep", "scheduledepot", "schdepot"):
+                    if (
+                        ("sch" in k and "dep" in k)
+                        or k in ("schdep", "scheduledepot", "schdepot", "schdepo", "fromdepot", "schedep")
+                        or k.endswith("schdep")
+                    ):
                         frame = frame.copy()
                         frame["SCH_DEP"] = frame[c].astype(str)
                         break
             if "R_L" not in frame.columns:
                 for c in frame.columns:
                     k = nk(c)
-                    if k in ("rl", "routelength", "routelen") or (k.startswith("rl") and "epk" not in k and len(k) <= 6):
+                    if (
+                        k in ("rl", "routelength", "routelen", "rlength", "routelenkm")
+                        or (k.startswith("rl") and "epk" not in k and "or" not in k and len(k) <= 8)
+                    ):
                         frame = frame.copy()
                         frame["R_L"] = pd.to_numeric(frame[c], errors="coerce").fillna(0.0)
                         break
+            if "SCH_DEP" in frame.columns:
+                frame = frame.copy()
+                frame["SCH_DEP"] = (
+                    frame["SCH_DEP"].astype(str).str.strip()
+                    .replace({"nan": "", "None": "", "none": "", "<NA>": "", "NaT": ""})
+                )
+            if "R_L" in frame.columns:
+                frame = frame.copy()
+                frame["R_L"] = pd.to_numeric(frame["R_L"], errors="coerce").fillna(0.0)
             return frame
         _svc8 = _ensure_sch_rl8(_svc8)
 
-        _meta8 = _svc8[_svc8["Month_Name"].astype(str).str.strip() == str(mf_month).strip()].copy()
+        if "Month_Name" in _svc8.columns:
+            _svc8["Month_Name"] = _svc8["Month_Name"].map(_norm_month_key)
+        _meta8 = _svc8[_month_match_mask(_svc8["Month_Name"], mf_month)].copy()
         if len(_meta8):
             _meta8["_SVC"] = _meta8["SER_NO"].map(_norm8)
             def _first_nonblank8(series):
@@ -5518,9 +5628,9 @@ elif section == "Monthly files":
             _cy8 = _cy8[(_cy8["Date"] >= fy_start) & (_cy8["Date"] <= cy_end)].copy()
             _ly8 = _ly8[(_ly8["Date"] >= ly_start) & (_ly8["Date"] <= ly_end)].copy()
         elif "Month_Name" in _cy8.columns:
-            _cy8 = _cy8[_cy8["Month_Name"].astype(str).str.strip().isin(fy_months)].copy()
+            _cy8 = _cy8[_cy8["Month_Name"].map(_norm_month_key).isin(fy_months)].copy()
             _ly_months = [(pd.to_datetime(x, format="%b-%Y") - pd.DateOffset(years=1)).strftime("%b-%Y") for x in fy_months]
-            _ly8 = _ly8[_ly8["Month_Name"].astype(str).str.strip().isin(_ly_months)].copy()
+            _ly8 = _ly8[_ly8["Month_Name"].map(_norm_month_key).isin(_ly_months)].copy()
 
         if len(_cy8) == 0 and len(_b8) == 0:
             st.warning("No data for selected filters.")
@@ -5551,7 +5661,7 @@ elif section == "Monthly files":
             .agg(kms=("Optd_KMs", "sum"), ge=("GE_TOT", "sum"), ne=("NE_TOT", "sum"))
             .reset_index()
         )
-        mon_g["Month_Name"] = mon_g["Month_Name"].astype(str).str.strip()
+        mon_g["Month_Name"] = mon_g["Month_Name"].map(_norm_month_key)
         mon_g["g_epk"] = np.where(mon_g["kms"] > 0, mon_g["ge"] / mon_g["kms"], np.nan)
         mon_g["n_epk"] = np.where(mon_g["kms"] > 0, mon_g["ne"] / mon_g["kms"], np.nan)
 
